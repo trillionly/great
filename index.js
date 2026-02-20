@@ -20,7 +20,21 @@ const supabase = createClient(
 app.get("/", (req, res) => {
   res.send("서버 살아있음");
 });
+// 최근 50개 기록을 JSON으로 보여줌 (사이트/대시보드용)
+app.get("/report", async (req, res) => {
+  const { data, error } = await supabase
+    .from("daily_records")
+    .select("date, raw_message, created_at")
+    .order("created_at", { ascending: false })
+    .limit(50);
 
+  if (error) {
+    console.error("[SUPABASE] select error:", error);
+    return res.status(500).json({ ok: false, error });
+  }
+
+  return res.json({ ok: true, rows: data });
+});
 // 텔레그램 Webhook
 app.post("/telegram", async (req, res) => {
   try {
