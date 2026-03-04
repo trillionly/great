@@ -14,12 +14,20 @@
     .pill { display:inline-block; padding:2px 10px; border-radius:999px; background:#eef2ff; font-size:12px; }
     .err { background:#fee2e2; color:#991b1b; }
 
-    /* ✅ 표 높이 제한 및 내부 스크롤 추가 */
-    .wrap { max-height: 500px; overflow-y: auto; overflow-x: auto; border:1px solid #e5e7eb; border-radius:12px; background:#fff; margin-bottom: 20px; }
+    /* ✅ 절대 무한대로 늘어나지 못하게 강제 고정하는 CSS */
+    .wrap { 
+      height: 60vh !important; /* 화면 높이의 60%로 강제 고정 */
+      overflow-y: scroll !important; /* 세로 스크롤 강제 활성화 */
+      overflow-x: auto !important; 
+      display: block !important; /* 테이블 요소가 컨테이너를 뚫고 나가는 현상 방지 */
+      border: 1px solid #e5e7eb; 
+      border-radius: 12px; 
+      background: #fff; 
+      margin-bottom: 20px; 
+    }
     table { border-collapse: collapse; width: 100%; min-width: 800px; white-space: nowrap; }
 
     th, td { border-bottom: 1px solid #eee; padding: 8px 8px; vertical-align: middle; }
-    /* 스크롤 시 헤더 고정 (그림자 추가로 구분선 명확히) */
     th { background:#fafafa; text-align:left; position: sticky; top: 0; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
 
     .right { text-align:right; }
@@ -307,7 +315,6 @@
       if (el) el.textContent = (lastNow != null) ? `티어: ${lastNow}/${lastMax}` : "";
     }
 
-    // ✅ 금액과 수익률(%) 위아래로 분리하여 배치
     tbody.innerHTML = daily.map(r => {
       const totalSell = (sumOrNull(symbols.map(s => r[s].sell)) ?? 0);
       const rowDaily = r.totalDailyProfit;
@@ -356,7 +363,6 @@
     const avgTotalSellAll = totalSellAll / daysCount;
     const avgTotalProfitAll = totalProfitAll / daysCount;
 
-    // ✅ 합계 행에서도 수익률을 아래로 배치
     tfoot.innerHTML = `
       <tr class="avg">
         <td class="center">일평균</td>
