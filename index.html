@@ -14,12 +14,13 @@
     .pill { display:inline-block; padding:2px 10px; border-radius:999px; background:#eef2ff; font-size:12px; }
     .err { background:#fee2e2; color:#991b1b; }
 
-    /* ✅ 폴드/모바일 환경 가로 스크롤 허용 최적화 */
-    .wrap { overflow-x:auto; border:1px solid #e5e7eb; border-radius:12px; background:#fff; margin-bottom: 20px; }
+    /* ✅ 표 높이 제한 및 내부 스크롤 추가 */
+    .wrap { max-height: 500px; overflow-y: auto; overflow-x: auto; border:1px solid #e5e7eb; border-radius:12px; background:#fff; margin-bottom: 20px; }
     table { border-collapse: collapse; width: 100%; min-width: 800px; white-space: nowrap; }
 
     th, td { border-bottom: 1px solid #eee; padding: 8px 8px; vertical-align: middle; }
-    th { background:#fafafa; text-align:left; position: sticky; top: 0; z-index: 1; }
+    /* 스크롤 시 헤더 고정 (그림자 추가로 구분선 명확히) */
+    th { background:#fafafa; text-align:left; position: sticky; top: 0; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
 
     .right { text-align:right; }
     .center { text-align:center; }
@@ -28,13 +29,11 @@
     .pos { color:#0b6b3a; font-weight:600; }
     .head2 { background:#fff7e6; font-weight:700; }
     .tot { background:#f2f7ff; font-weight:700; }
-    /* 평균치 라인용 배경색 */
     .avg { background:#fcfdfa; font-weight:600; }
 
     .small { font-size: 12px; color:#555; }
     select { padding:9px 10px; border:1px solid #ddd; border-radius:10px; }
     
-    /* 폴드 펼침 모드 대응: 유연한 카드 배치 */
     .row { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin: 10px 0 12px; }
     .card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:10px 12px; box-shadow:0 1px 2px rgba(0,0,0,.04); flex: 1 1 150px; min-width: 140px; }
     
@@ -80,7 +79,9 @@
       <div class="small muted" id="monthRoiTSLL">-</div>
     </div>
 
-    <div style="flex:100%; height:0; margin:0;"></div> <div style="margin-left:auto;">
+    <div style="flex:100%; height:0; margin:0;"></div>
+
+    <div style="margin-left:auto;">
       <div class="small">월 선택</div>
       <select id="monthSel"></select>
     </div>
@@ -117,10 +118,8 @@
   </details>
 
 <script>
-  // seeds
   const SEEDS = { TQQQ: 140000, ETHU: 40000, TSLL: 32000 };
 
-  // helpers
   const esc = (s) => (s ?? "").toString().replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
   const num = (s) => {
     if (s == null) return null;
@@ -129,7 +128,7 @@
     return Number.isFinite(n) ? n : null;
   };
   const fmtInt = (n) => n == null ? "" : new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
-  const fmtFloat1 = (n) => n == null ? "" : Number(n).toFixed(1); // 평균용 소수점 처리
+  const fmtFloat1 = (n) => n == null ? "" : Number(n).toFixed(1);
   const fmtPct1 = (x) => (x == null || !Number.isFinite(x)) ? "" : (x * 100).toFixed(1) + "%";
   const clsPN = (n) => (n == null) ? "" : (n < 0 ? "neg" : (n > 0 ? "pos" : ""));
   const sumOrNull = (arr) => {
@@ -287,13 +286,13 @@
         <th rowspan="2" style="width:70px">날짜</th>
         ${symbols.map(sym => `<th class="center" colspan="3">${esc(symLabel(sym))}<div class="small muted" id="tier_${sym}"></div></th>`).join("")}
         <th rowspan="2" class="center" style="width:80px">총 매도</th>
-        <th rowspan="2" class="right" style="width:140px">총합 수익</th>
+        <th rowspan="2" class="right" style="width:120px">총합 수익</th>
       </tr>
       <tr>
         ${symbols.map(_ => `
-          <th class="center" style="width:60px">매도</th>
-          <th class="right" style="width:90px">수익</th>
-          <th class="right" style="width:110px">누적자산</th>
+          <th class="center" style="width:50px">매도</th>
+          <th class="right" style="width:70px">수익</th>
+          <th class="right" style="width:80px">누적자산</th>
         `).join("")}
       </tr>
     `;
@@ -308,7 +307,7 @@
       if (el) el.textContent = (lastNow != null) ? `티어: ${lastNow}/${lastMax}` : "";
     }
 
-    // ✅ "누계" 텍스트 제거
+    // ✅ 금액과 수익률(%) 위아래로 분리하여 배치
     tbody.innerHTML = daily.map(r => {
       const totalSell = (sumOrNull(symbols.map(s => r[s].sell)) ?? 0);
       const rowDaily = r.totalDailyProfit;
@@ -317,11 +316,18 @@
       return `
         <tr>
           <td class="center">${esc(r.mmdd)}</td>
-          ${symbols.map(sym => `
+          ${symbols.map(sym => {
+            const seed = SEEDS[sym] || null;
+            const roi = (seed && r[sym].cum != null) ? (r[sym].cum / seed) : null;
+            return `
               <td class="center">${r[sym].sell ?? ""}</td>
               <td class="right ${clsPN(r[sym].profit)}">${r[sym].profit == null ? "" : "$" + fmtInt(r[sym].profit)}</td>
-              <td class="right">${r[sym].cum == null ? "" : "$" + fmtInt(r[sym].cum)}</td>
-          `).join("")}
+              <td class="right">
+                <div>${r[sym].cum == null ? "" : "$" + fmtInt(r[sym].cum)}</div>
+                ${roi != null ? `<div class="small muted">(${fmtPct1(roi)})</div>` : ""}
+              </td>
+            `;
+          }).join("")}
           <td class="center">${fmtInt(totalSell)}</td>
           <td class="right">
             <div class="${clsPN(rowDaily)}">${rowDaily == null ? "" : "일 $" + fmtInt(rowDaily)}</div>
@@ -331,7 +337,6 @@
       `;
     }).join("") || `<tr><td colspan="${2 + symbols.length*3}" class="muted">데이터 없음</td></tr>`;
 
-    // 통계 계산
     const monthTotals = calcMonthTotals(daily, symbols);
     const sumSellBySym = Object.fromEntries(symbols.map(s => [s, sumOrNull(daily.map(r => r[s].sell))]));
     const sumProfitBySym = Object.fromEntries(symbols.map(s => [s, sumOrNull(daily.map(r => r[s].profit))]));
@@ -345,14 +350,13 @@
     const totalProfitAll = sumOrNull(Object.values(sumProfitBySym));
     const lastCumAll = sumOrNull(Object.values(lastCumBySym));
     
-    // 평균치 계산
     const daysCount = daily.length || 1;
     const avgSellBySym = Object.fromEntries(symbols.map(s => [s, (sumSellBySym[s] || 0) / daysCount]));
     const avgProfitBySym = Object.fromEntries(symbols.map(s => [s, (sumProfitBySym[s] || 0) / daysCount]));
     const avgTotalSellAll = totalSellAll / daysCount;
     const avgTotalProfitAll = totalProfitAll / daysCount;
 
-    // ✅ 하단 통계 출력 (평균치 라인 추가 & "누계" 텍스트 제거)
+    // ✅ 합계 행에서도 수익률을 아래로 배치
     tfoot.innerHTML = `
       <tr class="avg">
         <td class="center">일평균</td>
@@ -377,14 +381,14 @@
             <td class="right ${clsPN(sumProfitBySym[sym])}">${sumProfitBySym[sym] == null ? "" : "$" + fmtInt(sumProfitBySym[sym])}</td>
             <td class="right">
               <div>$${fmtInt(lastCumBySym[sym])}</div>
-              <div class="muted">(${fmtPct1(roiCum)})</div>
+              <div class="small muted">(${fmtPct1(roiCum)})</div>
             </td>
           `;
         }).join("")}
         <td class="center">${fmtInt(totalSellAll)}</td>
         <td class="right">
           <div class="${clsPN(totalProfitAll)}">${totalProfitAll == null ? "" : "월 $" + fmtInt(totalProfitAll)}</div>
-          <div class="muted">${lastCumAll == null ? "" : "$" + fmtInt(lastCumAll)}${(monthTotals.seedAll ? ` (${fmtPct1(lastCumAll / monthTotals.seedAll)})` : "")}</div>
+          <div class="small muted">${lastCumAll == null ? "" : "$" + fmtInt(lastCumAll)}${(monthTotals.seedAll ? ` (${fmtPct1(lastCumAll / monthTotals.seedAll)})` : "")}</div>
         </td>
       </tr>
     `;
