@@ -14,17 +14,8 @@
     .pill { display:inline-block; padding:2px 10px; border-radius:999px; background:#eef2ff; font-size:12px; }
     .err { background:#fee2e2; color:#991b1b; }
 
-    /* ✅ 절대 무한대로 늘어나지 못하게 강제 고정하는 CSS */
-    .wrap { 
-      height: 60vh !important; /* 화면 높이의 60%로 강제 고정 */
-      overflow-y: scroll !important; /* 세로 스크롤 강제 활성화 */
-      overflow-x: auto !important; 
-      display: block !important; /* 테이블 요소가 컨테이너를 뚫고 나가는 현상 방지 */
-      border: 1px solid #e5e7eb; 
-      border-radius: 12px; 
-      background: #fff; 
-      margin-bottom: 20px; 
-    }
+    /* ✅ 표 영역 무한 스크롤 제한 해제 (원복 완료) */
+    .wrap { overflow-x: auto; border:1px solid #e5e7eb; border-radius:12px; background:#fff; margin-bottom: 20px; }
     table { border-collapse: collapse; width: 100%; min-width: 800px; white-space: nowrap; }
 
     th, td { border-bottom: 1px solid #eee; padding: 8px 8px; vertical-align: middle; }
@@ -116,7 +107,9 @@
   <div class="row" style="margin-top:0">
     <div class="card wide">
       <div class="k">월 수익 콤보 그래프 (막대=일 수익 / 선=월 누적)</div>
-      <canvas id="comboChart" height="100"></canvas>
+      <div style="position: relative; height: 250px; width: 100%;">
+        <canvas id="comboChart"></canvas>
+      </div>
     </div>
   </div>
 
@@ -432,7 +425,7 @@
         },
         options: {
           responsive: true,
-          maintainAspectRatio: false,
+          maintainAspectRatio: false, /* ✅ 이게 유지되어야 250px 높이에 예쁘게 맞춰집니다 */
           interaction: { mode: "index", intersect: false },
           plugins: { legend: { position: "top" } },
           scales: {
