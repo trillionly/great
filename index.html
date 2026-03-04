@@ -11,7 +11,7 @@
     .pill { display:inline-block; padding:2px 10px; border-radius:999px; background:#eef2ff; font-size:12px; }
     .err { background:#fee2e2; color:#991b1b; }
     .wrap { overflow:auto; border:1px solid #e5e7eb; border-radius:12px; background:#fff; }
-    table { border-collapse: collapse; width: 1200px; min-width: 100%; }
+    table { border-collapse: collapse; width: 1300px; min-width: 100%; }
     th, td { border-bottom: 1px solid #eee; padding: 8px 8px; vertical-align: middle; }
     th { background:#fafafa; text-align:left; position: sticky; top: 0; z-index: 1; }
     .right { text-align:right; }
@@ -24,7 +24,7 @@
     .small { font-size: 12px; color:#555; }
     select { padding:9px 10px; border:1px solid #ddd; border-radius:10px; }
     .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin: 10px 0 12px; }
-    .card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:10px 12px; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+    .card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:10px 12px; box-shadow:0 1px 2px rgba(0,0,0,.04); min-width: 160px; }
     .k { font-size:12px; color:#666; }
     .v { font-size:18px; font-weight:700; margin-top:4px; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
@@ -32,7 +32,7 @@
 </head>
 <body>
   <h1>Investment Logbook</h1>
-  <div class="sub">raw(합본) 메시지 → (S횟수/누계/일수익/티어(현재/총)) 자동 계산 → 월별 표</div>
+  <div class="sub">raw(합본) 메시지 → (S횟수/누계/일수익/티어(현재/총)) 자동 계산 → 월별 표 + 월/종목 누적/수익률</div>
 
   <div class="row">
     <div class="card">
@@ -46,6 +46,28 @@
     <div class="card">
       <div class="k">최근 일자</div>
       <div class="v" id="latest">-</div>
+    </div>
+
+    <div class="card">
+      <div class="k">월 누적 수익(3종목 합)</div>
+      <div class="v" id="monthProfitAll">-</div>
+      <div class="small muted" id="monthRoiAll">-</div>
+    </div>
+
+    <div class="card">
+      <div class="k">TQQQ 월 누적</div>
+      <div class="v" id="monthProfitTQQQ">-</div>
+      <div class="small muted" id="monthRoiTQQQ">-</div>
+    </div>
+    <div class="card">
+      <div class="k">ETHU 월 누적</div>
+      <div class="v" id="monthProfitETHU">-</div>
+      <div class="small muted" id="monthRoiETHU">-</div>
+    </div>
+    <div class="card">
+      <div class="k">TSLL 월 누적</div>
+      <div class="v" id="monthProfitTSLL">-</div>
+      <div class="small muted" id="monthRoiTSLL">-</div>
     </div>
 
     <div style="flex:1"></div>
@@ -76,6 +98,13 @@
   </details>
 
 <script>
+  // ---- seeds (user provided)
+  const SEEDS = {
+    TQQQ: 140000,
+    ETHU: 40000,
+    TSLL: 32000
+  };
+
   // ---------- helpers
   const esc = (s) => (s ?? "").toString().replace(/[&<>"']/g, c => ({
     "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
@@ -87,6 +116,7 @@
     return Number.isFinite(n) ? n : null;
   };
   const fmtInt = (n) => n == null ? "" : new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
+  const fmtPct1 = (x) => (x == null || !Number.isFinite(x)) ? "" : (x * 100).toFixed(1) + "%";
   const clsPN = (n) => (n == null) ? "" : (n < 0 ? "neg" : (n > 0 ? "pos" : ""));
   const sumOrNull = (arr) => {
     const nums = arr.filter(v => typeof v === "number" && Number.isFinite(v));
@@ -95,7 +125,6 @@
   };
 
   // ---------- Grid tier parsing
-  // 라인 형식: "71) 34.64 29 35.68 0"  => idx) buyPrice buyQty sellPrice sellQty
   function parseGridTier(gridText) {
     if (!gridText) return { tierNow: null, tierMax: null };
 
@@ -118,29 +147,26 @@
     rows.sort((a,b)=>a.idx-b.idx);
     const tierMax = rows[rows.length - 1].idx;
 
-    // 전환점 기반 현재티어 추정:
-    // 앞부분: buyQty=0 / sellQty>0 형태가 많고,
-    // 어느 지점부터 buyQty>0 / sellQty=0 형태로 바뀌는 경우가 일반적.
+    // 전환점 기반 현재티어 추정
     const pattern = (r) => `${r.buyQty === 0 ? "B0" : "B+"}-${r.sellQty === 0 ? "S0" : "S+"}`;
     let tierNow = rows[0].idx;
     for (let i = 1; i < rows.length; i++) {
       if (pattern(rows[i]) !== pattern(rows[i-1])) {
-        tierNow = rows[i].idx; // 바뀐 첫 행
+        tierNow = rows[i].idx;
         break;
       }
     }
-
     return { tierNow, tierMax };
   }
 
-  // ---------- 1) 합본 raw_message를 블록으로 분리 (예: "03/04일 07:21")
+  // ---------- split combined raw into blocks (e.g. "03/04일 07:21")
   function splitBlocks(raw) {
     const t = (raw || "").replace(/\r/g, "");
     const re = /(^|\n)(\d{2})\/(\d{2})일\s+(\d{2}:\d{2})/g;
     const starts = [];
     let m;
     while ((m = re.exec(t)) !== null) {
-      const startAt = m.index + (m[1] ? 1 : 0); // digit 위치
+      const startAt = m.index + (m[1] ? 1 : 0);
       starts.push(startAt);
     }
     if (!starts.length) return [];
@@ -153,7 +179,6 @@
     return blocks;
   }
 
-  // ---------- 2) 블록 1개 파싱
   function parseBlock(blockText) {
     const t = blockText || "";
 
@@ -180,7 +205,7 @@
     const sCnt = t.match(/S\s*(\d+)회/);
     const sellCount = sCnt ? num(sCnt[1]) : null;
 
-    // Grid 텍스트 추출: "GridX SYMBOL" 다음 줄부터 "테이블 총재고" 이전까지
+    // Grid section extract
     let gridText = "";
     const gridHeader = t.match(/Grid\d+\s+[A-Z]{2,6}\s*\n/i);
     if (gridHeader) {
@@ -193,7 +218,6 @@
     return { mmdd, time, symbol, cum, sellCount, tierNow, tierMax, raw: t };
   }
 
-  // ---------- 3) report rows -> parsed blocks
   function rowsToBlocks(reportRows) {
     const out = [];
     for (const r of reportRows) {
@@ -204,7 +228,6 @@
     return out.filter(x => x.mmdd && x.symbol);
   }
 
-  // ---------- 4) 월/일자별 daily table
   function buildDaily(blocks, monthStr, symbols) {
     const byKey = new Map(); // `${mmdd}|${sym}` -> latest rec by time
     for (const r of blocks) {
@@ -232,7 +255,7 @@
       return row;
     });
 
-    // profit = cum delta
+    // profit = cum delta (전일 누계 차이)
     const prevCum = Object.fromEntries(symbols.map(s => [s, null]));
     for (const r of table) {
       for (const sym of symbols) {
@@ -242,9 +265,44 @@
         else r[sym].profit = cum - prevCum[sym];
         if (cum != null) prevCum[sym] = cum;
       }
+      // 일 합 / 누계 합
+      r.totalDailyProfit = sumOrNull(symbols.map(s => r[s].profit));
+      r.totalCum = sumOrNull(symbols.map(s => r[s].cum));
     }
 
     return table;
+  }
+
+  function calcMonthTotals(daily, symbols) {
+    // 월 누적 수익 = 일수익 합 (종목별)
+    const bySym = {};
+    for (const sym of symbols) {
+      bySym[sym] = {
+        profit: sumOrNull(daily.map(r => r[sym].profit)) ?? 0, // null이면 0
+        // 월말 기준 "누계"는 마지막 non-null cum
+        lastCum: (() => {
+          for (let i=daily.length-1; i>=0; i--) {
+            const v = daily[i][sym].cum;
+            if (v != null) return v;
+          }
+          return null;
+        })()
+      };
+    }
+
+    const allProfit = Object.values(bySym).reduce((a,b)=>a + (b.profit ?? 0), 0);
+
+    // ROI: (누적수익 / seed)
+    // 누적수익은 "월 누적 수익"으로 계산 (profit sum)
+    const roiBySym = {};
+    for (const sym of symbols) {
+      const seed = SEEDS[sym];
+      roiBySym[sym] = (seed ? (bySym[sym].profit / seed) : null);
+    }
+    const seedAll = symbols.reduce((a,s)=>a + (SEEDS[s] || 0), 0);
+    const roiAll = seedAll ? (allProfit / seedAll) : null;
+
+    return { bySym, allProfit, roiBySym, roiAll, seedAll };
   }
 
   function render(daily, symbols) {
@@ -257,18 +315,18 @@
         <th rowspan="2" style="width:70px">날짜</th>
         ${symbols.map(sym => `<th class="center" colspan="3">${sym}<div class="small muted" id="tier_${sym}"></div></th>`).join("")}
         <th rowspan="2" class="center" style="width:90px">총 매도</th>
-        <th rowspan="2" class="right" style="width:110px">수익</th>
+        <th rowspan="2" class="right" style="width:150px">총합 수익</th>
       </tr>
       <tr>
         ${symbols.map(_ => `
           <th class="center" style="width:70px">매도</th>
-          <th class="right" style="width:95px">수익</th>
-          <th class="right" style="width:95px">누계</th>
+          <th class="right" style="width:110px">수익</th>
+          <th class="right" style="width:170px">누계(수익률)</th>
         `).join("")}
       </tr>
     `;
 
-    // 헤더에 "현재/총 티어" 표시
+    // 헤더에 티어 "현재/총"
     for (const sym of symbols) {
       let lastNow = null, lastMax = null;
       for (let i = daily.length-1; i>=0; i--) {
@@ -281,22 +339,38 @@
 
     tbody.innerHTML = daily.map(r => {
       const totalSell = (sumOrNull(symbols.map(s => r[s].sell)) ?? 0);
-      const totalProfit = sumOrNull(symbols.map(s => r[s].profit));
+
+      // row total profit/cum
+      const rowDaily = r.totalDailyProfit;
+      const rowCum = r.totalCum;
+
       return `
         <tr>
           <td class="center">${esc(r.mmdd)}</td>
-          ${symbols.map(sym => `
-            <td class="center">${r[sym].sell ?? ""}</td>
-            <td class="right ${clsPN(r[sym].profit)}">${r[sym].profit == null ? "" : "$" + fmtInt(r[sym].profit)}</td>
-            <td class="right">${r[sym].cum == null ? "" : "$" + fmtInt(r[sym].cum)}</td>
-          `).join("")}
+
+          ${symbols.map(sym => {
+            const seed = SEEDS[sym] || null;
+            const roi = (seed && r[sym].cum != null) ? (r[sym].cum / seed) : null;
+            return `
+              <td class="center">${r[sym].sell ?? ""}</td>
+              <td class="right ${clsPN(r[sym].profit)}">${r[sym].profit == null ? "" : "$" + fmtInt(r[sym].profit)}</td>
+              <td class="right">${r[sym].cum == null ? "" : "$" + fmtInt(r[sym].cum)}${r[sym].cum == null ? "" : ` <span class="muted">(${fmtPct1(roi)})</span>`}</td>
+            `;
+          }).join("")}
+
           <td class="center">${fmtInt(totalSell)}</td>
-          <td class="right ${clsPN(totalProfit)}">${totalProfit == null ? "" : "$" + fmtInt(totalProfit)}</td>
+
+          <td class="right">
+            <div class="${clsPN(rowDaily)}">${rowDaily == null ? "" : "일 $" + fmtInt(rowDaily)}</div>
+            <div class="muted">${rowCum == null ? "" : "누계 $" + fmtInt(rowCum)}</div>
+          </td>
         </tr>
       `;
     }).join("") || `<tr><td colspan="${1 + symbols.length*3 + 2}" class="muted">데이터 없음</td></tr>`;
 
-    // footer
+    // footer totals: 월 누적 수익(=일수익 합)
+    const monthTotals = calcMonthTotals(daily, symbols);
+
     const sumSellBySym = Object.fromEntries(symbols.map(s => [s, sumOrNull(daily.map(r => r[s].sell))]));
     const sumProfitBySym = Object.fromEntries(symbols.map(s => [s, sumOrNull(daily.map(r => r[s].profit))]));
     const lastCumBySym = Object.fromEntries(symbols.map(s => {
@@ -306,27 +380,47 @@
     }));
 
     const totalSellAll = (sumOrNull(Object.values(sumSellBySym)) ?? 0);
-    const totalProfitAll = sumOrNull(Object.values(sumProfitBySym));
-    const dayCount = daily.length || 1;
+    const totalProfitAll = sumOrNull(Object.values(sumProfitBySym)); // 월 누적 수익(3종목 합)
+    const lastCumAll = sumOrNull(Object.values(lastCumBySym));
 
     tfoot.innerHTML = `
       <tr class="tot">
         <td class="center">합계</td>
-        ${symbols.map(sym => `
-          <td class="center">${sumSellBySym[sym] ?? ""}</td>
-          <td class="right ${clsPN(sumProfitBySym[sym])}">${sumProfitBySym[sym] == null ? "" : "$" + fmtInt(sumProfitBySym[sym])}</td>
-          <td class="right">${lastCumBySym[sym] == null ? "" : "$" + fmtInt(lastCumBySym[sym])}</td>
-        `).join("")}
+        ${symbols.map(sym => {
+          const seed = SEEDS[sym] || null;
+          const roiCum = (seed && lastCumBySym[sym] != null) ? (lastCumBySym[sym] / seed) : null;
+          return `
+            <td class="center">${sumSellBySym[sym] ?? ""}</td>
+            <td class="right ${clsPN(sumProfitBySym[sym])}">${sumProfitBySym[sym] == null ? "" : "$" + fmtInt(sumProfitBySym[sym])}</td>
+            <td class="right">${lastCumBySym[sym] == null ? "" : "$" + fmtInt(lastCumBySym[sym])}${lastCumBySym[sym] == null ? "" : ` <span class="muted">(${fmtPct1(roiCum)})</span>`}</td>
+          `;
+        }).join("")}
         <td class="center">${fmtInt(totalSellAll)}</td>
-        <td class="right ${clsPN(totalProfitAll)}">${totalProfitAll == null ? "" : "$" + fmtInt(totalProfitAll)}</td>
-      </tr>
-      <tr class="tot">
-        <td class="center">일평균</td>
-        ${symbols.map(_ => `<td></td><td></td><td></td>`).join("")}
-        <td class="center">${(totalSellAll / dayCount).toFixed(1)}</td>
-        <td class="right">$${((totalProfitAll ?? 0) / dayCount).toFixed(2)}</td>
+        <td class="right">
+          <div class="${clsPN(totalProfitAll)}">${totalProfitAll == null ? "" : "월 $" + fmtInt(totalProfitAll)}</div>
+          <div class="muted">${lastCumAll == null ? "" : "누계 $" + fmtInt(lastCumAll)}${(monthTotals.seedAll ? ` <span class="muted">(${fmtPct1(lastCumAll / monthTotals.seedAll)})</span>` : "")}</div>
+        </td>
       </tr>
     `;
+
+    // update top cards (month profit / ROI)
+    const setCard = (idV, idR, profit, roi) => {
+      const v = document.getElementById(idV);
+      const r = document.getElementById(idR);
+      v.textContent = "$" + fmtInt(profit);
+      v.className = "v " + clsPN(profit);
+      r.textContent = (roi == null) ? "" : `수익률 ${fmtPct1(roi)}`;
+    };
+
+    setCard("monthProfitAll", "monthRoiAll", monthTotals.allProfit, monthTotals.roiAll);
+
+    // Only show per-symbol cards for known 3 symbols (even if filter is 1 symbol, show for all 3 to keep dashboard stable)
+    const sAll = ["TQQQ","ETHU","TSLL"];
+    for (const sym of sAll) {
+      const profit = (monthTotals.bySym[sym]?.profit ?? 0);
+      const roi = monthTotals.roiBySym[sym] ?? null;
+      setCard("monthProfit"+sym, "monthRoi"+sym, profit, roi);
+    }
   }
 
   async function main() {
