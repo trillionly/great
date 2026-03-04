@@ -5,30 +5,33 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Investment Logbook</title>
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; background:#f6f8fa; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 18px; background:#f6f8fa; }
     h1 { margin: 0 0 6px; }
-    .sub { color:#666; margin: 0 0 16px; }
-    .row { display:flex; gap:10px; flex-wrap:wrap; margin: 12px 0 18px; }
-    .card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:12px 14px; min-width:160px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
-    .k { font-size:12px; color:#666; }
-    .v { font-size:18px; font-weight:700; margin-top:4px; }
-    table { border-collapse: collapse; width: 100%; background:#fff; border:1px solid #e5e7eb; border-radius:12px; overflow:hidden; }
-    th, td { border-bottom: 1px solid #eee; padding: 10px 8px; vertical-align: top; }
-    th { text-align: left; background: #fafafa; position: sticky; top: 0; z-index: 1; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; white-space: pre-wrap; }
+    .sub { color:#666; margin: 0 0 12px; }
     .pill { display:inline-block; padding:2px 10px; border-radius:999px; background:#eef2ff; font-size:12px; }
+    .wrap { overflow:auto; border:1px solid #e5e7eb; border-radius:12px; background:#fff; }
+    table { border-collapse: collapse; width: 1200px; min-width: 100%; }
+    th, td { border-bottom: 1px solid #eee; padding: 8px 8px; vertical-align: middle; }
+    th { background:#fafafa; text-align:left; position: sticky; top: 0; z-index: 1; }
+    .right { text-align:right; }
+    .center { text-align:center; }
     .muted { color:#666; }
     .neg { color:#b00020; font-weight:600; }
     .pos { color:#0b6b3a; font-weight:600; }
-    .right { text-align:right; }
-    input { padding:10px 12px; border:1px solid #ddd; border-radius:10px; width: min(520px, 100%); }
-    details { margin-top: 14px; }
-    summary { cursor: pointer; }
+    .head2 { background:#fff7e6; font-weight:700; }
+    .tot { background:#f2f7ff; font-weight:700; }
+    .small { font-size: 12px; color:#555; }
+    input, select { padding:9px 10px; border:1px solid #ddd; border-radius:10px; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin: 10px 0 12px; }
+    .card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:10px 12px; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+    .k { font-size:12px; color:#666; }
+    .v { font-size:18px; font-weight:700; margin-top:4px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
   </style>
 </head>
 <body>
   <h1>Investment Logbook</h1>
-  <p class="sub">텔레그램 raw 리포트 → 자동 누적 → 웹에서 컬럼화 표시</p>
+  <div class="sub">raw 메시지 → (S횟수/누계/일수익/티어) 자동 계산 → 월별 표</div>
 
   <div class="row">
     <div class="card">
@@ -36,48 +39,38 @@
       <div class="v"><span id="status" class="pill">로딩 중…</span></div>
     </div>
     <div class="card">
-      <div class="k">최근 기록</div>
-      <div class="v" id="latest">-</div>
-    </div>
-    <div class="card">
-      <div class="k">총 행 수</div>
+      <div class="k">레코드 수</div>
       <div class="v" id="count">-</div>
     </div>
-  </div>
-
-  <div style="margin: 0 0 14px;">
-    <input id="q" placeholder="검색: 예) 2번계좌 / TQQQ / 총자산 / 테스트" />
-    <div class="muted" style="margin-top:8px;">
-      캐시 방지 적용됨(매번 최신 report.json).
+    <div class="card">
+      <div class="k">최근 일자</div>
+      <div class="v" id="latest">-</div>
     </div>
+
+    <div style="flex:1"></div>
+
+    <label class="small">월 선택</label>
+    <select id="monthSel"></select>
+
+    <label class="small">표시 종목</label>
+    <select id="symbolsSel">
+      <option value="TQQQ,ETHU,TSLL" selected>3종목(TQQQ/ETHU/TSLL)</option>
+      <option value="TQQQ">TQQQ만</option>
+      <option value="ETHU">ETHU만</option>
+      <option value="TSLL">TSLL만</option>
+    </select>
   </div>
 
-  <table>
-    <thead>
-      <tr>
-        <th style="width:110px">Date</th>
-        <th style="width:90px">Time</th>
-        <th style="width:70px">계좌</th>
-        <th style="width:80px">종목</th>
-        <th class="right" style="width:140px">총자산(원)</th>
-        <th class="right" style="width:120px">총손익($)</th>
-        <th class="right" style="width:130px">주문가능($)</th>
-        <th class="right" style="width:110px">보유수량</th>
-        <th class="right" style="width:110px">평단($)</th>
-        <th class="right" style="width:120px">평가손익($)</th>
-        <th>원문</th>
-      </tr>
-    </thead>
-    <tbody id="tbody"></tbody>
-  </table>
-
-  <details>
-    <summary>디버그: report.json 원문 보기</summary>
-    <pre class="mono" id="rawjson"></pre>
-  </details>
+  <div class="wrap">
+    <table>
+      <thead id="thead"></thead>
+      <tbody id="tbody"></tbody>
+      <tfoot id="tfoot"></tfoot>
+    </table>
+  </div>
 
 <script>
-  // ---- utils
+  // ---------- helpers
   const esc = (s) => (s ?? "").toString().replace(/[&<>"']/g, c => ({
     "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
   }[c]));
@@ -87,125 +80,249 @@
     const n = Number(x);
     return Number.isFinite(n) ? n : null;
   };
-  const fmt = (n, opt={}) => {
-    if (n == null) return "";
-    try { return new Intl.NumberFormat("ko-KR", opt).format(n); } catch { return String(n); }
-  };
+  const fmtInt = (n) => n == null ? "" : new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
   const clsPN = (n) => (n == null) ? "" : (n < 0 ? "neg" : (n > 0 ? "pos" : ""));
-  const pick = (m, idx=1) => m ? m[idx] : null;
 
-  // ---- 핵심: raw_message에서 주요 필드 추출
-  function parseReport(text) {
-    if (!text) return { date:null, time:null, account:null, symbol:null, total_krw:null, total_pnl_usd:null, cash_usd:null, shares:null, avg_price:null, pos_pnl_usd:null };
+  // ---------- parsing: raw_message -> {mmdd, time, symbol, sellCount, tier, cum}
+  function parseOne(raw) {
+    const t = raw || "";
 
-    // date/time: "02/20일 08:01"
-    const dt = text.match(/(\d{2}\/\d{2})일\s+(\d{2}:\d{2})/);
-    const mmdd = pick(dt,1);
-    const time = pick(dt,2);
-    const date = mmdd ? `2026-${mmdd.replace("/","-")}` : null; // 일단 2026 고정(원하면 현재연도로 자동화 가능)
+    // "02/20일 08:01"
+    const dt = t.match(/(\d{2})\/(\d{2})일\s+(\d{2}:\d{2})/);
+    const mm = dt ? dt[1] : null;
+    const dd = dt ? dt[2] : null;
+    const time = dt ? dt[3] : null;
+    const mmdd = (mm && dd) ? `${mm}/${dd}` : null;
 
-    // account: "2번계좌"
-    const acc = text.match(/(\d+)번계좌/);
-    const account = pick(acc,1);
-
-    // symbol: "TQQQ최대필요" or "3ETHU평가금액" 등에서 추정
+    // symbol: from "TQQQ최대필요" or "2TQQQ평가금액"
     let symbol = null;
-    const sym1 = text.match(/\n([A-Z]{2,6})최대필요/);
-    if (sym1) symbol = sym1[1];
+    const s1 = t.match(/(?:^|\n)([A-Z]{2,6})최대필요/);
+    if (s1) symbol = s1[1];
     if (!symbol) {
-      const sym2 = text.match(/\n\d+([A-Z]{2,6})평가금액/);
-      if (sym2) symbol = sym2[1];
+      const s2 = t.match(/(?:^|\n)\d+([A-Z]{2,6})평가금액/);
+      if (s2) symbol = s2[1];
     }
 
-    // cash available
-    const cash = text.match(/주문가능\$\s*:\s*([\d,]+\.\d+|[\d,]+)/);
-    const cash_usd = num(pick(cash,1));
+    // sell count: "S 0회"
+    const sCnt = t.match(/S\s*(\d+)회/);
+    const sellCount = sCnt ? num(sCnt[1]) : null;
 
-    // total pnl usd
-    const tpnl = text.match(/총평가손익\$\s*:\s*([-\d,]+\.\d+|[-\d,]+)/);
-    const total_pnl_usd = num(pick(tpnl,1));
+    // tier: take bracket right after S count, e.g. "S 3회 [59]" -> 59
+    const tierM = t.match(/S\s*\d+회\s*\[(\d+)\]/);
+    const tier = tierM ? num(tierM[1]) : null;
 
-    // position fields
-    const sharesM = text.match(/보유수량\s*:\s*([\d,]+)주/);
-    const shares = num(pick(sharesM,1));
+    // cumulative: "주문가능-최대필요: 4182"
+    const cumM = t.match(/주문가능-최대필요\s*:\s*([-\d,]+(?:\.\d+)?)/);
+    const cum = cumM ? num(cumM[1]) : null;
 
-    const avgM = text.match(/평균단가\s*:\s*\$?([-\d,]+\.\d+|[-\d,]+)/);
-    const avg_price = num(pick(avgM,1));
-
-    const ppnl = text.match(/평가손익\$\s*:\s*([-\d,]+\.\d+|[-\d,]+)/);
-    const pos_pnl_usd = num(pick(ppnl,1));
-
-    // total assets KRW
-    const krw = text.match(/총자산\s*\(기준환율:[^)]+\)\s*:\s*([\d,]+)원/);
-    const total_krw = num(pick(krw,1));
-
-    return { date, time, account, symbol, total_krw, total_pnl_usd, cash_usd, shares, avg_price, pos_pnl_usd };
+    return { mmdd, time, symbol, sellCount, tier, cum, raw: t };
   }
 
-  // ---- load + render
-  async function load() {
-    const status = document.getElementById("status");
-    const tbody = document.getElementById("tbody");
-    const rawjson = document.getElementById("rawjson");
-    const latest = document.getElementById("latest");
-    const count = document.getElementById("count");
+  // ---------- build daily table by month and symbol
+  function buildDaily(rows, symbols) {
+    // rows = parsed entries (may contain multiple entries/day)
+    // keep latest per day per symbol (by time string)
+    const byKey = new Map(); // key = `${mmdd}|${symbol}` -> record
+    for (const r of rows) {
+      if (!r.mmdd || !r.symbol || !symbols.includes(r.symbol)) continue;
+      const key = `${r.mmdd}|${r.symbol}`;
+      const prev = byKey.get(key);
+      if (!prev) byKey.set(key, r);
+      else {
+        // choose later time if available
+        if ((r.time || "") > (prev.time || "")) byKey.set(key, r);
+      }
+    }
 
-    status.textContent = "로딩 중…";
-    try {
-      // 캐시 방지: 매번 최신을 읽음
-      const res = await fetch("./data/report.json?t=" + Date.now(), { cache: "no-store" });
-      const j = await res.json();
-      rawjson.textContent = JSON.stringify(j, null, 2);
-
-      const rows = (j.rows || []).map(r => {
-        const parsed = parseReport(r.raw_message);
-        return { ...r, ...parsed };
+    // list of dates
+    const dates = [...new Set([...byKey.keys()].map(k => k.split("|")[0]))]
+      .sort((a,b) => {
+        const [am,ad] = a.split("/").map(Number);
+        const [bm,bd] = b.split("/").map(Number);
+        return (am*100+ad) - (bm*100+bd);
       });
 
-      window.__rows = rows;
-
-      status.textContent = "정상";
-      count.textContent = fmt(rows.length);
-      latest.textContent = rows[0] ? `${rows[0].date || ""} ${rows[0].time || ""}` : "-";
-
-      render(rows);
-    } catch (e) {
-      status.textContent = "실패";
-      tbody.innerHTML = `<tr><td colspan="11" class="mono neg">${esc(String(e))}</td></tr>`;
-    }
-  }
-
-  function render(rows) {
-    const q = (document.getElementById("q").value || "").toLowerCase();
-    const filtered = rows.filter(r => {
-      const hay = [
-        r.date, r.time, r.account, r.symbol,
-        r.total_krw, r.total_pnl_usd, r.cash_usd, r.shares, r.avg_price, r.pos_pnl_usd,
-        r.raw_message
-      ].join(" ").toLowerCase();
-      return hay.includes(q);
+    // compute per symbol cumulative and daily profit (= delta cum)
+    const table = dates.map(mmdd => {
+      const row = { mmdd };
+      for (const sym of symbols) {
+        const rec = byKey.get(`${mmdd}|${sym}`) || null;
+        row[sym] = rec ? { sell: rec.sellCount, tier: rec.tier, cum: rec.cum, time: rec.time, raw: rec.raw } : { sell:null, tier:null, cum:null, time:null, raw:null };
+      }
+      return row;
     });
 
-    const tbody = document.getElementById("tbody");
-    tbody.innerHTML = filtered.map(r => `
-      <tr>
-        <td>${esc(r.date || r.date?.slice?.(0,10) || "")}</td>
-        <td>${esc(r.time || "")}</td>
-        <td>${esc(r.account ? (r.account + "번") : "")}</td>
-        <td>${esc(r.symbol || "")}</td>
-        <td class="right">${r.total_krw != null ? fmt(r.total_krw) : ""}</td>
-        <td class="right ${clsPN(r.total_pnl_usd)}">${r.total_pnl_usd != null ? fmt(r.total_pnl_usd, { maximumFractionDigits: 2 }) : ""}</td>
-        <td class="right">${r.cash_usd != null ? fmt(r.cash_usd, { maximumFractionDigits: 2 }) : ""}</td>
-        <td class="right">${r.shares != null ? fmt(r.shares) : ""}</td>
-        <td class="right">${r.avg_price != null ? fmt(r.avg_price, { maximumFractionDigits: 4 }) : ""}</td>
-        <td class="right ${clsPN(r.pos_pnl_usd)}">${r.pos_pnl_usd != null ? fmt(r.pos_pnl_usd, { maximumFractionDigits: 2 }) : ""}</td>
-        <td class="mono">${esc(r.raw_message || "")}</td>
-      </tr>
-    `).join("") || `<tr><td colspan="11" class="muted">결과 없음</td></tr>`;
+    // daily profit from cum delta (per symbol)
+    const prevCum = Object.fromEntries(symbols.map(s => [s, null]));
+    for (const r of table) {
+      for (const sym of symbols) {
+        const cum = r[sym].cum;
+        if (cum == null) {
+          r[sym].profit = null;
+        } else if (prevCum[sym] == null) {
+          r[sym].profit = cum; // first day: treat as today's profit = cum (or null)
+        } else {
+          r[sym].profit = cum - prevCum[sym];
+        }
+        if (cum != null) prevCum[sym] = cum;
+      }
+    }
+
+    return table;
   }
 
-  document.getElementById("q").addEventListener("input", () => render(window.__rows || []));
-  load();
+  function sumOrNull(arr) {
+    const nums = arr.filter(v => typeof v === "number" && Number.isFinite(v));
+    if (!nums.length) return null;
+    return nums.reduce((a,b)=>a+b,0);
+  }
+
+  function render(month, dailyTable, symbols) {
+    const thead = document.getElementById("thead");
+    const tbody = document.getElementById("tbody");
+    const tfoot = document.getElementById("tfoot");
+
+    // header like your sheet: date + (sell, profit, cum) per symbol + totals
+    const symHeader = symbols.map(sym => `
+      <th class="center" colspan="3">${sym}<div class="small muted" id="tier_${sym}"></div></th>
+    `).join("");
+
+    thead.innerHTML = `
+      <tr class="head2">
+        <th rowspan="2" style="width:70px">날짜</th>
+        ${symHeader}
+        <th rowspan="2" class="center" style="width:90px">총 매도</th>
+        <th rowspan="2" class="right" style="width:110px">수익</th>
+      </tr>
+      <tr>
+        ${symbols.map(_ => `
+          <th class="center" style="width:70px">매도</th>
+          <th class="right" style="width:95px">수익</th>
+          <th class="right" style="width:95px">누계</th>
+        `).join("")}
+      </tr>
+    `;
+
+    // latest tier display from last row that has tier
+    for (const sym of symbols) {
+      let lastTier = null;
+      for (let i = dailyTable.length-1; i>=0; i--) {
+        const t = dailyTable[i][sym].tier;
+        if (t != null) { lastTier = t; break; }
+      }
+      const el = document.getElementById(`tier_${sym}`);
+      if (el) el.textContent = (lastTier != null) ? `티어(카운터): ${lastTier}` : "";
+    }
+
+    const rowsHtml = dailyTable.map(r => {
+      const totalSell = sumOrNull(symbols.map(s => r[s].sell)). ?? 0; // default 0
+      const totalProfit = sumOrNull(symbols.map(s => r[s].profit));
+      return `
+        <tr>
+          <td class="center">${esc(r.mmdd)}</td>
+          ${symbols.map(sym => `
+            <td class="center">${r[sym].sell ?? ""}</td>
+            <td class="right ${clsPN(r[sym].profit)}">${r[sym].profit == null ? "" : "$" + fmtInt(r[sym].profit)}</td>
+            <td class="right">${r[sym].cum == null ? "" : "$" + fmtInt(r[sym].cum)}</td>
+          `).join("")}
+          <td class="center">${fmtInt(totalSell)}</td>
+          <td class="right ${clsPN(totalProfit)}">${totalProfit == null ? "" : "$" + fmtInt(totalProfit)}</td>
+        </tr>
+      `;
+    }).join("");
+
+    tbody.innerHTML = rowsHtml || `<tr><td colspan="${1 + symbols.length*3 + 2}" class="muted">데이터 없음</td></tr>`;
+
+    // totals/footer (합계, 일평균 간단 버전)
+    const sumSellBySym = Object.fromEntries(symbols.map(s => [s, sumOrNull(dailyTable.map(r => r[s].sell))]));
+    const sumProfitBySym = Object.fromEntries(symbols.map(s => [s, sumOrNull(dailyTable.map(r => r[s].profit))]));
+    const lastCumBySym = Object.fromEntries(symbols.map(s => {
+      let v = null;
+      for (let i = dailyTable.length-1; i>=0; i--) { if (dailyTable[i][s].cum != null) { v = dailyTable[i][s].cum; break; } }
+      return [s, v];
+    }));
+
+    const totalSellAll = sumOrNull(Object.values(sumSellBySym)) ?? 0;
+    const totalProfitAll = sumOrNull(Object.values(sumProfitBySym));
+
+    const dayCount = dailyTable.length || 1;
+    const avgSellAll = totalSellAll / dayCount;
+    const avgProfitAll = (totalProfitAll ?? 0) / dayCount;
+
+    tfoot.innerHTML = `
+      <tr class="tot">
+        <td class="center">합계</td>
+        ${symbols.map(sym => `
+          <td class="center">${sumSellBySym[sym] ?? ""}</td>
+          <td class="right ${clsPN(sumProfitBySym[sym])}">${sumProfitBySym[sym] == null ? "" : "$" + fmtInt(sumProfitBySym[sym])}</td>
+          <td class="right">${lastCumBySym[sym] == null ? "" : "$" + fmtInt(lastCumBySym[sym])}</td>
+        `).join("")}
+        <td class="center">${fmtInt(totalSellAll)}</td>
+        <td class="right ${clsPN(totalProfitAll)}">${totalProfitAll == null ? "" : "$" + fmtInt(totalProfitAll)}</td>
+      </tr>
+      <tr class="tot">
+        <td class="center">일평균</td>
+        ${symbols.map(_ => `
+          <td class="center"></td>
+          <td class="right"></td>
+          <td class="right"></td>
+        `).join("")}
+        <td class="center">${avgSellAll.toFixed(1)}</td>
+        <td class="right">${"$" + avgProfitAll.toFixed(2)}</td>
+      </tr>
+    `;
+  }
+
+  // ---------- load
+  async function main() {
+    const status = document.getElementById("status");
+    const count = document.getElementById("count");
+    const latest = document.getElementById("latest");
+    const monthSel = document.getElementById("monthSel");
+    const symbolsSel = document.getElementById("symbolsSel");
+
+    status.textContent = "로딩 중…";
+
+    const res = await fetch("./data/report.json?t=" + Date.now(), { cache: "no-store" });
+    const j = await res.json();
+    const rawRows = j.rows || [];
+
+    count.textContent = String(rawRows.length);
+    latest.textContent = rawRows[0]?.date ? rawRows[0].date : "-";
+
+    // parse all
+    const parsed = rawRows.map(r => parseOne(r.raw_message));
+
+    // month list from mmdd
+    const months = [...new Set(parsed.map(p => p.mmdd?.split("/")[0]).filter(Boolean))].sort((a,b)=>Number(a)-Number(b));
+    monthSel.innerHTML = months.map(m => `<option value="${m}">${Number(m)}월</option>`).join("");
+
+    // default: latest month if possible
+    if (months.length) monthSel.value = months[months.length-1];
+
+    function rerender() {
+      const m = monthSel.value;
+      const symbols = symbolsSel.value.split(",").map(s => s.trim()).filter(Boolean);
+
+      // filter month
+      const monthRows = parsed.filter(p => p.mmdd && p.mmdd.startsWith(m + "/") && symbols.includes(p.symbol));
+      const daily = buildDaily(monthRows, symbols);
+
+      render(m, daily, symbols);
+
+      status.textContent = "정상";
+    }
+
+    monthSel.addEventListener("change", rerender);
+    symbolsSel.addEventListener("change", rerender);
+
+    rerender();
+  }
+
+  main().catch(e => {
+    document.getElementById("status").textContent = "실패";
+    console.error(e);
+  });
 </script>
 </body>
 </html>
