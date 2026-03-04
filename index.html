@@ -323,7 +323,7 @@
           }).join("")}
           <td class="center">${fmtInt(totalSell)}</td>
           <td class="right">
-            <div class="${clsPN(rowDaily)}">${rowDaily == null ? "" : "일 $" + fmtInt(rowDaily)}</div>
+            <div class="${clsPN(rowDaily)}">${rowDaily == null ? "" : "$" + fmtInt(rowDaily)}</div>
             <div class="muted">${rowCum == null ? "" : "$" + fmtInt(rowCum)}</div>
           </td>
         </tr>
@@ -359,7 +359,7 @@
         `).join("")}
         <td class="center">${fmtFloat1(avgTotalSellAll)}</td>
         <td class="right">
-          <div class="${clsPN(avgTotalProfitAll)}">일 $${fmtInt(avgTotalProfitAll)}</div>
+          <div class="${clsPN(avgTotalProfitAll)}">$${fmtInt(avgTotalProfitAll)}</div>
           <div class="muted">-</div>
         </td>
       </tr>
@@ -370,7 +370,7 @@
           const roiCum = (seed && lastCumBySym[sym] != null) ? (lastCumBySym[sym] / seed) : null;
           return `
             <td class="center">${sumSellBySym[sym] ?? ""}</td>
-            <td class="right ${clsPN(sumProfitBySym[sym])}">${sumProfitBySym[sym] == null ? "" : "$" + fmtInt(sumProfitBySym[sym])}</td>
+            <td class="right">-</td>
             <td class="right">
               <div>$${fmtInt(lastCumBySym[sym])}</div>
               <div style="font-weight:normal; font-size:12px; color:#666;">(${fmtPct1(roiCum)})</div>
@@ -379,8 +379,11 @@
         }).join("")}
         <td class="center">${fmtInt(totalSellAll)}</td>
         <td class="right">
-          <div class="${clsPN(totalProfitAll)}">${totalProfitAll == null ? "" : "월 $" + fmtInt(totalProfitAll)}</div>
-          <div>${lastCumAll == null ? "" : "$" + fmtInt(lastCumAll)}${(monthTotals.seedAll ? ` (${fmtPct1(lastCumAll / monthTotals.seedAll)})` : "")}</div>
+          <div class="${clsPN(totalProfitAll)}">${totalProfitAll == null ? "" : "$" + fmtInt(totalProfitAll)}</div>
+          <div>
+            ${lastCumAll == null ? "" : "<span class='muted'>$" + fmtInt(lastCumAll) + "</span>"}
+            ${monthTotals.seedAll ? ` <span style="color:#2563eb; font-size:14px; font-weight:700;">(${fmtPct1(lastCumAll / monthTotals.seedAll)})</span>` : ""}
+          </div>
         </td>
       </tr>
     `;
