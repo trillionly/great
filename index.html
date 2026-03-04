@@ -14,7 +14,6 @@
     .pill { display:inline-block; padding:2px 10px; border-radius:999px; background:#eef2ff; font-size:12px; }
     .err { background:#fee2e2; color:#991b1b; }
 
-    /* ✅ 표 영역 무한 스크롤 제한 해제 (원복 완료) */
     .wrap { overflow-x: auto; border:1px solid #e5e7eb; border-radius:12px; background:#fff; margin-bottom: 20px; }
     table { border-collapse: collapse; width: 100%; min-width: 800px; white-space: nowrap; }
 
@@ -210,13 +209,19 @@
     return { mmdd, time, symbol, cum, sellCount, tierNow, tierMax, raw: t };
   }
 
+  // ✅ 핵심 로직 수정 부분: 조각난 메시지 합치기
   function rowsToBlocks(reportRows) {
+    // 1. JSON 데이터는 최신이 0번 인덱스이므로, 과거부터 시간순으로 합치기 위해 배열을 뒤집습니다.
+    const chronos = [...reportRows].reverse();
+    // 2. 텔레그램에서 여러 개로 쪼개져 온 메시지들을 하나의 거대한 텍스트로 이어 붙입니다.
+    const fullText = chronos.map(r => r.raw_message || "").join("\n\n");
+    
+    // 3. 이제 하나로 합쳐진 텍스트에서 '날짜 시간'을 기준으로 완벽하게 블록을 나눕니다.
+    const blocks = splitBlocks(fullText);
+    
     const out = [];
-    for (const r of reportRows) {
-      const raw = r.raw_message || "";
-      const blocks = splitBlocks(raw);
-      for (const b of blocks) out.push(parseBlock(b));
-    }
+    for (const b of blocks) out.push(parseBlock(b));
+    
     return out.filter(x => x.mmdd && x.symbol);
   }
 
@@ -425,7 +430,7 @@
         },
         options: {
           responsive: true,
-          maintainAspectRatio: false, /* ✅ 이게 유지되어야 250px 높이에 예쁘게 맞춰집니다 */
+          maintainAspectRatio: false,
           interaction: { mode: "index", intersect: false },
           plugins: { legend: { position: "top" } },
           scales: {
