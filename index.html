@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>Investment Logbook</title>
+<style>
+body{font-family:Arial;margin:40px;background:#f6f8fa}
+h1{margin-bottom:20px}
+table{border-collapse:collapse;width:100%;background:white}
+th,td{padding:10px;border-bottom:1px solid #ddd}
+th{background:#f0f0f0;text-align:left}
+pre{margin:0;font-family:monospace}
+</style>
+</head>
+
+<body>
+
+<h1>Investment Logbook</h1>
+<table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Created</th>
+<th>Message</th>
+</tr>
+</thead>
+
+<tbody id="data"></tbody>
+</table>
+
+<script>
+
+fetch("./data/report.json")
+.then(r=>r.json())
+.then(j=>{
+
+const rows=j.rows||[]
+
+const html=rows.map(r=>`
+<tr>
+<td>${r.date||""}</td>
+<td>${r.created_at||""}</td>
+<td><pre>${r.raw_message||""}</pre></td>
+</tr>
+`).join("")
+
+document.getElementById("data").innerHTML=html
+
+})
+
+</script>
+
+</body>
+</html>
