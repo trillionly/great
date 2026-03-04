@@ -1,54 +1,211 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<meta charset="utf-8">
-<title>Investment Logbook</title>
-<style>
-body{font-family:Arial;margin:40px;background:#f6f8fa}
-h1{margin-bottom:20px}
-table{border-collapse:collapse;width:100%;background:white}
-th,td{padding:10px;border-bottom:1px solid #ddd}
-th{background:#f0f0f0;text-align:left}
-pre{margin:0;font-family:monospace}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Investment Logbook</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 24px; background:#f6f8fa; }
+    h1 { margin: 0 0 6px; }
+    .sub { color:#666; margin: 0 0 16px; }
+    .row { display:flex; gap:10px; flex-wrap:wrap; margin: 12px 0 18px; }
+    .card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:12px 14px; min-width:160px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+    .k { font-size:12px; color:#666; }
+    .v { font-size:18px; font-weight:700; margin-top:4px; }
+    table { border-collapse: collapse; width: 100%; background:#fff; border:1px solid #e5e7eb; border-radius:12px; overflow:hidden; }
+    th, td { border-bottom: 1px solid #eee; padding: 10px 8px; vertical-align: top; }
+    th { text-align: left; background: #fafafa; position: sticky; top: 0; z-index: 1; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; white-space: pre-wrap; }
+    .pill { display:inline-block; padding:2px 10px; border-radius:999px; background:#eef2ff; font-size:12px; }
+    .muted { color:#666; }
+    .neg { color:#b00020; font-weight:600; }
+    .pos { color:#0b6b3a; font-weight:600; }
+    .right { text-align:right; }
+    input { padding:10px 12px; border:1px solid #ddd; border-radius:10px; width: min(520px, 100%); }
+    details { margin-top: 14px; }
+    summary { cursor: pointer; }
+  </style>
 </head>
-
 <body>
+  <h1>Investment Logbook</h1>
+  <p class="sub">텔레그램 raw 리포트 → 자동 누적 → 웹에서 컬럼화 표시</p>
 
-<h1>Investment Logbook</h1>
-<table>
-<thead>
-<tr>
-<th>Date</th>
-<th>Created</th>
-<th>Message</th>
-</tr>
-</thead>
+  <div class="row">
+    <div class="card">
+      <div class="k">상태</div>
+      <div class="v"><span id="status" class="pill">로딩 중…</span></div>
+    </div>
+    <div class="card">
+      <div class="k">최근 기록</div>
+      <div class="v" id="latest">-</div>
+    </div>
+    <div class="card">
+      <div class="k">총 행 수</div>
+      <div class="v" id="count">-</div>
+    </div>
+  </div>
 
-<tbody id="data"></tbody>
-</table>
+  <div style="margin: 0 0 14px;">
+    <input id="q" placeholder="검색: 예) 2번계좌 / TQQQ / 총자산 / 테스트" />
+    <div class="muted" style="margin-top:8px;">
+      캐시 방지 적용됨(매번 최신 report.json).
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width:110px">Date</th>
+        <th style="width:90px">Time</th>
+        <th style="width:70px">계좌</th>
+        <th style="width:80px">종목</th>
+        <th class="right" style="width:140px">총자산(원)</th>
+        <th class="right" style="width:120px">총손익($)</th>
+        <th class="right" style="width:130px">주문가능($)</th>
+        <th class="right" style="width:110px">보유수량</th>
+        <th class="right" style="width:110px">평단($)</th>
+        <th class="right" style="width:120px">평가손익($)</th>
+        <th>원문</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+
+  <details>
+    <summary>디버그: report.json 원문 보기</summary>
+    <pre class="mono" id="rawjson"></pre>
+  </details>
 
 <script>
+  // ---- utils
+  const esc = (s) => (s ?? "").toString().replace(/[&<>"']/g, c => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[c]));
+  const num = (s) => {
+    if (s == null) return null;
+    const x = (s+"").replace(/[,원$주\s]/g, "");
+    const n = Number(x);
+    return Number.isFinite(n) ? n : null;
+  };
+  const fmt = (n, opt={}) => {
+    if (n == null) return "";
+    try { return new Intl.NumberFormat("ko-KR", opt).format(n); } catch { return String(n); }
+  };
+  const clsPN = (n) => (n == null) ? "" : (n < 0 ? "neg" : (n > 0 ? "pos" : ""));
+  const pick = (m, idx=1) => m ? m[idx] : null;
 
-fetch("./data/report.json")
-.then(r=>r.json())
-.then(j=>{
+  // ---- 핵심: raw_message에서 주요 필드 추출
+  function parseReport(text) {
+    if (!text) return { date:null, time:null, account:null, symbol:null, total_krw:null, total_pnl_usd:null, cash_usd:null, shares:null, avg_price:null, pos_pnl_usd:null };
 
-const rows=j.rows||[]
+    // date/time: "02/20일 08:01"
+    const dt = text.match(/(\d{2}\/\d{2})일\s+(\d{2}:\d{2})/);
+    const mmdd = pick(dt,1);
+    const time = pick(dt,2);
+    const date = mmdd ? `2026-${mmdd.replace("/","-")}` : null; // 일단 2026 고정(원하면 현재연도로 자동화 가능)
 
-const html=rows.map(r=>`
-<tr>
-<td>${r.date||""}</td>
-<td>${r.created_at||""}</td>
-<td><pre>${r.raw_message||""}</pre></td>
-</tr>
-`).join("")
+    // account: "2번계좌"
+    const acc = text.match(/(\d+)번계좌/);
+    const account = pick(acc,1);
 
-document.getElementById("data").innerHTML=html
+    // symbol: "TQQQ최대필요" or "3ETHU평가금액" 등에서 추정
+    let symbol = null;
+    const sym1 = text.match(/\n([A-Z]{2,6})최대필요/);
+    if (sym1) symbol = sym1[1];
+    if (!symbol) {
+      const sym2 = text.match(/\n\d+([A-Z]{2,6})평가금액/);
+      if (sym2) symbol = sym2[1];
+    }
 
-})
+    // cash available
+    const cash = text.match(/주문가능\$\s*:\s*([\d,]+\.\d+|[\d,]+)/);
+    const cash_usd = num(pick(cash,1));
 
+    // total pnl usd
+    const tpnl = text.match(/총평가손익\$\s*:\s*([-\d,]+\.\d+|[-\d,]+)/);
+    const total_pnl_usd = num(pick(tpnl,1));
+
+    // position fields
+    const sharesM = text.match(/보유수량\s*:\s*([\d,]+)주/);
+    const shares = num(pick(sharesM,1));
+
+    const avgM = text.match(/평균단가\s*:\s*\$?([-\d,]+\.\d+|[-\d,]+)/);
+    const avg_price = num(pick(avgM,1));
+
+    const ppnl = text.match(/평가손익\$\s*:\s*([-\d,]+\.\d+|[-\d,]+)/);
+    const pos_pnl_usd = num(pick(ppnl,1));
+
+    // total assets KRW
+    const krw = text.match(/총자산\s*\(기준환율:[^)]+\)\s*:\s*([\d,]+)원/);
+    const total_krw = num(pick(krw,1));
+
+    return { date, time, account, symbol, total_krw, total_pnl_usd, cash_usd, shares, avg_price, pos_pnl_usd };
+  }
+
+  // ---- load + render
+  async function load() {
+    const status = document.getElementById("status");
+    const tbody = document.getElementById("tbody");
+    const rawjson = document.getElementById("rawjson");
+    const latest = document.getElementById("latest");
+    const count = document.getElementById("count");
+
+    status.textContent = "로딩 중…";
+    try {
+      // 캐시 방지: 매번 최신을 읽음
+      const res = await fetch("./data/report.json?t=" + Date.now(), { cache: "no-store" });
+      const j = await res.json();
+      rawjson.textContent = JSON.stringify(j, null, 2);
+
+      const rows = (j.rows || []).map(r => {
+        const parsed = parseReport(r.raw_message);
+        return { ...r, ...parsed };
+      });
+
+      window.__rows = rows;
+
+      status.textContent = "정상";
+      count.textContent = fmt(rows.length);
+      latest.textContent = rows[0] ? `${rows[0].date || ""} ${rows[0].time || ""}` : "-";
+
+      render(rows);
+    } catch (e) {
+      status.textContent = "실패";
+      tbody.innerHTML = `<tr><td colspan="11" class="mono neg">${esc(String(e))}</td></tr>`;
+    }
+  }
+
+  function render(rows) {
+    const q = (document.getElementById("q").value || "").toLowerCase();
+    const filtered = rows.filter(r => {
+      const hay = [
+        r.date, r.time, r.account, r.symbol,
+        r.total_krw, r.total_pnl_usd, r.cash_usd, r.shares, r.avg_price, r.pos_pnl_usd,
+        r.raw_message
+      ].join(" ").toLowerCase();
+      return hay.includes(q);
+    });
+
+    const tbody = document.getElementById("tbody");
+    tbody.innerHTML = filtered.map(r => `
+      <tr>
+        <td>${esc(r.date || r.date?.slice?.(0,10) || "")}</td>
+        <td>${esc(r.time || "")}</td>
+        <td>${esc(r.account ? (r.account + "번") : "")}</td>
+        <td>${esc(r.symbol || "")}</td>
+        <td class="right">${r.total_krw != null ? fmt(r.total_krw) : ""}</td>
+        <td class="right ${clsPN(r.total_pnl_usd)}">${r.total_pnl_usd != null ? fmt(r.total_pnl_usd, { maximumFractionDigits: 2 }) : ""}</td>
+        <td class="right">${r.cash_usd != null ? fmt(r.cash_usd, { maximumFractionDigits: 2 }) : ""}</td>
+        <td class="right">${r.shares != null ? fmt(r.shares) : ""}</td>
+        <td class="right">${r.avg_price != null ? fmt(r.avg_price, { maximumFractionDigits: 4 }) : ""}</td>
+        <td class="right ${clsPN(r.pos_pnl_usd)}">${r.pos_pnl_usd != null ? fmt(r.pos_pnl_usd, { maximumFractionDigits: 2 }) : ""}</td>
+        <td class="mono">${esc(r.raw_message || "")}</td>
+      </tr>
+    `).join("") || `<tr><td colspan="11" class="muted">결과 없음</td></tr>`;
+  }
+
+  document.getElementById("q").addEventListener("input", () => render(window.__rows || []));
+  load();
 </script>
-
 </body>
 </html>
