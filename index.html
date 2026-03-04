@@ -19,6 +19,9 @@
 
     th, td { border-bottom: 1px solid #eee; padding: 8px 8px; vertical-align: middle; }
     th { background:#fafafa; text-align:left; position: sticky; top: 0; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+    
+    /* ✅ 구역을 나누는 옅은 세로 선 */
+    .br { border-right: 1px solid #eee; }
 
     .right { text-align:right; }
     .center { text-align:center; }
@@ -32,29 +35,40 @@
     .small { font-size: 12px; color:#555; }
     select { padding:9px 10px; border:1px solid #ddd; border-radius:10px; }
     
-    .row { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin: 10px 0 12px; }
-    .card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:10px 12px; box-shadow:0 1px 2px rgba(0,0,0,.04); flex: 1 1 150px; min-width: 140px; }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .card { 
+      background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:10px 12px; 
+      box-shadow:0 1px 2px rgba(0,0,0,.04); 
+      display: flex; flex-direction: column; height: 100%; box-sizing: border-box; min-width: 0;
+    }
     
-    .k { font-size:12px; color:#666; }
-    .v { font-size:18px; font-weight:700; margin-top:4px; }
+    .k { font-size:12px; color:#666; line-height: 1.2; }
+    .v { font-size:18px; font-weight:700; margin-top:auto; padding-top: 6px; }
+    
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
-    .wide { min-width: 100%; }
+    .wide { min-width: 100%; margin-top: 15px; }
+
+    .controls { display: flex; gap: 10px; justify-content: flex-end; margin-bottom: 15px; }
   </style>
 </head>
 <body>
   <h1>Investment Logbook</h1>
   <div class="sub">텔레그램 봇 연동 자동화 대시보드 (TQQQ/ETHU/TSLL)</div>
 
-  <div class="row">
-    <div class="card" style="flex:0 1 auto;">
+  <div class="summary-grid">
+    <div class="card">
       <div class="k">상태</div>
       <div class="v"><span id="status" class="pill">로딩 중…</span></div>
     </div>
-    <div class="card" style="flex:0 1 auto;">
+    <div class="card">
       <div class="k">레코드 / 일자</div>
       <div class="v"><span id="count">-</span>건 <span class="small muted" id="latest" style="font-weight:normal;">-</span></div>
     </div>
-
     <div class="card">
       <div class="k">월 누적 수익(합계)</div>
       <div class="v" id="monthProfitAll">-</div>
@@ -62,28 +76,27 @@
     </div>
 
     <div class="card">
-      <div class="k">TQQQ 월 누적</div>
+      <div class="k">TQQQ 누적 수익</div>
       <div class="v" id="monthProfitTQQQ">-</div>
       <div class="small muted" id="monthRoiTQQQ">-</div>
     </div>
     <div class="card">
-      <div class="k">ETHU 월 누적</div>
+      <div class="k">ETHU 누적 수익</div>
       <div class="v" id="monthProfitETHU">-</div>
       <div class="small muted" id="monthRoiETHU">-</div>
     </div>
     <div class="card">
-      <div class="k">TSLL 월 누적</div>
+      <div class="k">TSLL 누적 수익</div>
       <div class="v" id="monthProfitTSLL">-</div>
       <div class="small muted" id="monthRoiTSLL">-</div>
     </div>
+  </div>
 
-    <div style="flex:100%; height:0; margin:0;"></div>
-
-    <div style="margin-left:auto;">
+  <div class="controls">
+    <div>
       <div class="small">월 선택</div>
       <select id="monthSel"></select>
     </div>
-
     <div>
       <div class="small">표시 종목</div>
       <select id="symbolsSel">
@@ -103,12 +116,10 @@
     </table>
   </div>
 
-  <div class="row" style="margin-top:0">
-    <div class="card wide">
-      <div class="k">월 수익 콤보 그래프 (막대=일 수익 / 선=월 누적)</div>
-      <div style="position: relative; height: 250px; width: 100%;">
-        <canvas id="comboChart"></canvas>
-      </div>
+  <div class="card wide">
+    <div class="k">월 수익 콤보 그래프 (막대=일 수익 / 선=월 누적)</div>
+    <div style="position: relative; height: 250px; width: 100%;">
+      <canvas id="comboChart"></canvas>
     </div>
   </div>
 
@@ -282,19 +293,19 @@
 
     thead.innerHTML = `
       <tr class="head2">
-        <th rowspan="2" class="center" style="width:70px">날짜</th>
-        ${symbols.map(sym => `<th class="center" colspan="3">${esc(symLabel(sym))}<div class="small muted" id="tier_${sym}"></div></th>`).join("")}
-        <th rowspan="2" class="center" style="width:80px">총 매도</th>
+        <th rowspan="2" class="center br" style="width:70px">날짜</th>
+        ${symbols.map(sym => `<th class="center br" colspan="3">${esc(symLabel(sym))}<div class="small muted" id="tier_${sym}"></div></th>`).join("")}
+        <th rowspan="2" class="center br" style="width:80px">총 매도</th>
         <th colspan="2" class="center" style="width:160px">총합 수익</th>
       </tr>
       <tr>
         ${symbols.map(_ => `
           <th class="center" style="width:50px">매도</th>
           <th class="right" style="width:70px">수익</th>
-          <th class="right" style="width:80px">누적수익</th>
+          <th class="right br" style="width:80px">누적수익</th>
         `).join("")}
-        <th class="right" style="width:80px">일</th>
-        <th class="right" style="width:80px">누계</th>
+        <th class="center" style="width:80px">일</th>
+        <th class="center" style="width:80px">누계</th>
       </tr>
     `;
 
@@ -315,15 +326,15 @@
 
       return `
         <tr>
-          <td class="center">${esc(r.mmdd)}</td>
+          <td class="center br">${esc(r.mmdd)}</td>
           ${symbols.map(sym => {
             return `
               <td class="center">${r[sym].sell ?? ""}</td>
               <td class="right ${clsPN(r[sym].profit)}">${r[sym].profit == null ? "" : "$" + fmtInt(r[sym].profit)}</td>
-              <td class="right">${r[sym].cum == null ? "" : "$" + fmtInt(r[sym].cum)}</td>
+              <td class="right br">${r[sym].cum == null ? "" : "$" + fmtInt(r[sym].cum)}</td>
             `;
           }).join("")}
-          <td class="center">${fmtInt(totalSell)}</td>
+          <td class="center br">${fmtInt(totalSell)}</td>
           <td class="right ${clsPN(rowDaily)}">${rowDaily == null ? "" : "$" + fmtInt(rowDaily)}</td>
           <td class="right">${rowCum == null ? "" : "$" + fmtInt(rowCum)}</td>
         </tr>
@@ -351,31 +362,31 @@
 
     tfoot.innerHTML = `
       <tr class="avg">
-        <td class="center">일평균</td>
+        <td class="center br">일평균</td>
         ${symbols.map(sym => `
           <td class="center">${fmtFloat1(avgSellBySym[sym])}</td>
           <td class="right ${clsPN(avgProfitBySym[sym])}">$${fmtInt(avgProfitBySym[sym])}</td>
-          <td class="right">-</td>
+          <td class="right br">-</td>
         `).join("")}
-        <td class="center">${fmtFloat1(avgTotalSellAll)}</td>
+        <td class="center br">${fmtFloat1(avgTotalSellAll)}</td>
         <td class="right ${clsPN(avgTotalProfitAll)}">$${fmtInt(avgTotalProfitAll)}</td>
         <td class="right">-</td>
       </tr>
       <tr class="tot">
-        <td class="center">합계</td>
+        <td class="center br">합계</td>
         ${symbols.map(sym => {
           const seed = SEEDS[sym] || null;
           const roiCum = (seed && lastCumBySym[sym] != null) ? (lastCumBySym[sym] / seed) : null;
           return `
             <td class="center">${sumSellBySym[sym] ?? ""}</td>
             <td class="right">-</td>
-            <td class="right">
+            <td class="right br">
               <div>$${fmtInt(lastCumBySym[sym])}</div>
               ${roiCum != null ? `<div style="color:#2563eb; font-size:14px; font-weight:700;">(${fmtPct1(roiCum)})</div>` : ""}
             </td>
           `;
         }).join("")}
-        <td class="center">${fmtInt(totalSellAll)}</td>
+        <td class="center br">${fmtInt(totalSellAll)}</td>
         <td class="right ${clsPN(totalProfitAll)}">${totalProfitAll == null ? "" : "$" + fmtInt(totalProfitAll)}</td>
         <td class="right">
           <div>${lastCumAll == null ? "" : "$" + fmtInt(lastCumAll)}</div>
@@ -384,6 +395,7 @@
       </tr>
     `;
 
+    // ✅ 요약 카드에 '월 합산액' 대신 '현재 누적액' 반영
     const setCard = (idV, idR, profit, roi) => {
       const v = document.getElementById(idV);
       const r = document.getElementById(idR);
@@ -392,11 +404,11 @@
       r.textContent = (roi == null) ? "" : `수익률 ${fmtPct1(roi)}`;
     };
 
-    setCard("monthProfitAll", "monthRoiAll", monthTotals.allProfit, monthTotals.roiAll);
+    setCard("monthProfitAll", "monthRoiAll", lastCumAll, monthTotals.seedAll ? (lastCumAll / monthTotals.seedAll) : null);
     for (const sym of ["TQQQ","ETHU","TSLL"]) {
-      const profit = (monthTotals.bySym[sym]?.profit ?? 0);
-      const roi = monthTotals.roiBySym[sym] ?? null;
-      setCard("monthProfit"+sym, "monthRoi"+sym, profit, roi);
+      const cumVal = lastCumBySym[sym] ?? 0;
+      const roi = SEEDS[sym] ? (cumVal / SEEDS[sym]) : null;
+      setCard("monthProfit"+sym, "monthRoi"+sym, cumVal, roi);
     }
 
     const labels = daily.map(r => r.mmdd);
