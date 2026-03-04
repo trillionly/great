@@ -282,17 +282,19 @@
 
     thead.innerHTML = `
       <tr class="head2">
-        <th rowspan="2" style="width:70px">날짜</th>
+        <th rowspan="2" class="center" style="width:70px">날짜</th>
         ${symbols.map(sym => `<th class="center" colspan="3">${esc(symLabel(sym))}<div class="small muted" id="tier_${sym}"></div></th>`).join("")}
         <th rowspan="2" class="center" style="width:80px">총 매도</th>
-        <th rowspan="2" class="right" style="width:120px">총합 수익</th>
+        <th colspan="2" class="center" style="width:160px">총합 수익</th>
       </tr>
       <tr>
         ${symbols.map(_ => `
           <th class="center" style="width:50px">매도</th>
           <th class="right" style="width:70px">수익</th>
-          <th class="right" style="width:80px">누적자산</th>
+          <th class="right" style="width:80px">누적수익</th>
         `).join("")}
+        <th class="right" style="width:80px">일</th>
+        <th class="right" style="width:80px">누계</th>
       </tr>
     `;
 
@@ -322,13 +324,11 @@
             `;
           }).join("")}
           <td class="center">${fmtInt(totalSell)}</td>
-          <td class="right">
-            <div class="${clsPN(rowDaily)}">${rowDaily == null ? "" : "$" + fmtInt(rowDaily)}</div>
-            <div class="muted">${rowCum == null ? "" : "$" + fmtInt(rowCum)}</div>
-          </td>
+          <td class="right ${clsPN(rowDaily)}">${rowDaily == null ? "" : "$" + fmtInt(rowDaily)}</td>
+          <td class="right">${rowCum == null ? "" : "$" + fmtInt(rowCum)}</td>
         </tr>
       `;
-    }).join("") || `<tr><td colspan="${2 + symbols.length*3}" class="muted">데이터 없음</td></tr>`;
+    }).join("") || `<tr><td colspan="${4 + symbols.length*3}" class="muted">데이터 없음</td></tr>`;
 
     const monthTotals = calcMonthTotals(daily, symbols);
     const sumSellBySym = Object.fromEntries(symbols.map(s => [s, sumOrNull(daily.map(r => r[s].sell))]));
@@ -358,10 +358,8 @@
           <td class="right">-</td>
         `).join("")}
         <td class="center">${fmtFloat1(avgTotalSellAll)}</td>
-        <td class="right">
-          <div class="${clsPN(avgTotalProfitAll)}">$${fmtInt(avgTotalProfitAll)}</div>
-          <div class="muted">-</div>
-        </td>
+        <td class="right ${clsPN(avgTotalProfitAll)}">$${fmtInt(avgTotalProfitAll)}</td>
+        <td class="right">-</td>
       </tr>
       <tr class="tot">
         <td class="center">합계</td>
@@ -373,17 +371,15 @@
             <td class="right">-</td>
             <td class="right">
               <div>$${fmtInt(lastCumBySym[sym])}</div>
-              <div style="font-weight:normal; font-size:12px; color:#666;">(${fmtPct1(roiCum)})</div>
+              ${roiCum != null ? `<div style="color:#2563eb; font-size:14px; font-weight:700;">(${fmtPct1(roiCum)})</div>` : ""}
             </td>
           `;
         }).join("")}
         <td class="center">${fmtInt(totalSellAll)}</td>
+        <td class="right ${clsPN(totalProfitAll)}">${totalProfitAll == null ? "" : "$" + fmtInt(totalProfitAll)}</td>
         <td class="right">
-          <div class="${clsPN(totalProfitAll)}">${totalProfitAll == null ? "" : "$" + fmtInt(totalProfitAll)}</div>
-          <div>
-            ${lastCumAll == null ? "" : "<span class='muted'>$" + fmtInt(lastCumAll) + "</span>"}
-            ${monthTotals.seedAll ? ` <span style="color:#2563eb; font-size:14px; font-weight:700;">(${fmtPct1(lastCumAll / monthTotals.seedAll)})</span>` : ""}
-          </div>
+          <div>${lastCumAll == null ? "" : "$" + fmtInt(lastCumAll)}</div>
+          ${monthTotals.seedAll ? `<div style="color:#2563eb; font-size:14px; font-weight:700;">(${fmtPct1(lastCumAll / monthTotals.seedAll)})</div>` : ""}
         </td>
       </tr>
     `;
@@ -415,7 +411,7 @@
         data: {
           labels,
           datasets: [
-            { type: "bar", label: "일 수익 ($)", data: dailyProfit, backgroundColor: 'rgba(54, 162, 235, 0.5)', borderColor: 'rgb(54, 162, 235)', borderWidth: 1, yAxisID: "y" },
+            { type: "bar", label: "일 수익 ($)", data: dailyProfit, backgroundColor: 'rgba(54, 162, 235, 0.5)', borderColor: 'rgb(54, 162, 235)', borderWidth: 1, barPercentage: 0.5, yAxisID: "y" },
             { type: "line", label: "월 누적 수익 ($)", data: cumulative, borderColor: 'rgb(255, 99, 132)', tension: 0.2, borderWidth: 2, fill: false, yAxisID: "y1" }
           ]
         },
