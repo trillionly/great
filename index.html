@@ -9,6 +9,7 @@
     h1 { margin: 0 0 6px; }
     .sub { color:#666; margin: 0 0 12px; }
     .pill { display:inline-block; padding:2px 10px; border-radius:999px; background:#eef2ff; font-size:12px; }
+    .err { background:#fee2e2; color:#991b1b; }
     .wrap { overflow:auto; border:1px solid #e5e7eb; border-radius:12px; background:#fff; }
     table { border-collapse: collapse; width: 1200px; min-width: 100%; }
     th, td { border-bottom: 1px solid #eee; padding: 8px 8px; vertical-align: middle; }
@@ -21,7 +22,7 @@
     .head2 { background:#fff7e6; font-weight:700; }
     .tot { background:#f2f7ff; font-weight:700; }
     .small { font-size: 12px; color:#555; }
-    input, select { padding:9px 10px; border:1px solid #ddd; border-radius:10px; }
+    select { padding:9px 10px; border:1px solid #ddd; border-radius:10px; }
     .row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin: 10px 0 12px; }
     .card { background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:10px 12px; box-shadow:0 1px 2px rgba(0,0,0,.04); }
     .k { font-size:12px; color:#666; }
@@ -31,7 +32,7 @@
 </head>
 <body>
   <h1>Investment Logbook</h1>
-  <div class="sub">raw 메시지 → (S횟수/누계/일수익/티어) 자동 계산 → 월별 표</div>
+  <div class="sub">raw(합본) 메시지 → (S횟수/누계/일수익/티어(현재/총)) 자동 계산 → 월별 표</div>
 
   <div class="row">
     <div class="card">
@@ -69,6 +70,11 @@
     </table>
   </div>
 
+  <details style="margin-top:12px">
+    <summary class="small">디버그 보기(최근 6개 블록 파싱)</summary>
+    <pre class="mono" id="debug" style="white-space:pre-wrap"></pre>
+  </details>
+
 <script>
   // ---------- helpers
   const esc = (s) => (s ?? "").toString().replace(/[&<>"']/g, c => ({
@@ -82,88 +88,158 @@
   };
   const fmtInt = (n) => n == null ? "" : new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
   const clsPN = (n) => (n == null) ? "" : (n < 0 ? "neg" : (n > 0 ? "pos" : ""));
+  const sumOrNull = (arr) => {
+    const nums = arr.filter(v => typeof v === "number" && Number.isFinite(v));
+    if (!nums.length) return null;
+    return nums.reduce((a,b)=>a+b,0);
+  };
 
-  // ---------- parsing: raw_message -> {mmdd, time, symbol, sellCount, tier, cum}
-  function parseOne(raw) {
-    const t = raw || "";
+  // ---------- Grid tier parsing
+  // 라인 형식: "71) 34.64 29 35.68 0"  => idx) buyPrice buyQty sellPrice sellQty
+  function parseGridTier(gridText) {
+    if (!gridText) return { tierNow: null, tierMax: null };
 
-    // "02/20일 08:01"
+    const lines = gridText.split("\n");
+    const rows = [];
+    const re = /^\s*(\d+)\)\s+([\d.]+)\s+(\d+)\s+([\d.]+)\s+(\d+)\s*$/;
+
+    for (const line of lines) {
+      const m = line.match(re);
+      if (!m) continue;
+      rows.push({
+        idx: Number(m[1]),
+        buyQty: Number(m[3]),
+        sellQty: Number(m[5]),
+      });
+    }
+
+    if (!rows.length) return { tierNow: null, tierMax: null };
+
+    rows.sort((a,b)=>a.idx-b.idx);
+    const tierMax = rows[rows.length - 1].idx;
+
+    // 전환점 기반 현재티어 추정:
+    // 앞부분: buyQty=0 / sellQty>0 형태가 많고,
+    // 어느 지점부터 buyQty>0 / sellQty=0 형태로 바뀌는 경우가 일반적.
+    const pattern = (r) => `${r.buyQty === 0 ? "B0" : "B+"}-${r.sellQty === 0 ? "S0" : "S+"}`;
+    let tierNow = rows[0].idx;
+    for (let i = 1; i < rows.length; i++) {
+      if (pattern(rows[i]) !== pattern(rows[i-1])) {
+        tierNow = rows[i].idx; // 바뀐 첫 행
+        break;
+      }
+    }
+
+    return { tierNow, tierMax };
+  }
+
+  // ---------- 1) 합본 raw_message를 블록으로 분리 (예: "03/04일 07:21")
+  function splitBlocks(raw) {
+    const t = (raw || "").replace(/\r/g, "");
+    const re = /(^|\n)(\d{2})\/(\d{2})일\s+(\d{2}:\d{2})/g;
+    const starts = [];
+    let m;
+    while ((m = re.exec(t)) !== null) {
+      const startAt = m.index + (m[1] ? 1 : 0); // digit 위치
+      starts.push(startAt);
+    }
+    if (!starts.length) return [];
+    const blocks = [];
+    for (let i=0;i<starts.length;i++) {
+      const s = starts[i];
+      const e = (i+1 < starts.length) ? starts[i+1] : t.length;
+      blocks.push(t.slice(s, e).trim());
+    }
+    return blocks;
+  }
+
+  // ---------- 2) 블록 1개 파싱
+  function parseBlock(blockText) {
+    const t = blockText || "";
+
     const dt = t.match(/(\d{2})\/(\d{2})일\s+(\d{2}:\d{2})/);
     const mm = dt ? dt[1] : null;
     const dd = dt ? dt[2] : null;
     const time = dt ? dt[3] : null;
     const mmdd = (mm && dd) ? `${mm}/${dd}` : null;
 
-    // symbol: from "TQQQ최대필요" or "2TQQQ평가금액"
+    // symbol
     let symbol = null;
-    const s1 = t.match(/(?:^|\n)([A-Z]{2,6})최대필요/);
+    const s1 = t.match(/(?:^|\n)([A-Z]{2,6})최대필요\s*:/);
     if (s1) symbol = s1[1];
     if (!symbol) {
-      const s2 = t.match(/(?:^|\n)\d+([A-Z]{2,6})평가금액/);
+      const s2 = t.match(/(?:^|\n)\d+([A-Z]{2,6})평가금액\s*:/);
       if (s2) symbol = s2[1];
     }
 
-    // sell count: "S 0회"
-    const sCnt = t.match(/S\s*(\d+)회/);
-    const sellCount = sCnt ? num(sCnt[1]) : null;
-
-    // tier: take bracket right after S count, e.g. "S 3회 [59]" -> 59
-    const tierM = t.match(/S\s*\d+회\s*\[(\d+)\]/);
-    const tier = tierM ? num(tierM[1]) : null;
-
-    // cumulative: "주문가능-최대필요: 4182"
+    // cum = 주문가능-최대필요
     const cumM = t.match(/주문가능-최대필요\s*:\s*([-\d,]+(?:\.\d+)?)/);
     const cum = cumM ? num(cumM[1]) : null;
 
-    return { mmdd, time, symbol, sellCount, tier, cum, raw: t };
+    // sell count = S n회
+    const sCnt = t.match(/S\s*(\d+)회/);
+    const sellCount = sCnt ? num(sCnt[1]) : null;
+
+    // Grid 텍스트 추출: "GridX SYMBOL" 다음 줄부터 "테이블 총재고" 이전까지
+    let gridText = "";
+    const gridHeader = t.match(/Grid\d+\s+[A-Z]{2,6}\s*\n/i);
+    if (gridHeader) {
+      const startIdx = t.indexOf(gridHeader[0]) + gridHeader[0].length;
+      const endIdx = t.indexOf("테이블 총재고");
+      gridText = (endIdx > startIdx) ? t.slice(startIdx, endIdx) : t.slice(startIdx);
+    }
+    const { tierNow, tierMax } = parseGridTier(gridText);
+
+    return { mmdd, time, symbol, cum, sellCount, tierNow, tierMax, raw: t };
   }
 
-  // ---------- build daily table by month and symbol
-  function buildDaily(rows, symbols) {
-    // rows = parsed entries (may contain multiple entries/day)
-    // keep latest per day per symbol (by time string)
-    const byKey = new Map(); // key = `${mmdd}|${symbol}` -> record
-    for (const r of rows) {
-      if (!r.mmdd || !r.symbol || !symbols.includes(r.symbol)) continue;
+  // ---------- 3) report rows -> parsed blocks
+  function rowsToBlocks(reportRows) {
+    const out = [];
+    for (const r of reportRows) {
+      const raw = r.raw_message || "";
+      const blocks = splitBlocks(raw);
+      for (const b of blocks) out.push(parseBlock(b));
+    }
+    return out.filter(x => x.mmdd && x.symbol);
+  }
+
+  // ---------- 4) 월/일자별 daily table
+  function buildDaily(blocks, monthStr, symbols) {
+    const byKey = new Map(); // `${mmdd}|${sym}` -> latest rec by time
+    for (const r of blocks) {
+      if (!r.mmdd || !r.symbol) continue;
+      if (!r.mmdd.startsWith(monthStr + "/")) continue;
+      if (!symbols.includes(r.symbol)) continue;
+
       const key = `${r.mmdd}|${r.symbol}`;
       const prev = byKey.get(key);
       if (!prev) byKey.set(key, r);
-      else {
-        // choose later time if available
-        if ((r.time || "") > (prev.time || "")) byKey.set(key, r);
-      }
+      else if ((r.time || "") > (prev.time || "")) byKey.set(key, r);
     }
 
-    // list of dates
     const dates = [...new Set([...byKey.keys()].map(k => k.split("|")[0]))]
-      .sort((a,b) => {
-        const [am,ad] = a.split("/").map(Number);
-        const [bm,bd] = b.split("/").map(Number);
-        return (am*100+ad) - (bm*100+bd);
-      });
+      .sort((a,b) => (Number(a.split("/")[0])*100 + Number(a.split("/")[1])) - (Number(b.split("/")[0])*100 + Number(b.split("/")[1])));
 
-    // compute per symbol cumulative and daily profit (= delta cum)
     const table = dates.map(mmdd => {
       const row = { mmdd };
       for (const sym of symbols) {
         const rec = byKey.get(`${mmdd}|${sym}`) || null;
-        row[sym] = rec ? { sell: rec.sellCount, tier: rec.tier, cum: rec.cum, time: rec.time, raw: rec.raw } : { sell:null, tier:null, cum:null, time:null, raw:null };
+        row[sym] = rec
+          ? { sell: rec.sellCount, cum: rec.cum, tierNow: rec.tierNow, tierMax: rec.tierMax }
+          : { sell:null, cum:null, tierNow:null, tierMax:null };
       }
       return row;
     });
 
-    // daily profit from cum delta (per symbol)
+    // profit = cum delta
     const prevCum = Object.fromEntries(symbols.map(s => [s, null]));
     for (const r of table) {
       for (const sym of symbols) {
         const cum = r[sym].cum;
-        if (cum == null) {
-          r[sym].profit = null;
-        } else if (prevCum[sym] == null) {
-          r[sym].profit = cum; // first day: treat as today's profit = cum (or null)
-        } else {
-          r[sym].profit = cum - prevCum[sym];
-        }
+        if (cum == null) r[sym].profit = null;
+        else if (prevCum[sym] == null) r[sym].profit = null; // 첫날은 비움
+        else r[sym].profit = cum - prevCum[sym];
         if (cum != null) prevCum[sym] = cum;
       }
     }
@@ -171,26 +247,15 @@
     return table;
   }
 
-  function sumOrNull(arr) {
-    const nums = arr.filter(v => typeof v === "number" && Number.isFinite(v));
-    if (!nums.length) return null;
-    return nums.reduce((a,b)=>a+b,0);
-  }
-
-  function render(month, dailyTable, symbols) {
+  function render(daily, symbols) {
     const thead = document.getElementById("thead");
     const tbody = document.getElementById("tbody");
     const tfoot = document.getElementById("tfoot");
 
-    // header like your sheet: date + (sell, profit, cum) per symbol + totals
-    const symHeader = symbols.map(sym => `
-      <th class="center" colspan="3">${sym}<div class="small muted" id="tier_${sym}"></div></th>
-    `).join("");
-
     thead.innerHTML = `
       <tr class="head2">
         <th rowspan="2" style="width:70px">날짜</th>
-        ${symHeader}
+        ${symbols.map(sym => `<th class="center" colspan="3">${sym}<div class="small muted" id="tier_${sym}"></div></th>`).join("")}
         <th rowspan="2" class="center" style="width:90px">총 매도</th>
         <th rowspan="2" class="right" style="width:110px">수익</th>
       </tr>
@@ -203,19 +268,19 @@
       </tr>
     `;
 
-    // latest tier display from last row that has tier
+    // 헤더에 "현재/총 티어" 표시
     for (const sym of symbols) {
-      let lastTier = null;
-      for (let i = dailyTable.length-1; i>=0; i--) {
-        const t = dailyTable[i][sym].tier;
-        if (t != null) { lastTier = t; break; }
+      let lastNow = null, lastMax = null;
+      for (let i = daily.length-1; i>=0; i--) {
+        const cell = daily[i][sym];
+        if (cell.tierNow != null && cell.tierMax != null) { lastNow = cell.tierNow; lastMax = cell.tierMax; break; }
       }
       const el = document.getElementById(`tier_${sym}`);
-      if (el) el.textContent = (lastTier != null) ? `티어(카운터): ${lastTier}` : "";
+      if (el) el.textContent = (lastNow != null) ? `티어: ${lastNow}/${lastMax}` : "";
     }
 
-    const rowsHtml = dailyTable.map(r => {
-      const totalSell = sumOrNull(symbols.map(s => r[s].sell)). ?? 0; // default 0
+    tbody.innerHTML = daily.map(r => {
+      const totalSell = (sumOrNull(symbols.map(s => r[s].sell)) ?? 0);
       const totalProfit = sumOrNull(symbols.map(s => r[s].profit));
       return `
         <tr>
@@ -229,25 +294,20 @@
           <td class="right ${clsPN(totalProfit)}">${totalProfit == null ? "" : "$" + fmtInt(totalProfit)}</td>
         </tr>
       `;
-    }).join("");
+    }).join("") || `<tr><td colspan="${1 + symbols.length*3 + 2}" class="muted">데이터 없음</td></tr>`;
 
-    tbody.innerHTML = rowsHtml || `<tr><td colspan="${1 + symbols.length*3 + 2}" class="muted">데이터 없음</td></tr>`;
-
-    // totals/footer (합계, 일평균 간단 버전)
-    const sumSellBySym = Object.fromEntries(symbols.map(s => [s, sumOrNull(dailyTable.map(r => r[s].sell))]));
-    const sumProfitBySym = Object.fromEntries(symbols.map(s => [s, sumOrNull(dailyTable.map(r => r[s].profit))]));
+    // footer
+    const sumSellBySym = Object.fromEntries(symbols.map(s => [s, sumOrNull(daily.map(r => r[s].sell))]));
+    const sumProfitBySym = Object.fromEntries(symbols.map(s => [s, sumOrNull(daily.map(r => r[s].profit))]));
     const lastCumBySym = Object.fromEntries(symbols.map(s => {
       let v = null;
-      for (let i = dailyTable.length-1; i>=0; i--) { if (dailyTable[i][s].cum != null) { v = dailyTable[i][s].cum; break; } }
+      for (let i = daily.length-1; i>=0; i--) { if (daily[i][s].cum != null) { v = daily[i][s].cum; break; } }
       return [s, v];
     }));
 
-    const totalSellAll = sumOrNull(Object.values(sumSellBySym)) ?? 0;
+    const totalSellAll = (sumOrNull(Object.values(sumSellBySym)) ?? 0);
     const totalProfitAll = sumOrNull(Object.values(sumProfitBySym));
-
-    const dayCount = dailyTable.length || 1;
-    const avgSellAll = totalSellAll / dayCount;
-    const avgProfitAll = (totalProfitAll ?? 0) / dayCount;
+    const dayCount = daily.length || 1;
 
     tfoot.innerHTML = `
       <tr class="tot">
@@ -262,67 +322,67 @@
       </tr>
       <tr class="tot">
         <td class="center">일평균</td>
-        ${symbols.map(_ => `
-          <td class="center"></td>
-          <td class="right"></td>
-          <td class="right"></td>
-        `).join("")}
-        <td class="center">${avgSellAll.toFixed(1)}</td>
-        <td class="right">${"$" + avgProfitAll.toFixed(2)}</td>
+        ${symbols.map(_ => `<td></td><td></td><td></td>`).join("")}
+        <td class="center">${(totalSellAll / dayCount).toFixed(1)}</td>
+        <td class="right">$${((totalProfitAll ?? 0) / dayCount).toFixed(2)}</td>
       </tr>
     `;
   }
 
-  // ---------- load
   async function main() {
     const status = document.getElementById("status");
     const count = document.getElementById("count");
     const latest = document.getElementById("latest");
     const monthSel = document.getElementById("monthSel");
     const symbolsSel = document.getElementById("symbolsSel");
+    const debug = document.getElementById("debug");
 
-    status.textContent = "로딩 중…";
+    try {
+      const res = await fetch("./data/report.json?t=" + Date.now(), { cache: "no-store" });
+      const j = await res.json();
+      const reportRows = j.rows || [];
 
-    const res = await fetch("./data/report.json?t=" + Date.now(), { cache: "no-store" });
-    const j = await res.json();
-    const rawRows = j.rows || [];
+      count.textContent = String(reportRows.length);
+      latest.textContent = reportRows[0]?.date || "-";
 
-    count.textContent = String(rawRows.length);
-    latest.textContent = rawRows[0]?.date ? rawRows[0].date : "-";
+      const blocks = rowsToBlocks(reportRows);
+      debug.textContent = JSON.stringify(blocks.slice(0, 6), null, 2);
 
-    // parse all
-    const parsed = rawRows.map(r => parseOne(r.raw_message));
+      const months = [...new Set(blocks.map(b => b.mmdd.split("/")[0]))].sort((a,b)=>Number(a)-Number(b));
+      if (!months.length) {
+        status.textContent = "파싱 실패";
+        status.classList.add("err");
+        document.getElementById("tbody").innerHTML =
+          `<tr><td colspan="12" class="muted">"03/04일 07:21" 패턴 블록을 찾지 못했어요. 텔레그램에 줄바꿈 포함 그대로 보내야 합니다.</td></tr>`;
+        return;
+      }
 
-    // month list from mmdd
-    const months = [...new Set(parsed.map(p => p.mmdd?.split("/")[0]).filter(Boolean))].sort((a,b)=>Number(a)-Number(b));
-    monthSel.innerHTML = months.map(m => `<option value="${m}">${Number(m)}월</option>`).join("");
+      monthSel.innerHTML = months.map(m => `<option value="${m}">${Number(m)}월</option>`).join("");
+      monthSel.value = months[months.length - 1];
 
-    // default: latest month if possible
-    if (months.length) monthSel.value = months[months.length-1];
+      function rerender() {
+        const m = monthSel.value;
+        const symbols = symbolsSel.value.split(",").map(s => s.trim()).filter(Boolean);
+        const daily = buildDaily(blocks, m, symbols);
+        render(daily, symbols);
+        status.textContent = "정상";
+        status.classList.remove("err");
+      }
 
-    function rerender() {
-      const m = monthSel.value;
-      const symbols = symbolsSel.value.split(",").map(s => s.trim()).filter(Boolean);
+      monthSel.addEventListener("change", rerender);
+      symbolsSel.addEventListener("change", rerender);
 
-      // filter month
-      const monthRows = parsed.filter(p => p.mmdd && p.mmdd.startsWith(m + "/") && symbols.includes(p.symbol));
-      const daily = buildDaily(monthRows, symbols);
-
-      render(m, daily, symbols);
-
-      status.textContent = "정상";
+      rerender();
+    } catch (e) {
+      status.textContent = "스크립트 에러";
+      status.classList.add("err");
+      document.getElementById("tbody").innerHTML =
+        `<tr><td colspan="12" class="muted">에러: <span class="mono">${esc(String(e))}</span></td></tr>`;
+      console.error(e);
     }
-
-    monthSel.addEventListener("change", rerender);
-    symbolsSel.addEventListener("change", rerender);
-
-    rerender();
   }
 
-  main().catch(e => {
-    document.getElementById("status").textContent = "실패";
-    console.error(e);
-  });
+  main();
 </script>
 </body>
 </html>
