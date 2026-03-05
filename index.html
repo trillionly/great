@@ -20,9 +20,7 @@
     th, td { border-bottom: 1px solid #eee; padding: 8px 8px; vertical-align: middle; }
     th { background:#fafafa; text-align:left; position: sticky; top: 0; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
     
-    /* ✅ 구역을 나누는 옅은 세로 선 */
     .br { border-right: 1px solid #eee; }
-
     .right { text-align:right; }
     .center { text-align:center; }
     .muted { color:#666; }
@@ -309,14 +307,31 @@
       </tr>
     `;
 
+    // ✅ 티어 전일비 계산 및 표기 로직
     for (const sym of symbols) {
-      let lastNow = null, lastMax = null;
+      let lastNow = null, lastMax = null, prevNow = null;
       for (let i = daily.length-1; i>=0; i--) {
         const cell = daily[i][sym];
-        if (cell.tierNow != null && cell.tierMax != null) { lastNow = cell.tierNow; lastMax = cell.tierMax; break; }
+        if (cell.tierNow != null && cell.tierMax != null) {
+          if (lastNow == null) {
+            lastNow = cell.tierNow;
+            lastMax = cell.tierMax;
+          } else if (prevNow == null) {
+            prevNow = cell.tierNow;
+            break; // 직전 유효 티어 발견 시 중단
+          }
+        }
       }
       const el = document.getElementById(`tier_${sym}`);
-      if (el) el.textContent = (lastNow != null) ? `티어: ${lastNow}/${lastMax}` : "";
+      if (el) {
+        if (lastNow != null) {
+          const diff = prevNow != null ? (lastNow - prevNow) : 0;
+          const diffStr = diff >= 0 ? `+${diff}` : `${diff}`;
+          el.textContent = `${lastNow}/${lastMax} ${diffStr}`;
+        } else {
+          el.textContent = "";
+        }
+      }
     }
 
     tbody.innerHTML = daily.map(r => {
@@ -351,15 +366,15 @@
     }));
 
     const totalSellAll = (sumOrNull(Object.values(sumSellBySym)) ?? 0);
-    const totalProfitAll = sumOrNull(Object.values(sumProfitBySym));
     const lastCumAll = sumOrNull(Object.values(lastCumBySym));
     
     const daysCount = daily.length || 1;
     const avgSellBySym = Object.fromEntries(symbols.map(s => [s, (sumSellBySym[s] || 0) / daysCount]));
     const avgProfitBySym = Object.fromEntries(symbols.map(s => [s, (sumProfitBySym[s] || 0) / daysCount]));
     const avgTotalSellAll = totalSellAll / daysCount;
-    const avgTotalProfitAll = totalProfitAll / daysCount;
+    const avgTotalProfitAll = sumOrNull(Object.values(sumProfitBySym)) / daysCount;
 
+    // ✅ 합계 행에서 '일 수익' 열은 `-` 로 비움
     tfoot.innerHTML = `
       <tr class="avg">
         <td class="center br">일평균</td>
@@ -387,7 +402,7 @@
           `;
         }).join("")}
         <td class="center br">${fmtInt(totalSellAll)}</td>
-        <td class="right ${clsPN(totalProfitAll)}">${totalProfitAll == null ? "" : "$" + fmtInt(totalProfitAll)}</td>
+        <td class="right">-</td>
         <td class="right">
           <div>${lastCumAll == null ? "" : "$" + fmtInt(lastCumAll)}</div>
           ${monthTotals.seedAll ? `<div style="color:#2563eb; font-size:14px; font-weight:700;">(${fmtPct1(lastCumAll / monthTotals.seedAll)})</div>` : ""}
@@ -395,7 +410,6 @@
       </tr>
     `;
 
-    // ✅ 요약 카드에 '월 합산액' 대신 '현재 누적액' 반영
     const setCard = (idV, idR, profit, roi) => {
       const v = document.getElementById(idV);
       const r = document.getElementById(idR);
@@ -411,10 +425,10 @@
       setCard("monthProfit"+sym, "monthRoi"+sym, cumVal, roi);
     }
 
+    // ✅ 그래프 빨간 선 데이터 변경 (순수 누계액 직접 연결)
     const labels = daily.map(r => r.mmdd);
     const dailyProfit = daily.map(r => r.totalDailyProfit ?? 0);
-    let acc = 0;
-    const cumulative = dailyProfit.map(v => (acc += v));
+    const cumulative = daily.map(r => r.totalCum); // 직접 끌어오기
 
     const canvas = document.getElementById("comboChart");
     if (canvas) {
@@ -424,7 +438,7 @@
           labels,
           datasets: [
             { type: "bar", label: "일 수익 ($)", data: dailyProfit, backgroundColor: 'rgba(54, 162, 235, 0.5)', borderColor: 'rgb(54, 162, 235)', borderWidth: 1, barPercentage: 0.5, yAxisID: "y" },
-            { type: "line", label: "월 누적 수익 ($)", data: cumulative, borderColor: 'rgb(255, 99, 132)', tension: 0.2, borderWidth: 2, fill: false, yAxisID: "y1" }
+            { type: "line", label: "월 누적 수익 ($)", data: cumulative, borderColor: 'rgb(255, 99, 132)', tension: 0.2, borderWidth: 2, fill: false, spanGaps: true, yAxisID: "y1" }
           ]
         },
         options: {
