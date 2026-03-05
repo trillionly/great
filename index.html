@@ -223,7 +223,16 @@
     const fullText = chronos.map(r => r.raw_message || "").join("\n\n");
     const blocks = splitBlocks(fullText);
     const out = [];
-    for (const b of blocks) out.push(parseBlock(b));
+    
+    for (const b of blocks) {
+      const parsed = parseBlock(b);
+      // 🔥 정밀 타격 방어막: 딱 '3월 4일'의 'TSLL' 데이터 중 '2066'만 66으로 교정
+      if (parsed.mmdd === "03/04" && parsed.symbol === "TSLL" && parsed.cum === 2066) {
+        parsed.cum = 66;
+      }
+      out.push(parsed);
+    }
+    
     return out.filter(x => x.mmdd && x.symbol);
   }
 
@@ -307,7 +316,6 @@
       </tr>
     `;
 
-    // ✅ 티어 전일비 계산 및 표기 로직
     for (const sym of symbols) {
       let lastNow = null, lastMax = null, prevNow = null;
       for (let i = daily.length-1; i>=0; i--) {
@@ -318,7 +326,7 @@
             lastMax = cell.tierMax;
           } else if (prevNow == null) {
             prevNow = cell.tierNow;
-            break; // 직전 유효 티어 발견 시 중단
+            break; 
           }
         }
       }
@@ -374,7 +382,6 @@
     const avgTotalSellAll = totalSellAll / daysCount;
     const avgTotalProfitAll = sumOrNull(Object.values(sumProfitBySym)) / daysCount;
 
-    // ✅ 합계 행에서 '일 수익' 열은 `-` 로 비움
     tfoot.innerHTML = `
       <tr class="avg">
         <td class="center br">일평균</td>
@@ -425,10 +432,9 @@
       setCard("monthProfit"+sym, "monthRoi"+sym, cumVal, roi);
     }
 
-    // ✅ 그래프 빨간 선 데이터 변경 (순수 누계액 직접 연결)
     const labels = daily.map(r => r.mmdd);
     const dailyProfit = daily.map(r => r.totalDailyProfit ?? 0);
-    const cumulative = daily.map(r => r.totalCum); // 직접 끌어오기
+    const cumulative = daily.map(r => r.totalCum);
 
     const canvas = document.getElementById("comboChart");
     if (canvas) {
@@ -464,12 +470,27 @@
     const debug = document.getElementById("debug");
 
     try {
-      const res = await fetch("./data/report.json?t=" + Date.now(), { cache: "no-store" });
-      const j = await res.json();
-      const reportRows = j.rows || [];
+      let reportRows = [];
+      
+      // 🔥 안전 금고 (history.json) 와 봇 파일 (report.json) 을 동시에 가져와서 합칩니다.
+      try {
+        const resHist = await fetch("./data/history.json?t=" + Date.now(), { cache: "no-store" });
+        if(resHist.ok) {
+          const jHist = await resHist.json();
+          reportRows = reportRows.concat(jHist.rows || []);
+        }
+      } catch(e) { console.log("history.json 없음"); }
+
+      try {
+        const resRep = await fetch("./data/report.json?t=" + Date.now(), { cache: "no-store" });
+        if(resRep.ok) {
+          const jRep = await resRep.json();
+          reportRows = reportRows.concat(jRep.rows || []);
+        }
+      } catch(e) { console.log("report.json 없음"); }
 
       count.textContent = String(reportRows.length);
-      latest.textContent = reportRows[0]?.date || "-";
+      latest.textContent = reportRows[reportRows.length-1]?.date || "-";
 
       const blocks = rowsToBlocks(reportRows);
       debug.textContent = JSON.stringify(blocks.slice(0, 3), null, 2);
