@@ -68,9 +68,13 @@
       <div class="v"><span id="count">-</span>건 <span class="small muted" id="latest" style="font-weight:normal;">-</span></div>
     </div>
     <div class="card">
-      <div class="k">월 누적 수익(합계)</div>
+      <div class="k">
+        월 누적 수익(합계)
+        <span class="pill" style="float:right; margin-top:-2px; background:#dcfce7; color:#166534;">목표 1.5%</span>
+      </div>
       <div class="v" id="monthProfitAll">-</div>
-      <div class="small muted" id="monthRoiAll">-</div>
+      <div class="small muted" id="monthRoiAll" style="display:inline-block;">-</div>
+      <div class="small" id="monthTargetProgress" style="margin-top:4px; color:#2563eb; font-weight:600;"></div>
     </div>
 
     <div class="card">
@@ -115,7 +119,7 @@
   </div>
 
   <div class="card wide">
-    <div class="k">월 수익 콤보 그래프 (막대=일 수익 / 선=월 누적)</div>
+    <div class="k">월 수익 콤보 그래프 (막대=일 수익 / 선=월 누적 / 점선=1.5% 목표)</div>
     <div style="position: relative; height: 250px; width: 100%;">
       <canvas id="comboChart"></canvas>
     </div>
@@ -160,8 +164,7 @@
     rows.sort((a,b)=>a.idx-b.idx);
     const tierMax = rows[rows.length - 1].idx;
     
-    // 🔥 팩트 기반 수정: 매수 대기가 아니라, 매도 수량이 걸려있는 마지막(최대) 티어 찾기
-    let tierNow = 0; // 아무것도 매수 안 됐으면 0티어
+    let tierNow = 0;
     for (let i = rows.length - 1; i >= 0; i--) {
       if (rows[i].sellQty > 0) {
         tierNow = rows[i].idx;
@@ -231,7 +234,6 @@
     
     for (const b of blocks) {
       const parsed = parseBlock(b);
-      // 🔥 정밀 타격 방어막: 딱 '3월 4일'의 'TSLL' 데이터 중 '2066'만 66으로 교정
       if (parsed.mmdd === "03/04" && parsed.symbol === "TSLL" && parsed.cum === 2066) {
         parsed.cum = 66;
       }
@@ -302,13 +304,19 @@
     const tfoot = document.getElementById("tfoot");
 
     const symLabel = (sym) => `${sym} (${fmtInt(SEEDS[sym])})`;
+    
+    // 🔥 총 시드 계산하여 헤더에 표시
+    const currentSeedTotal = symbols.reduce((a,s) => a + (SEEDS[s] || 0), 0);
 
     thead.innerHTML = `
       <tr class="head2">
         <th rowspan="2" class="center br" style="width:70px">날짜</th>
         ${symbols.map(sym => `<th class="center br" colspan="3">${esc(symLabel(sym))}<div class="small muted" id="tier_${sym}"></div></th>`).join("")}
         <th rowspan="2" class="center br" style="width:80px">총 매도</th>
-        <th colspan="2" class="center" style="width:160px">총합 수익</th>
+        <th colspan="2" class="center" style="width:160px">
+          총합 수익
+          <div class="small muted" style="font-weight:normal;">(${fmtInt(currentSeedTotal)})</div>
+        </th>
       </tr>
       <tr>
         ${symbols.map(_ => `
@@ -422,6 +430,7 @@
       </tr>
     `;
 
+    // ✅ 요약 카드 세팅
     const setCard = (idV, idR, profit, roi) => {
       const v = document.getElementById(idV);
       const r = document.getElementById(idR);
@@ -431,6 +440,17 @@
     };
 
     setCard("monthProfitAll", "monthRoiAll", lastCumAll, monthTotals.seedAll ? (lastCumAll / monthTotals.seedAll) : null);
+    
+    // 🔥 1.5% 목표 달성률 계산 및 요약 카드 표기 (종목별 시드 합산 기반)
+    if (monthTotals.seedAll > 0) {
+      const targetAmt = monthTotals.seedAll * 0.015; // 1.5% 목표 금액
+      const currentCum = lastCumAll || 0;
+      const progressPct = (currentCum / targetAmt) * 100;
+      document.getElementById("monthTargetProgress").textContent = `진행률: ${fmtFloat1(progressPct)}% ($${fmtInt(targetAmt)})`;
+    } else {
+      document.getElementById("monthTargetProgress").textContent = "";
+    }
+
     for (const sym of ["TQQQ","ETHU","TSLL"]) {
       const cumVal = lastCumBySym[sym] ?? 0;
       const roi = SEEDS[sym] ? (cumVal / SEEDS[sym]) : null;
@@ -440,6 +460,9 @@
     const labels = daily.map(r => r.mmdd);
     const dailyProfit = daily.map(r => r.totalDailyProfit ?? 0);
     const cumulative = daily.map(r => r.totalCum);
+    
+    // 🔥 그래프용 1.5% 목표선 데이터 생성
+    const targetData = daily.map(() => monthTotals.seedAll * 0.015);
 
     const canvas = document.getElementById("comboChart");
     if (canvas) {
@@ -449,7 +472,9 @@
           labels,
           datasets: [
             { type: "bar", label: "일 수익 ($)", data: dailyProfit, backgroundColor: 'rgba(54, 162, 235, 0.5)', borderColor: 'rgb(54, 162, 235)', borderWidth: 1, barPercentage: 0.5, yAxisID: "y" },
-            { type: "line", label: "월 누적 수익 ($)", data: cumulative, borderColor: 'rgb(255, 99, 132)', tension: 0.2, borderWidth: 2, fill: false, spanGaps: true, yAxisID: "y1" }
+            { type: "line", label: "월 누적 수익 ($)", data: cumulative, borderColor: 'rgb(255, 99, 132)', tension: 0.2, borderWidth: 2, fill: false, spanGaps: true, yAxisID: "y1" },
+            // 🔥 그래프에 목표선(초록 점선) 추가
+            { type: "line", label: "월 목표 (1.5%)", data: targetData, borderColor: 'rgba(34, 197, 94, 0.8)', borderDash: [5, 5], borderWidth: 2, pointRadius: 0, fill: false, yAxisID: "y1" }
           ]
         },
         options: {
