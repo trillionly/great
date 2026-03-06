@@ -159,11 +159,16 @@
     if (!rows.length) return { tierNow: null, tierMax: null };
     rows.sort((a,b)=>a.idx-b.idx);
     const tierMax = rows[rows.length - 1].idx;
-    let tierNow = null;
-    for (const r of rows) {
-      if (r.buyQty > 0) { tierNow = r.idx; break; }
+    
+    // 🔥 팩트 기반 수정: 매수 대기가 아니라, 매도 수량이 걸려있는 마지막(최대) 티어 찾기
+    let tierNow = 0; // 아무것도 매수 안 됐으면 0티어
+    for (let i = rows.length - 1; i >= 0; i--) {
+      if (rows[i].sellQty > 0) {
+        tierNow = rows[i].idx;
+        break;
+      }
     }
-    if (tierNow == null) tierNow = rows[0].idx;
+    
     return { tierNow, tierMax };
   }
 
@@ -472,7 +477,6 @@
     try {
       let reportRows = [];
       
-      // 🔥 안전 금고 (history.json) 와 봇 파일 (report.json) 을 동시에 가져와서 합칩니다.
       try {
         const resHist = await fetch("./data/history.json?t=" + Date.now(), { cache: "no-store" });
         if(resHist.ok) {
