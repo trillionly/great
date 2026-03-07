@@ -168,15 +168,20 @@
     return nums.reduce((a,b)=>a+b,0);
   };
 
+  // 🔥 정규식 업그레이드: 쉼표(,)나 소수점(.)이 포함된 수량도 100% 잡아냅니다.
   function parseGridTier(gridText) {
     if (!gridText) return { tierNow: null, tierMax: null };
     const lines = gridText.split("\n");
     const rows = [];
-    const re = /^\s*(\d+)\)\s+([\d.]+)\s+(\d+)\s+([\d.]+)\s+(\d+)\s*$/;
+    const re = /^\s*(\d+)\)\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)\s*$/;
     for (const line of lines) {
       const m = line.match(re);
       if (!m) continue;
-      rows.push({ idx: Number(m[1]), buyQty: Number(m[3]), sellQty: Number(m[5]) });
+      rows.push({ 
+        idx: Number(m[1]), 
+        buyQty: Number(m[3].replace(/,/g, '')), 
+        sellQty: Number(m[5].replace(/,/g, '')) 
+      });
     }
     if (!rows.length) return { tierNow: null, tierMax: null };
     rows.sort((a,b)=>a.idx-b.idx);
@@ -231,7 +236,8 @@
     const sellCount = sCnt ? num(sCnt[1]) : null;
 
     let gridText = "";
-    const gridHeader = t.match(/Grid\d+\s+[A-Z]{2,6}\s*\n/i);
+    // 🔥 헤더 인식 정규식 업그레이드 (여백이 불규칙해도 캐치함)
+    const gridHeader = t.match(/Grid\s*\d+\s+[A-Z]{2,6}\s*\n/i);
     if (gridHeader) {
       const startIdx = t.indexOf(gridHeader[0]) + gridHeader[0].length;
       const endIdx = t.indexOf("테이블 총재고");
@@ -242,7 +248,6 @@
     return { mmdd, time, symbol, cum, sellCount, tierNow, tierMax, raw: t };
   }
 
-  // 🔥 연도 파싱 로직 추가: 봇 데이터가 작성된 날짜의 연도를 정확히 추출해서 꼬리표 붙임
   function rowsToBlocks(reportRows) {
     const chronos = [...reportRows].reverse();
     const out = [];
@@ -291,7 +296,6 @@
       return row;
     });
 
-    // 전체 기간을 관통하며 리셋을 감지하여 순수 일수익 계산
     const prevRawCum = Object.fromEntries(symbols.map(s => [s, null]));
 
     for (const r of table) {
@@ -353,7 +357,8 @@
     }
   };
 
-  function renderView(viewData, symbols, viewMode) {
+  // 🔥 renderView 엔진에 전체 데이터를 넘겨받아 '월 경계선'을 뛰어넘어 티어를 검색하게 합니다.
+  function renderView(viewData, symbols, viewMode, allDaily) {
     const thead = document.getElementById("thead");
     const tbody = document.getElementById("tbody");
     const tfoot = document.getElementById("tfoot");
@@ -397,19 +402,25 @@
           }
           el.textContent = maxTier > 0 ? `${maxTier}` : "";
         } else {
+          // 🔥 시공간 초월 추적 로직: 화면에 보이는 달뿐만 아니라, 전체 데이터에서 직전 기록을 찾아냄
+          let maxDate = viewData[viewData.length - 1]?.maxDate || "9999/99/99";
           let lastNow = null, lastMax = null, prevNow = null;
-          for (let i = viewData.length-1; i>=0; i--) {
-            const cell = viewData[i][sym];
-            if (cell.tierNow != null && cell.tierMax != null) {
+          
+          for (let i = allDaily.length - 1; i >= 0; i--) {
+            if (allDaily[i].yyyymmdd > maxDate) continue; 
+            
+            const cell = allDaily[i][sym];
+            if (cell && cell.tierNow != null && cell.tierMax != null) {
               if (lastNow == null) {
                 lastNow = cell.tierNow;
                 lastMax = cell.tierMax;
               } else if (prevNow == null) {
                 prevNow = cell.tierNow;
-                break; 
+                break;
               }
             }
           }
+
           if (lastNow != null) {
             const diff = prevNow != null ? (lastNow - prevNow) : 0;
             const diffStr = diff >= 0 ? `+${diff}` : `${diff}`;
@@ -523,9 +534,8 @@
       }
     };
 
-    // 🔥 동적 누계 목표: 데이터 개수(월수 또는 연수)에 비례해서 타겟액 자동 증가
     const periodCount = viewMode !== 'DAILY' ? (viewData.length || 1) : 1;
-    const periodMultiplier = viewMode === 'YEARLY' ? 12 : 1; // 연별 조회의 경우 기본적으로 1년에 12달치 목표 세팅
+    const periodMultiplier = viewMode === 'YEARLY' ? 12 : 1;
     const finalMultiplier = periodCount * periodMultiplier;
     
     const totalTarget = currentSeedTotal * 0.015 * finalMultiplier;
@@ -658,14 +668,12 @@
         return;
       }
 
-      // 🔥 1. 연도 드롭다운 세팅
       const allYears = [...new Set(blocks.map(b => b.year))].sort();
       let yearHtml = `<option value="ALL_YEARS">전체 기간 (모든 연도)</option>`;
       yearHtml += allYears.map(y => `<option value="${y}">${y}년</option>`).join("");
       yearSel.innerHTML = yearHtml;
-      yearSel.value = allYears[allYears.length - 1]; // 기본: 가장 최근 연도
+      yearSel.value = allYears[allYears.length - 1];
 
-      // 🔥 2. 월 드롭다운 업데이트 함수
       function updateMonthDropdown() {
         const y = yearSel.value;
         if (y === "ALL_YEARS") {
@@ -694,15 +702,13 @@
         const m = monthSel.value;
         const symbols = symbolsSel.value.split(",").map(s => s.trim()).filter(Boolean);
         
-        // 데이터 전체 순수익 계산
         const allDaily = buildAllDaily(blocks, symbols);
         
         let viewData = [];
-        let viewMode = 'DAILY'; // 'DAILY', 'MONTHLY', 'YEARLY'
+        let viewMode = 'DAILY'; 
 
         if (y === "ALL_YEARS") {
           viewMode = 'YEARLY';
-          // 모든 연도를 그룹핑
           const yearsMap = new Map();
           for(const r of allDaily) {
             const yy = r.year;
@@ -776,13 +782,12 @@
                return out;
             });
           } else {
-            // 월별 일간 데이터
             viewMode = 'DAILY';
             const monthDaily = yearDaily.filter(r => r.month === m);
             let rollingCum = Object.fromEntries(symbols.map(s => [s, 0]));
             
             viewData = monthDaily.map(r => {
-               const out = { dateLabel: r.mmdd, totalDailyProfit: r.totalDailyProfit };
+               const out = { dateLabel: r.mmdd, totalDailyProfit: r.totalDailyProfit, maxDate: r.yyyymmdd }; // 🔥 maxDate 전달
                let rTotalCum = 0;
                for(const s of symbols) {
                   if (r[s].profit != null) rollingCum[s] += r[s].profit;
@@ -801,7 +806,8 @@
           }
         }
 
-        renderView(viewData, symbols, viewMode);
+        // 🔥 엔진을 호출할 때 전체 데이터(allDaily)를 함께 넘겨줍니다.
+        renderView(viewData, symbols, viewMode, allDaily);
         status.textContent = "정상 작동 중";
         status.classList.remove("err");
       }
