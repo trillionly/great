@@ -246,7 +246,6 @@
     
     for (const b of blocks) {
       const parsed = parseBlock(b);
-      // 🔥 정밀 타격 방어막
       if (parsed.mmdd === "03/04" && parsed.symbol === "TSLL" && parsed.cum === 2066) {
         parsed.cum = 66;
       }
@@ -255,7 +254,7 @@
     return out.filter(x => x.mmdd && x.symbol);
   }
 
-  // 🔥 모든 일자 데이터를 한 번에 그리는 통합 함수 (월별 계산의 뼈대)
+  // 🔥 스마트 리셋 및 이어달리기(True Cum)가 적용된 데이터 정리 함수
   function buildAllDaily(blocks, symbols) {
     const byKey = new Map();
     for (const r of blocks) {
@@ -272,18 +271,45 @@
       for (const sym of symbols) {
         const rec = byKey.get(`${mmdd}|${sym}`) || null;
         row[sym] = rec
-          ? { sell: rec.sellCount, cum: rec.cum, tierNow: rec.tierNow, tierMax: rec.tierMax }
-          : { sell:null, cum:null, tierNow:null, tierMax:null };
+          ? { sell: rec.sellCount, rawCum: rec.cum, tierNow: rec.tierNow, tierMax: rec.tierMax }
+          : { sell:null, rawCum:null, tierNow:null, tierMax:null };
       }
       return row;
     });
 
-    const prevCum = Object.fromEntries(symbols.map(s => [s, null]));
+    const prevRawCum = Object.fromEntries(symbols.map(s => [s, null]));
+    const trueCum = Object.fromEntries(symbols.map(s => [s, 0]));
+
     for (const r of table) {
       for (const sym of symbols) {
-        const cum = r[sym].cum;
-        r[sym].profit = (cum != null && prevCum[sym] != null) ? cum - prevCum[sym] : null;
-        if (cum != null) prevCum[sym] = cum;
+        const rawCum = r[sym].rawCum;
+        let profit = null;
+
+        if (rawCum != null) {
+          if (prevRawCum[sym] != null) {
+            let diff = rawCum - prevRawCum[sym];
+            // 🔥 스마트 리셋 로직: 누계가 500 이상 폭락하면 봇 초기화로 간주하고 0원에서 새로 센다
+            if (diff < -500) {
+              profit = rawCum;
+            } else {
+              profit = diff;
+            }
+          } else {
+            profit = null;
+          }
+          prevRawCum[sym] = rawCum;
+        }
+        r[sym].profit = profit;
+
+        // 🔥 그래프 왜곡을 막기 위해 '실제 발생한 일 수익'만 계속 이어 붙여서 진정한 누적액을 만듦
+        if (profit != null) {
+          trueCum[sym] += profit;
+        } else if (rawCum != null && trueCum[sym] === 0) {
+          trueCum[sym] = rawCum;
+        }
+        
+        // 화면과 계산에는 보정된 진정 누적액(trueCum)을 사용
+        r[sym].cum = (rawCum != null || profit != null) ? trueCum[sym] : null;
       }
       r.totalDailyProfit = sumOrNull(symbols.map(s => r[s].profit));
       r.totalCum = sumOrNull(symbols.map(s => r[s].cum));
@@ -291,7 +317,6 @@
     return table;
   }
 
-  // 🔥 일별 데이터를 '월별'로 압축하는 (Roll-up) 로직
   function buildMonthlyAgg(allDaily, symbols) {
     const monthsMap = new Map();
     for(const r of allDaily) {
@@ -316,7 +341,6 @@
     return Array.from(monthsMap.values()).sort((a,b)=>Number(a.month)-Number(b.month));
   }
 
-  // 🔥 렌더링 엔진 통합 (일간/월간 모두 한 함수에서 처리)
   function renderView(viewData, symbols, isMonthly) {
     const thead = document.getElementById("thead");
     const tbody = document.getElementById("tbody");
@@ -486,7 +510,6 @@
       setCard("monthProfit"+sym, "monthRoi"+sym, "prog"+sym, cumVal, roi, targetAmt);
     }
 
-    // 🔥 적층형(Stacked) 콤보 차트 세팅
     const labels = viewData.map(r => r.dateLabel);
     const bgColors = {
       TQQQ: 'rgba(54, 162, 235, 0.7)',
@@ -506,7 +529,7 @@
       backgroundColor: bgColors[sym],
       borderColor: borderColors[sym],
       borderWidth: 1,
-      stack: 'Stack 0', // 이 설정이 막대를 층층이 쌓게 만듭니다
+      stack: 'Stack 0',
       yAxisID: "y"
     }));
 
@@ -578,10 +601,9 @@
         return;
       }
 
-      // 🔥 월 선택 드롭다운에 '연간 요약 (전체)' 추가
       monthSel.innerHTML = `<option value="ALL">연간 요약 (전체)</option>` + 
                            months.map(m => `<option value="${m}">${Number(m)}월</option>`).join("");
-      monthSel.value = months[months.length - 1]; // 기본 화면은 가장 최근 월로
+      monthSel.value = months[months.length - 1];
 
       function rerender() {
         const m = monthSel.value;
@@ -591,7 +613,6 @@
         let viewData = [];
         let isMonthly = false;
 
-        // 🔥 ALL을 선택하면 데이터를 압축하고, 아니면 해당 월만 필터링합니다.
         if (m === "ALL") {
           isMonthly = true;
           viewData = buildMonthlyAgg(allDaily, symbols).map(r => ({ ...r, dateLabel: r.month + "월" }));
