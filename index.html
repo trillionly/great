@@ -329,6 +329,46 @@
     return Array.from(monthsMap.values()).sort((a,b)=>Number(a.month)-Number(b.month));
   }
 
+  // 🔥 1. 막대 꼭대기에 일 수익 합계를 띄워주는 커스텀 플러그인 (가볍고 빠릅니다)
+  const stackedTotalPlugin = {
+    id: 'stackedTotalPlugin',
+    afterDatasetsDraw: (chart) => {
+      const { ctx } = chart;
+      chart.data.labels.forEach((_, i) => {
+        let total = 0;
+        let topY = Number.MAX_VALUE;
+        let barX = null;
+        let hasBar = false;
+
+        // 스택된 막대들 중 가장 높은(Y값이 작은) 좌표 찾기 및 수익 합산
+        chart.data.datasets.forEach((dataset, j) => {
+          if (dataset.type === 'bar') {
+            const meta = chart.getDatasetMeta(j);
+            if (!meta.hidden && dataset.data[i] != null && dataset.data[i] !== 0) {
+              hasBar = true;
+              total += dataset.data[i];
+              const element = meta.data[i];
+              if (element && element.y < topY) {
+                topY = element.y;
+                barX = element.x;
+              }
+            }
+          }
+        });
+
+        // 0 이상일 때만 막대 위에 글씨 그리기
+        if (hasBar && barX !== null && total !== 0) {
+          ctx.save();
+          ctx.fillStyle = '#475569'; // 고급스러운 진회색 텍스트
+          ctx.font = 'bold 11px system-ui';
+          ctx.textAlign = 'center';
+          ctx.fillText('$' + new Intl.NumberFormat('en-US').format(total), barX, topY - 6);
+          ctx.restore();
+        }
+      });
+    }
+  };
+
   function renderView(viewData, symbols, isMonthly) {
     const thead = document.getElementById("thead");
     const tbody = document.getElementById("tbody");
@@ -517,19 +557,19 @@
       backgroundColor: bgColors[sym],
       borderColor: borderColors[sym],
       borderWidth: 1,
-      maxBarThickness: 35, // 🔥 적당한 굵기로 변경! 너무 얇지도 너무 두껍지도 않은 35픽셀
+      maxBarThickness: 35,
       stack: 'Stack 0',
       yAxisID: "y"
     }));
 
     datasets.push({
       type: "line", label: "총 누적 수익 ($)", data: viewData.map(r => r.totalCum),
-      borderColor: 'rgb(255, 99, 132)', tension: 0.2, borderWidth: 2, pointRadius: 3, fill: false, spanGaps: true, yAxisID: "y1" // 🔥 선 굵기 2, 포인트 크기 3으로 복구
+      borderColor: 'rgb(255, 99, 132)', tension: 0.2, borderWidth: 2, pointRadius: 3, fill: false, spanGaps: true, yAxisID: "y1"
     });
 
     datasets.push({
       type: "line", label: "월 목표 (1.5%)", data: viewData.map(() => totalTarget),
-      borderColor: 'rgba(34, 197, 94, 0.8)', borderDash: [5, 5], borderWidth: 2, pointRadius: 0, fill: false, yAxisID: "y1" // 🔥 목표 선도 안정적인 두께로
+      borderColor: 'rgba(34, 197, 94, 0.8)', borderDash: [5, 5], borderWidth: 2, pointRadius: 0, fill: false, yAxisID: "y1"
     });
 
     const canvas = document.getElementById("comboChart");
@@ -537,10 +577,32 @@
       if (window.__comboChart) window.__comboChart.destroy();
       window.__comboChart = new Chart(canvas, {
         data: { labels, datasets },
+        plugins: [stackedTotalPlugin], // 🔥 커스텀 라벨 엔진 연결
         options: {
           responsive: true, maintainAspectRatio: false,
           interaction: { mode: "index", intersect: false },
-          plugins: { legend: { position: "top" } },
+          plugins: { 
+            legend: { position: "top" },
+            // 🔥 2. 툴팁 맨 아랫줄에 '합계'를 표시하는 설정
+            tooltip: {
+              callbacks: {
+                footer: (tooltipItems) => {
+                  let sum = 0;
+                  let isBarHovered = false;
+                  tooltipItems.forEach(item => {
+                    if (item.dataset.type === 'bar') {
+                      isBarHovered = true;
+                      sum += item.raw;
+                    }
+                  });
+                  if (isBarHovered) {
+                    return '▶ 일 수익 합계: $' + new Intl.NumberFormat('en-US').format(sum);
+                  }
+                  return null;
+                }
+              }
+            }
+          },
           scales: {
             x: { stacked: true },
             y: { type: "linear", position: "left", stacked: true, ticks: { callback: v => "$" + v } },
