@@ -254,7 +254,6 @@
     return out.filter(x => x.mmdd && x.symbol);
   }
 
-  // 🔥 스마트 리셋 및 이어달리기(True Cum)가 적용된 데이터 정리 함수
   function buildAllDaily(blocks, symbols) {
     const byKey = new Map();
     for (const r of blocks) {
@@ -278,7 +277,6 @@
     });
 
     const prevRawCum = Object.fromEntries(symbols.map(s => [s, null]));
-    const trueCum = Object.fromEntries(symbols.map(s => [s, 0]));
 
     for (const r of table) {
       for (const sym of symbols) {
@@ -288,28 +286,20 @@
         if (rawCum != null) {
           if (prevRawCum[sym] != null) {
             let diff = rawCum - prevRawCum[sym];
-            // 🔥 스마트 리셋 로직: 누계가 500 이상 폭락하면 봇 초기화로 간주하고 0원에서 새로 센다
+            // 🔥 마이너스 감지 로직: 봇이 초기화되어 누계가 떨어졌을 때 그날 일수익을 초기화된 누계와 동일하게 맞춤
             if (diff < -500) {
               profit = rawCum;
             } else {
               profit = diff;
             }
           } else {
-            profit = null;
+            // 🔥 첫 데이터 로직: 데이터의 첫 줄일 경우 '일수익 = 누적수익'으로 표기
+            profit = rawCum;
           }
           prevRawCum[sym] = rawCum;
         }
         r[sym].profit = profit;
-
-        // 🔥 그래프 왜곡을 막기 위해 '실제 발생한 일 수익'만 계속 이어 붙여서 진정한 누적액을 만듦
-        if (profit != null) {
-          trueCum[sym] += profit;
-        } else if (rawCum != null && trueCum[sym] === 0) {
-          trueCum[sym] = rawCum;
-        }
-        
-        // 화면과 계산에는 보정된 진정 누적액(trueCum)을 사용
-        r[sym].cum = (rawCum != null || profit != null) ? trueCum[sym] : null;
+        r[sym].cum = rawCum; // 봇이 보낸 누적액을 그대로 출력 (월별 리셋 자동 반영)
       }
       r.totalDailyProfit = sumOrNull(symbols.map(s => r[s].profit));
       r.totalCum = sumOrNull(symbols.map(s => r[s].cum));
