@@ -168,109 +168,118 @@
     return nums.reduce((a,b)=>a+b,0);
   };
 
-  // 🔥 정규식 업그레이드: 쉼표(,)나 소수점(.)이 포함된 수량도 100% 잡아냅니다.
-  function parseGridTier(gridText) {
-    if (!gridText) return { tierNow: null, tierMax: null };
-    const lines = gridText.split("\n");
+  // 🔥 업그레이드된 정규식: 이모티콘 무시, 괄호 여백 무시, 콤마/소수점 100% 인식
+  function parseGridTier(fullText) {
+    if (!fullText) return { tierNow: null, tierMax: null };
     const rows = [];
-    const re = /^\s*(\d+)\)\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)\s+([\d.,]+)\s*$/;
-    for (const line of lines) {
-      const m = line.match(re);
-      if (!m) continue;
-      rows.push({ 
-        idx: Number(m[1]), 
-        buyQty: Number(m[3].replace(/,/g, '')), 
-        sellQty: Number(m[5].replace(/,/g, '')) 
+    const re = /(?:^|\n)[^\d\n]*(\d+)\)\s*([-\d.,]+)\s+([-\d.,]+)\s+([-\d.,]+)\s+([-\d.,]+)/g;
+    let m;
+    while ((m = re.exec(fullText)) !== null) {
+      rows.push({
+        idx: Number(m[1]),
+        sellQty: Number(m[5].replace(/,/g, ''))
       });
     }
     if (!rows.length) return { tierNow: null, tierMax: null };
+    
     rows.sort((a,b)=>a.idx-b.idx);
     const tierMax = rows[rows.length - 1].idx;
     
-    let tierNow = 0;
+    let tierNow = null;
     for (let i = rows.length - 1; i >= 0; i--) {
       if (rows[i].sellQty > 0) {
         tierNow = rows[i].idx;
         break;
       }
     }
+    if (tierNow == null) tierNow = rows[0].idx; // 안전 장치
     return { tierNow, tierMax };
   }
 
-  function splitBlocks(raw) {
-    const t = (raw || "").replace(/\r/g, "");
-    const re = /(^|\n)(\d{2})\/(\d{2})일\s+(\d{2}:\d{2})/g;
-    const starts = [];
-    let m;
-    while ((m = re.exec(t)) !== null) {
-      const startAt = m.index + (m[1] ? 1 : 0);
-      starts.push(startAt);
-    }
-    if (!starts.length) return [];
-    const blocks = [];
-    for (let i=0;i<starts.length;i++) {
-      const s = starts[i];
-      const e = (i+1 < starts.length) ? starts[i+1] : t.length;
-      blocks.push(t.slice(s, e).trim());
-    }
-    return blocks;
-  }
+  // 🔥 새로운 엔진: 쪼개진 텔레그램 메시지를 하나로 완벽하게 조립하여 파싱합니다.
+  function extractBlocksFromRows(reportRows) {
+     const chronos = [...reportRows].reverse();
+     const out = [];
+     let lastSymbol = null;
 
-  function parseBlock(blockText) {
-    const t = blockText || "";
-    const dt = t.match(/(\d{2})\/(\d{2})일\s+(\d{2}:\d{2})/);
-    const mmdd = dt ? `${dt[1]}/${dt[2]}` : null;
-    const time = dt ? dt[3] : null;
+     for (const r of chronos) {
+        const yearStr = r.date ? r.date.split("-")[0] : String(new Date().getFullYear());
+        let fixedText = r.raw_message || "";
+        
+        // 2066 오류 강제 수정
+        fixedText = fixedText.replace(/주문가능-최대필요:\s*2066/g, "주문가능-최대필요: 66");
 
-    let symbol = null;
-    const s1 = t.match(/(?:^|\n)([A-Z]{2,6})최대필요\s*:/);
-    if (s1) symbol = s1[1];
-    if (!symbol) {
-      const s2 = t.match(/(?:^|\n)\d+([A-Z]{2,6})평가금액\s*:/);
-      if (s2) symbol = s2[1];
-    }
-
-    const cumM = t.match(/주문가능-최대필요\s*:\s*([-\d,]+(?:\.\d+)?)/);
-    const cum = cumM ? num(cumM[1]) : null;
-    const sCnt = t.match(/S\s*(\d+)회/);
-    const sellCount = sCnt ? num(sCnt[1]) : null;
-
-    let gridText = "";
-    // 🔥 헤더 인식 정규식 업그레이드 (여백이 불규칙해도 캐치함)
-    const gridHeader = t.match(/Grid\s*\d+\s+[A-Z]{2,6}\s*\n/i);
-    if (gridHeader) {
-      const startIdx = t.indexOf(gridHeader[0]) + gridHeader[0].length;
-      const endIdx = t.indexOf("테이블 총재고");
-      gridText = (endIdx > startIdx) ? t.slice(startIdx, endIdx) : t.slice(startIdx);
-    }
-    const { tierNow, tierMax } = parseGridTier(gridText);
-
-    return { mmdd, time, symbol, cum, sellCount, tierNow, tierMax, raw: t };
-  }
-
-  function rowsToBlocks(reportRows) {
-    const chronos = [...reportRows].reverse();
-    const out = [];
-    
-    for (const r of chronos) {
-      const yearStr = r.date ? r.date.split("-")[0] : String(new Date().getFullYear());
-      const text = r.raw_message || "";
-      const blocks = splitBlocks(text);
-      
-      for (const b of blocks) {
-        const parsed = parseBlock(b);
-        if (parsed.mmdd === "03/04" && parsed.symbol === "TSLL" && parsed.cum === 2066) {
-          parsed.cum = 66;
+        const re = /(^|\n)(\d{2})\/(\d{2})일\s+(\d{2}:\d{2})/g;
+        const starts = [];
+        let m;
+        while ((m = re.exec(fixedText)) !== null) {
+           starts.push({ index: m.index + (m[1] ? 1 : 0), mmdd: `${m[2]}/${m[3]}`, time: m[4] });
         }
-        if (parsed.mmdd && parsed.symbol) {
-          parsed.year = yearStr;
-          parsed.month = parsed.mmdd.split("/")[0];
-          parsed.yyyymmdd = `${yearStr}/${parsed.mmdd}`;
-          out.push(parsed);
+
+        // 메시지에 날짜 헤더가 없으면 = 잘린 메시지의 뒷부분이므로 이전 데이터에 이어붙임
+        if (starts.length === 0) {
+           if (out.length > 0) {
+              out[out.length - 1].raw += "\n\n" + fixedText;
+           }
+           continue;
         }
-      }
-    }
-    return out;
+
+        for (let i = 0; i < starts.length; i++) {
+           const s = starts[i].index;
+           const e = (i + 1 < starts.length) ? starts[i + 1].index : fixedText.length;
+           const text = fixedText.slice(s, e).trim();
+
+           let symbol = null;
+           const s1 = text.match(/(?:^|\n)([A-Z]{2,6})최대필요\s*:/);
+           if (s1) symbol = s1[1];
+           if (!symbol) {
+              const s2 = text.match(/(?:^|\n)\d+([A-Z]{2,6})평가금액\s*:/);
+              if (s2) symbol = s2[1];
+           }
+           if (symbol) lastSymbol = symbol;
+           else symbol = lastSymbol; // 심볼이 생략됐어도 앞의 것 상속
+
+           out.push({
+              year: yearStr,
+              month: starts[i].mmdd.split("/")[0],
+              mmdd: starts[i].mmdd,
+              yyyymmdd: `${yearStr}/${starts[i].mmdd}`,
+              time: starts[i].time,
+              symbol: symbol,
+              raw: text
+           });
+        }
+     }
+
+     // 🔥 같은 날, 같은 종목의 조각난 데이터를 하나로 완벽히 융합
+     const groupedMap = new Map();
+     for (const r of out) {
+        if (!r.symbol) continue;
+        const key = `${r.yyyymmdd}|${r.symbol}`;
+        if (!groupedMap.has(key)) {
+           groupedMap.set(key, { ...r });
+        } else {
+           const prev = groupedMap.get(key);
+           prev.raw += "\n\n" + r.raw;
+           if (r.time > prev.time) prev.time = r.time;
+        }
+     }
+
+     // 융합된 전체 텍스트를 바탕으로 데이터 추출
+     return Array.from(groupedMap.values()).map(r => {
+        const cumM = r.raw.match(/주문가능-최대필요\s*:\s*([-\d,]+(?:\.\d+)?)/);
+        r.cum = cumM ? num(cumM[1]) : null;
+
+        // 🔥 매도 횟수 추출력 강화 (S 0회, s 0회, S: 0회, 매도 0회 등 모두 감지)
+        const sCnt = r.raw.match(/(?:S|매도)\s*[:\-]?\s*([-\d.,]+)\s*회/i);
+        r.sellCount = sCnt ? num(sCnt[1]) : null;
+
+        const { tierNow, tierMax } = parseGridTier(r.raw);
+        r.tierNow = tierNow;
+        r.tierMax = tierMax;
+
+        return r;
+     });
   }
 
   function buildAllDaily(blocks, symbols) {
@@ -278,8 +287,7 @@
     for (const r of blocks) {
       if (!symbols.includes(r.symbol)) continue;
       const key = `${r.yyyymmdd}|${r.symbol}`;
-      const prev = byKey.get(key);
-      if (!prev || (r.time || "") > (prev.time || "")) byKey.set(key, r);
+      byKey.set(key, r); 
     }
 
     const dates = [...new Set([...byKey.keys()].map(k => k.split("|")[0]))].sort();
@@ -357,7 +365,6 @@
     }
   };
 
-  // 🔥 renderView 엔진에 전체 데이터를 넘겨받아 '월 경계선'을 뛰어넘어 티어를 검색하게 합니다.
   function renderView(viewData, symbols, viewMode, allDaily) {
     const thead = document.getElementById("thead");
     const tbody = document.getElementById("tbody");
@@ -396,13 +403,14 @@
       const el = document.getElementById(`tier_${sym}`);
       if (el) {
         if (viewMode !== 'DAILY') {
+          // 연간 조회: 봇에서 가져온 진짜 최대 티어 표시
           let maxTier = 0;
           for (let r of viewData) {
             if (r[sym] && r[sym].tierMax && r[sym].tierMax > maxTier) maxTier = r[sym].tierMax;
           }
           el.textContent = maxTier > 0 ? `${maxTier}` : "";
         } else {
-          // 🔥 시공간 초월 추적 로직: 화면에 보이는 달뿐만 아니라, 전체 데이터에서 직전 기록을 찾아냄
+          // 일간 조회: 실제 봇 데이터 기반 동적 티어 표기
           let maxDate = viewData[viewData.length - 1]?.maxDate || "9999/99/99";
           let lastNow = null, lastMax = null, prevNow = null;
           
@@ -660,7 +668,7 @@
       count.textContent = String(reportRows.length);
       latest.textContent = reportRows[reportRows.length-1]?.date || "-";
 
-      const blocks = rowsToBlocks(reportRows);
+      const blocks = extractBlocksFromRows(reportRows); // 🔥 여기서 조립 엔진이 가동됩니다.
       debug.textContent = JSON.stringify(blocks.slice(0, 3), null, 2);
 
       if (!blocks.length) {
@@ -787,7 +795,7 @@
             let rollingCum = Object.fromEntries(symbols.map(s => [s, 0]));
             
             viewData = monthDaily.map(r => {
-               const out = { dateLabel: r.mmdd, totalDailyProfit: r.totalDailyProfit, maxDate: r.yyyymmdd }; // 🔥 maxDate 전달
+               const out = { dateLabel: r.mmdd, totalDailyProfit: r.totalDailyProfit, maxDate: r.yyyymmdd }; 
                let rTotalCum = 0;
                for(const s of symbols) {
                   if (r[s].profit != null) rollingCum[s] += r[s].profit;
@@ -806,7 +814,6 @@
           }
         }
 
-        // 🔥 엔진을 호출할 때 전체 데이터(allDaily)를 함께 넘겨줍니다.
         renderView(viewData, symbols, viewMode, allDaily);
         status.textContent = "정상 작동 중";
         status.classList.remove("err");
