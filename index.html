@@ -192,94 +192,92 @@
         break;
       }
     }
-    if (tierNow == null) tierNow = rows[0].idx; // 안전 장치
+    if (tierNow == null) tierNow = rows[0].idx; 
     return { tierNow, tierMax };
   }
 
-  // 🔥 새로운 엔진: 쪼개진 텔레그램 메시지를 하나로 완벽하게 조립하여 파싱합니다.
+  // 🔥 줄 단위로 데이터를 스캔하여 쪼개진 메시지를 완벽하게 재조립하는 엔진
+  function getLinesWithYear(reportRows) {
+      const chronos = [...reportRows].reverse();
+      const linesInfo = [];
+      for (const r of chronos) {
+          const y = r.date ? r.date.split("-")[0] : String(new Date().getFullYear());
+          const msg = (r.raw_message || "").replace(/주문가능-최대필요:\s*2066/g, "주문가능-최대필요: 66");
+          const lines = msg.split('\n');
+          for (const l of lines) {
+              linesInfo.push({ text: l.trim(), year: y });
+          }
+      }
+      return linesInfo;
+  }
+
   function extractBlocksFromRows(reportRows) {
-     const chronos = [...reportRows].reverse();
-     const out = [];
-     let lastSymbol = null;
+      const linesInfo = getLinesWithYear(reportRows);
+      const recordsMap = new Map();
+      let currentKey = null;
+      let globalDate = null;
+      let globalTime = null;
+      let globalYear = null;
 
-     for (const r of chronos) {
-        const yearStr = r.date ? r.date.split("-")[0] : String(new Date().getFullYear());
-        let fixedText = r.raw_message || "";
-        
-        // 2066 오류 강제 수정
-        fixedText = fixedText.replace(/주문가능-최대필요:\s*2066/g, "주문가능-최대필요: 66");
+      for (const item of linesInfo) {
+          const line = item.text;
+          if (!line) continue;
 
-        const re = /(^|\n)(\d{2})\/(\d{2})일\s+(\d{2}:\d{2})/g;
-        const starts = [];
-        let m;
-        while ((m = re.exec(fixedText)) !== null) {
-           starts.push({ index: m.index + (m[1] ? 1 : 0), mmdd: `${m[2]}/${m[3]}`, time: m[4] });
-        }
+          // 시간 헤더 인식
+          const dtM = line.match(/(\d{2})\/(\d{2})일\s+(\d{2}:\d{2})/);
+          if (dtM) {
+              globalDate = `${dtM[1]}/${dtM[2]}`;
+              globalTime = dtM[3];
+              globalYear = item.year;
+          }
 
-        // 메시지에 날짜 헤더가 없으면 = 잘린 메시지의 뒷부분이므로 이전 데이터에 이어붙임
-        if (starts.length === 0) {
-           if (out.length > 0) {
-              out[out.length - 1].raw += "\n\n" + fixedText;
-           }
-           continue;
-        }
+          // 종목 헤더 인식 (공백 무시, 강력한 정규식 적용)
+          let symM = line.match(/([A-Z]{2,6})\s*최대필요\s*:/);
+          if (!symM) symM = line.match(/([A-Z]{2,6})\s*평가금액\s*:/);
+          
+          if (symM && globalDate) {
+              const symbol = symM[1];
+              currentKey = `${globalYear}/${globalDate}|${symbol}`;
+              if (!recordsMap.has(currentKey)) {
+                  recordsMap.set(currentKey, {
+                      year: globalYear,
+                      month: globalDate.split("/")[0],
+                      mmdd: globalDate,
+                      yyyymmdd: `${globalYear}/${globalDate}`,
+                      time: globalTime,
+                      symbol: symbol,
+                      raw: line + "\n"
+                  });
+              } else {
+                  recordsMap.get(currentKey).raw += line + "\n";
+                  if (globalTime > recordsMap.get(currentKey).time) {
+                      recordsMap.get(currentKey).time = globalTime;
+                  }
+              }
+              continue; 
+          }
 
-        for (let i = 0; i < starts.length; i++) {
-           const s = starts[i].index;
-           const e = (i + 1 < starts.length) ? starts[i + 1].index : fixedText.length;
-           const text = fixedText.slice(s, e).trim();
+          // 종목을 찾은 이후의 모든 줄은 쪼개진 메시지라도 무조건 해당 종목에 이어붙임
+          if (currentKey && recordsMap.has(currentKey)) {
+              recordsMap.get(currentKey).raw += line + "\n";
+          }
+      }
 
-           let symbol = null;
-           const s1 = text.match(/(?:^|\n)([A-Z]{2,6})최대필요\s*:/);
-           if (s1) symbol = s1[1];
-           if (!symbol) {
-              const s2 = text.match(/(?:^|\n)\d+([A-Z]{2,6})평가금액\s*:/);
-              if (s2) symbol = s2[1];
-           }
-           if (symbol) lastSymbol = symbol;
-           else symbol = lastSymbol; // 심볼이 생략됐어도 앞의 것 상속
+      // 조립이 끝난 거대한 텍스트 덩어리에서 데이터 추출
+      return Array.from(recordsMap.values()).map(r => {
+          const cumM = r.raw.match(/주문가능-최대필요\s*:\s*([-\d,]+(?:\.\d+)?)/);
+          r.cum = cumM ? num(cumM[1]) : null;
 
-           out.push({
-              year: yearStr,
-              month: starts[i].mmdd.split("/")[0],
-              mmdd: starts[i].mmdd,
-              yyyymmdd: `${yearStr}/${starts[i].mmdd}`,
-              time: starts[i].time,
-              symbol: symbol,
-              raw: text
-           });
-        }
-     }
+          // 매도 횟수도 완벽하게 잡아냅니다 (S 0회, S: 0회 등 모두 대응)
+          const sCnt = r.raw.match(/(?:S|매도)\s*[:\-]?\s*([-\d.,]+)\s*회/i);
+          r.sellCount = sCnt ? num(sCnt[1]) : null;
 
-     // 🔥 같은 날, 같은 종목의 조각난 데이터를 하나로 완벽히 융합
-     const groupedMap = new Map();
-     for (const r of out) {
-        if (!r.symbol) continue;
-        const key = `${r.yyyymmdd}|${r.symbol}`;
-        if (!groupedMap.has(key)) {
-           groupedMap.set(key, { ...r });
-        } else {
-           const prev = groupedMap.get(key);
-           prev.raw += "\n\n" + r.raw;
-           if (r.time > prev.time) prev.time = r.time;
-        }
-     }
+          const { tierNow, tierMax } = parseGridTier(r.raw);
+          r.tierNow = tierNow;
+          r.tierMax = tierMax;
 
-     // 융합된 전체 텍스트를 바탕으로 데이터 추출
-     return Array.from(groupedMap.values()).map(r => {
-        const cumM = r.raw.match(/주문가능-최대필요\s*:\s*([-\d,]+(?:\.\d+)?)/);
-        r.cum = cumM ? num(cumM[1]) : null;
-
-        // 🔥 매도 횟수 추출력 강화 (S 0회, s 0회, S: 0회, 매도 0회 등 모두 감지)
-        const sCnt = r.raw.match(/(?:S|매도)\s*[:\-]?\s*([-\d.,]+)\s*회/i);
-        r.sellCount = sCnt ? num(sCnt[1]) : null;
-
-        const { tierNow, tierMax } = parseGridTier(r.raw);
-        r.tierNow = tierNow;
-        r.tierMax = tierMax;
-
-        return r;
-     });
+          return r;
+      });
   }
 
   function buildAllDaily(blocks, symbols) {
@@ -287,7 +285,8 @@
     for (const r of blocks) {
       if (!symbols.includes(r.symbol)) continue;
       const key = `${r.yyyymmdd}|${r.symbol}`;
-      byKey.set(key, r); 
+      const prev = byKey.get(key);
+      if (!prev || (r.time || "") > (prev.time || "")) byKey.set(key, r);
     }
 
     const dates = [...new Set([...byKey.keys()].map(k => k.split("|")[0]))].sort();
@@ -403,14 +402,14 @@
       const el = document.getElementById(`tier_${sym}`);
       if (el) {
         if (viewMode !== 'DAILY') {
-          // 연간 조회: 봇에서 가져온 진짜 최대 티어 표시
+          // 🔥 연간 조회: 봇에서 가져온 진짜 최대 티어 표시 (복구 완료)
           let maxTier = 0;
           for (let r of viewData) {
             if (r[sym] && r[sym].tierMax && r[sym].tierMax > maxTier) maxTier = r[sym].tierMax;
           }
           el.textContent = maxTier > 0 ? `${maxTier}` : "";
         } else {
-          // 일간 조회: 실제 봇 데이터 기반 동적 티어 표기
+          // 🔥 일간 조회: 실제 봇 데이터 기반 동적 티어 표기 (복구 완료)
           let maxDate = viewData[viewData.length - 1]?.maxDate || "9999/99/99";
           let lastNow = null, lastMax = null, prevNow = null;
           
@@ -668,7 +667,7 @@
       count.textContent = String(reportRows.length);
       latest.textContent = reportRows[reportRows.length-1]?.date || "-";
 
-      const blocks = extractBlocksFromRows(reportRows); // 🔥 여기서 조립 엔진이 가동됩니다.
+      const blocks = extractBlocksFromRows(reportRows);
       debug.textContent = JSON.stringify(blocks.slice(0, 3), null, 2);
 
       if (!blocks.length) {
