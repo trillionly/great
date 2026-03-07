@@ -517,19 +517,19 @@
       backgroundColor: bgColors[sym],
       borderColor: borderColors[sym],
       borderWidth: 1,
-      maxBarThickness: 15, // 🔥 막대가 너무 두꺼워지지 않도록 최대 굵기 고정
+      maxBarThickness: 35, // 🔥 적당한 굵기로 변경! 너무 얇지도 너무 두껍지도 않은 35픽셀
       stack: 'Stack 0',
       yAxisID: "y"
     }));
 
     datasets.push({
       type: "line", label: "총 누적 수익 ($)", data: viewData.map(r => r.totalCum),
-      borderColor: 'rgb(255, 99, 132)', tension: 0.2, borderWidth: 1.5, pointRadius: 2, fill: false, spanGaps: true, yAxisID: "y1" // 🔥 선 굵기 1.5로 다이어트
+      borderColor: 'rgb(255, 99, 132)', tension: 0.2, borderWidth: 2, pointRadius: 3, fill: false, spanGaps: true, yAxisID: "y1" // 🔥 선 굵기 2, 포인트 크기 3으로 복구
     });
 
     datasets.push({
       type: "line", label: "월 목표 (1.5%)", data: viewData.map(() => totalTarget),
-      borderColor: 'rgba(34, 197, 94, 0.8)', borderDash: [5, 5], borderWidth: 1.5, pointRadius: 0, fill: false, yAxisID: "y1" // 🔥 선 굵기 1.5로 다이어트
+      borderColor: 'rgba(34, 197, 94, 0.8)', borderDash: [5, 5], borderWidth: 2, pointRadius: 0, fill: false, yAxisID: "y1" // 🔥 목표 선도 안정적인 두께로
     });
 
     const canvas = document.getElementById("comboChart");
