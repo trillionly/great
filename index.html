@@ -254,6 +254,7 @@
     return out.filter(x => x.mmdd && x.symbol);
   }
 
+  // 🔥 1. 순수한 '일 수익'만 계산해두는 베이스 엔진
   function buildAllDaily(blocks, symbols) {
     const byKey = new Map();
     for (const r of blocks) {
@@ -287,49 +288,22 @@
           if (prevRawCum[sym] != null) {
             let diff = rawCum - prevRawCum[sym];
             if (diff < -500) {
-              profit = rawCum;
+              profit = rawCum; // 봇 리셋 감지 시 일 수익 = 누계
             } else {
               profit = diff;
             }
           } else {
-            profit = rawCum;
+            profit = rawCum; // 첫 데이터 시 일 수익 = 누계
           }
           prevRawCum[sym] = rawCum;
         }
-        r[sym].profit = profit;
-        r[sym].cum = rawCum; 
+        r[sym].profit = profit; // 순수하게 '그 날 번 돈'만 저장
       }
       r.totalDailyProfit = sumOrNull(symbols.map(s => r[s].profit));
-      r.totalCum = sumOrNull(symbols.map(s => r[s].cum));
     }
     return table;
   }
 
-  function buildMonthlyAgg(allDaily, symbols) {
-    const monthsMap = new Map();
-    for(const r of allDaily) {
-      const m = r.mmdd.split("/")[0];
-      if(!monthsMap.has(m)) {
-        monthsMap.set(m, { month: m, totalDailyProfit: 0, totalCum: null, totalSell: 0 });
-        for(const s of symbols) monthsMap.get(m)[s] = { profit: 0, sell: 0, cum: null, tierNow: null, tierMax: null };
-      }
-      const row = monthsMap.get(m);
-      for(const s of symbols) {
-        row[s].profit += r[s].profit || 0;
-        row[s].sell += r[s].sell || 0;
-        if(r[s].cum != null) row[s].cum = r[s].cum;
-        if(r[s].tierNow != null) {
-          row[s].tierNow = r[s].tierNow;
-          row[s].tierMax = r[s].tierMax;
-        }
-      }
-      row.totalDailyProfit += r.totalDailyProfit || 0;
-      if(r.totalCum != null) row.totalCum = r.totalCum;
-    }
-    return Array.from(monthsMap.values()).sort((a,b)=>Number(a.month)-Number(b.month));
-  }
-
-  // 🔥 1. 막대 꼭대기에 일 수익 합계를 띄워주는 커스텀 플러그인 (가볍고 빠릅니다)
   const stackedTotalPlugin = {
     id: 'stackedTotalPlugin',
     afterDatasetsDraw: (chart) => {
@@ -340,7 +314,6 @@
         let barX = null;
         let hasBar = false;
 
-        // 스택된 막대들 중 가장 높은(Y값이 작은) 좌표 찾기 및 수익 합산
         chart.data.datasets.forEach((dataset, j) => {
           if (dataset.type === 'bar') {
             const meta = chart.getDatasetMeta(j);
@@ -356,10 +329,9 @@
           }
         });
 
-        // 0 이상일 때만 막대 위에 글씨 그리기
         if (hasBar && barX !== null && total !== 0) {
           ctx.save();
-          ctx.fillStyle = '#475569'; // 고급스러운 진회색 텍스트
+          ctx.fillStyle = '#475569';
           ctx.font = 'bold 11px system-ui';
           ctx.textAlign = 'center';
           ctx.fillText('$' + new Intl.NumberFormat('en-US').format(total), barX, topY - 6);
@@ -401,27 +373,37 @@
     `;
 
     for (const sym of symbols) {
-      let lastNow = null, lastMax = null, prevNow = null;
-      for (let i = viewData.length-1; i>=0; i--) {
-        const cell = viewData[i][sym];
-        if (cell.tierNow != null && cell.tierMax != null) {
-          if (lastNow == null) {
-            lastNow = cell.tierNow;
-            lastMax = cell.tierMax;
-          } else if (prevNow == null) {
-            prevNow = cell.tierNow;
-            break; 
-          }
-        }
-      }
       const el = document.getElementById(`tier_${sym}`);
       if (el) {
-        if (lastNow != null) {
-          const diff = prevNow != null ? (lastNow - prevNow) : 0;
-          const diffStr = diff >= 0 ? `+${diff}` : `${diff}`;
-          el.textContent = `${lastNow}/${lastMax} ${diffStr}`;
+        if (isMonthly) {
+          // 🔥 연간 요약: 최대 티어 숫자만 표기
+          let maxTier = 0;
+          for (let r of viewData) {
+            if (r[sym] && r[sym].tierMax && r[sym].tierMax > maxTier) maxTier = r[sym].tierMax;
+          }
+          el.textContent = maxTier > 0 ? `${maxTier}` : "";
         } else {
-          el.textContent = "";
+          // 🔥 월간 요약: 변화량 표기
+          let lastNow = null, lastMax = null, prevNow = null;
+          for (let i = viewData.length-1; i>=0; i--) {
+            const cell = viewData[i][sym];
+            if (cell.tierNow != null && cell.tierMax != null) {
+              if (lastNow == null) {
+                lastNow = cell.tierNow;
+                lastMax = cell.tierMax;
+              } else if (prevNow == null) {
+                prevNow = cell.tierNow;
+                break; 
+              }
+            }
+          }
+          if (lastNow != null) {
+            const diff = prevNow != null ? (lastNow - prevNow) : 0;
+            const diffStr = diff >= 0 ? `+${diff}` : `${diff}`;
+            el.textContent = `${lastNow}/${lastMax} ${diffStr}`;
+          } else {
+            el.textContent = "";
+          }
         }
       }
     }
@@ -577,13 +559,12 @@
       if (window.__comboChart) window.__comboChart.destroy();
       window.__comboChart = new Chart(canvas, {
         data: { labels, datasets },
-        plugins: [stackedTotalPlugin], // 🔥 커스텀 라벨 엔진 연결
+        plugins: [stackedTotalPlugin],
         options: {
           responsive: true, maintainAspectRatio: false,
           interaction: { mode: "index", intersect: false },
           plugins: { 
             legend: { position: "top" },
-            // 🔥 2. 툴팁 맨 아랫줄에 '합계'를 표시하는 설정
             tooltip: {
               callbacks: {
                 footer: (tooltipItems) => {
@@ -659,6 +640,8 @@
       function rerender() {
         const m = monthSel.value;
         const symbols = symbolsSel.value.split(",").map(s => s.trim()).filter(Boolean);
+        
+        // 1. 순수익 계산
         const allDaily = buildAllDaily(blocks, symbols);
         
         let viewData = [];
@@ -666,9 +649,66 @@
 
         if (m === "ALL") {
           isMonthly = true;
-          viewData = buildMonthlyAgg(allDaily, symbols).map(r => ({ ...r, dateLabel: r.month + "월" }));
+          // 🔥 연간 요약: 월별로 묶고 '수익을 누적'하여 합산 (끊김 방지)
+          const monthsMap = new Map();
+          for(const r of allDaily) {
+            const mm = r.mmdd.split("/")[0];
+            if(!monthsMap.has(mm)) {
+              monthsMap.set(mm, { month: mm, totalDailyProfit: 0 });
+              for(const s of symbols) monthsMap.get(mm)[s] = { profit: 0, sell: 0, tierMax: null };
+            }
+            const row = monthsMap.get(mm);
+            for(const s of symbols) {
+              row[s].profit += r[s].profit || 0;
+              row[s].sell += r[s].sell || 0;
+              if(r[s].tierMax != null) row[s].tierMax = Math.max(row[s].tierMax || 0, r[s].tierMax);
+            }
+            row.totalDailyProfit += r.totalDailyProfit || 0;
+          }
+
+          let aggData = Array.from(monthsMap.values()).sort((a,b)=>Number(a.month)-Number(b.month));
+
+          let rollingCum = Object.fromEntries(symbols.map(s => [s, 0]));
+          viewData = aggData.map(r => {
+             const out = { dateLabel: r.month + "월", totalDailyProfit: r.totalDailyProfit };
+             let rTotalCum = 0;
+             for(const s of symbols) {
+                rollingCum[s] += (r[s].profit || 0);
+                out[s] = {
+                   profit: r[s].profit,
+                   sell: r[s].sell,
+                   cum: rollingCum[s],
+                   tierMax: r[s].tierMax
+                };
+                rTotalCum += rollingCum[s];
+             }
+             out.totalCum = rTotalCum;
+             return out;
+          });
         } else {
-          viewData = allDaily.filter(r => r.mmdd.startsWith(m + "/")).map(r => ({ ...r, dateLabel: r.mmdd }));
+          // 🔥 월간 요약: 이번 달 데이터만 필터링하고 '0원부터 누적'하여 합산
+          const monthDaily = allDaily.filter(r => r.mmdd.startsWith(m + "/"));
+
+          let rollingCum = Object.fromEntries(symbols.map(s => [s, 0]));
+          viewData = monthDaily.map(r => {
+             const out = { dateLabel: r.mmdd, totalDailyProfit: r.totalDailyProfit };
+             let rTotalCum = 0;
+             for(const s of symbols) {
+                if (r[s].profit != null) {
+                   rollingCum[s] += r[s].profit;
+                }
+                out[s] = {
+                   profit: r[s].profit,
+                   sell: r[s].sell,
+                   cum: (r[s].profit != null || rollingCum[s] !== 0) ? rollingCum[s] : null,
+                   tierNow: r[s].tierNow,
+                   tierMax: r[s].tierMax
+                };
+                if (out[s].cum != null) rTotalCum += out[s].cum;
+             }
+             out.totalCum = rTotalCum === 0 && r.totalDailyProfit == null ? null : rTotalCum;
+             return out;
+          });
         }
 
         renderView(viewData, symbols, isMonthly);
