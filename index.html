@@ -65,7 +65,7 @@
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
     .wide { min-width: 100%; margin-top: 15px; }
 
-    .controls { display: flex; gap: 10px; justify-content: flex-end; margin-bottom: 15px; }
+    .controls { display: flex; gap: 10px; justify-content: flex-end; margin-bottom: 15px; flex-wrap: wrap; }
   </style>
 </head>
 <body>
@@ -110,6 +110,10 @@
 
   <div class="controls">
     <div>
+      <div class="small">연도</div>
+      <select id="yearSel"></select>
+    </div>
+    <div>
       <div class="small">조회 기간</div>
       <select id="monthSel"></select>
     </div>
@@ -133,7 +137,7 @@
   </div>
 
   <div class="card wide">
-    <div class="k">수익 콤보 차트 (막대=종목별 수익 합산 / 선=누적 / 점선=1.5% 목표)</div>
+    <div class="k">수익 콤보 차트 (막대=수익 합산 / 선=누적 / 점선=누적 목표)</div>
     <div style="position: relative; height: 300px; width: 100%;">
       <canvas id="comboChart"></canvas>
     </div>
@@ -238,38 +242,48 @@
     return { mmdd, time, symbol, cum, sellCount, tierNow, tierMax, raw: t };
   }
 
+  // 🔥 연도 파싱 로직 추가: 봇 데이터가 작성된 날짜의 연도를 정확히 추출해서 꼬리표 붙임
   function rowsToBlocks(reportRows) {
     const chronos = [...reportRows].reverse();
-    const fullText = chronos.map(r => r.raw_message || "").join("\n\n");
-    const blocks = splitBlocks(fullText);
     const out = [];
     
-    for (const b of blocks) {
-      const parsed = parseBlock(b);
-      if (parsed.mmdd === "03/04" && parsed.symbol === "TSLL" && parsed.cum === 2066) {
-        parsed.cum = 66;
+    for (const r of chronos) {
+      const yearStr = r.date ? r.date.split("-")[0] : String(new Date().getFullYear());
+      const text = r.raw_message || "";
+      const blocks = splitBlocks(text);
+      
+      for (const b of blocks) {
+        const parsed = parseBlock(b);
+        if (parsed.mmdd === "03/04" && parsed.symbol === "TSLL" && parsed.cum === 2066) {
+          parsed.cum = 66;
+        }
+        if (parsed.mmdd && parsed.symbol) {
+          parsed.year = yearStr;
+          parsed.month = parsed.mmdd.split("/")[0];
+          parsed.yyyymmdd = `${yearStr}/${parsed.mmdd}`;
+          out.push(parsed);
+        }
       }
-      out.push(parsed);
     }
-    return out.filter(x => x.mmdd && x.symbol);
+    return out;
   }
 
-  // 🔥 1. 순수한 '일 수익'만 계산해두는 베이스 엔진
   function buildAllDaily(blocks, symbols) {
     const byKey = new Map();
     for (const r of blocks) {
-      if (!r.mmdd || !r.symbol || !symbols.includes(r.symbol)) continue;
-      const key = `${r.mmdd}|${r.symbol}`;
+      if (!symbols.includes(r.symbol)) continue;
+      const key = `${r.yyyymmdd}|${r.symbol}`;
       const prev = byKey.get(key);
       if (!prev || (r.time || "") > (prev.time || "")) byKey.set(key, r);
     }
 
     const dates = [...new Set([...byKey.keys()].map(k => k.split("|")[0]))].sort();
 
-    const table = dates.map(mmdd => {
-      const row = { mmdd };
+    const table = dates.map(yyyymmdd => {
+      const [y, m, d] = yyyymmdd.split("/");
+      const row = { yyyymmdd, year: y, month: m, mmdd: `${m}/${d}` };
       for (const sym of symbols) {
-        const rec = byKey.get(`${mmdd}|${sym}`) || null;
+        const rec = byKey.get(`${yyyymmdd}|${sym}`) || null;
         row[sym] = rec
           ? { sell: rec.sellCount, rawCum: rec.cum, tierNow: rec.tierNow, tierMax: rec.tierMax }
           : { sell:null, rawCum:null, tierNow:null, tierMax:null };
@@ -277,6 +291,7 @@
       return row;
     });
 
+    // 전체 기간을 관통하며 리셋을 감지하여 순수 일수익 계산
     const prevRawCum = Object.fromEntries(symbols.map(s => [s, null]));
 
     for (const r of table) {
@@ -287,17 +302,14 @@
         if (rawCum != null) {
           if (prevRawCum[sym] != null) {
             let diff = rawCum - prevRawCum[sym];
-            if (diff < -500) {
-              profit = rawCum; // 봇 리셋 감지 시 일 수익 = 누계
-            } else {
-              profit = diff;
-            }
+            if (diff < -500) profit = rawCum; 
+            else profit = diff;
           } else {
-            profit = rawCum; // 첫 데이터 시 일 수익 = 누계
+            profit = rawCum; 
           }
           prevRawCum[sym] = rawCum;
         }
-        r[sym].profit = profit; // 순수하게 '그 날 번 돈'만 저장
+        r[sym].profit = profit; 
       }
       r.totalDailyProfit = sumOrNull(symbols.map(s => r[s].profit));
     }
@@ -341,15 +353,18 @@
     }
   };
 
-  function renderView(viewData, symbols, isMonthly) {
+  function renderView(viewData, symbols, viewMode) {
     const thead = document.getElementById("thead");
     const tbody = document.getElementById("tbody");
     const tfoot = document.getElementById("tfoot");
 
     const symLabel = (sym) => `${sym} (${fmtInt(SEEDS[sym])})`;
     const currentSeedTotal = symbols.reduce((a,s) => a + (SEEDS[s] || 0), 0);
-    const dateColName = isMonthly ? "월 (Month)" : "날짜";
-    const avgLabel = isMonthly ? "월평균" : "일평균";
+    
+    let dateColName = "날짜";
+    let avgLabel = "일평균";
+    if (viewMode === 'YEARLY') { dateColName = "연도"; avgLabel = "연평균"; }
+    else if (viewMode === 'MONTHLY') { dateColName = "월 (Month)"; avgLabel = "월평균"; }
 
     thead.innerHTML = `
       <tr class="head2">
@@ -367,7 +382,7 @@
           <th class="right" style="width:70px">수익</th>
           <th class="right br" style="width:80px">누적수익</th>
         `).join("")}
-        <th class="center" style="width:80px">${isMonthly ? "월합계" : "일"}</th>
+        <th class="center" style="width:80px">${viewMode !== 'DAILY' ? "합계" : "일"}</th>
         <th class="center" style="width:80px">누계</th>
       </tr>
     `;
@@ -375,15 +390,13 @@
     for (const sym of symbols) {
       const el = document.getElementById(`tier_${sym}`);
       if (el) {
-        if (isMonthly) {
-          // 🔥 연간 요약: 최대 티어 숫자만 표기
+        if (viewMode !== 'DAILY') {
           let maxTier = 0;
           for (let r of viewData) {
             if (r[sym] && r[sym].tierMax && r[sym].tierMax > maxTier) maxTier = r[sym].tierMax;
           }
           el.textContent = maxTier > 0 ? `${maxTier}` : "";
         } else {
-          // 🔥 월간 요약: 변화량 표기
           let lastNow = null, lastMax = null, prevNow = null;
           for (let i = viewData.length-1; i>=0; i--) {
             const cell = viewData[i][sym];
@@ -510,13 +523,18 @@
       }
     };
 
-    const totalTarget = currentSeedTotal * 0.015;
+    // 🔥 동적 누계 목표: 데이터 개수(월수 또는 연수)에 비례해서 타겟액 자동 증가
+    const periodCount = viewMode !== 'DAILY' ? (viewData.length || 1) : 1;
+    const periodMultiplier = viewMode === 'YEARLY' ? 12 : 1; // 연별 조회의 경우 기본적으로 1년에 12달치 목표 세팅
+    const finalMultiplier = periodCount * periodMultiplier;
+    
+    const totalTarget = currentSeedTotal * 0.015 * finalMultiplier;
     setCard("monthProfitAll", "monthRoiAll", "progAll", lastCumAll, currentSeedTotal ? (lastCumAll / currentSeedTotal) : null, totalTarget);
 
     for (const sym of ["TQQQ","ETHU","TSLL"]) {
       const cumVal = lastCumBySym[sym] ?? 0;
       const roi = SEEDS[sym] ? (cumVal / SEEDS[sym]) : null;
-      const targetAmt = SEEDS[sym] ? SEEDS[sym] * 0.015 : 0;
+      const targetAmt = SEEDS[sym] ? SEEDS[sym] * 0.015 * finalMultiplier : 0;
       setCard("monthProfit"+sym, "monthRoi"+sym, "prog"+sym, cumVal, roi, targetAmt);
     }
 
@@ -549,8 +567,15 @@
       borderColor: 'rgb(255, 99, 132)', tension: 0.2, borderWidth: 2, pointRadius: 3, fill: false, spanGaps: true, yAxisID: "y1"
     });
 
+    let targetLineData = [];
+    if (viewMode !== 'DAILY') {
+      targetLineData = viewData.map((_, idx) => currentSeedTotal * 0.015 * periodMultiplier * (idx + 1));
+    } else {
+      targetLineData = viewData.map(() => currentSeedTotal * 0.015);
+    }
+
     datasets.push({
-      type: "line", label: "월 목표 (1.5%)", data: viewData.map(() => totalTarget),
+      type: "line", label: viewMode !== 'DAILY' ? "누적 목표액" : "월 목표 (1.5%)", data: targetLineData,
       borderColor: 'rgba(34, 197, 94, 0.8)', borderDash: [5, 5], borderWidth: 2, pointRadius: 0, fill: false, yAxisID: "y1"
     });
 
@@ -577,7 +602,7 @@
                     }
                   });
                   if (isBarHovered) {
-                    return '▶ 일 수익 합계: $' + new Intl.NumberFormat('en-US').format(sum);
+                    return '▶ 수익 합계: $' + new Intl.NumberFormat('en-US').format(sum);
                   }
                   return null;
                 }
@@ -598,6 +623,7 @@
     const status = document.getElementById("status");
     const count = document.getElementById("count");
     const latest = document.getElementById("latest");
+    const yearSel = document.getElementById("yearSel");
     const monthSel = document.getElementById("monthSel");
     const symbolsSel = document.getElementById("symbolsSel");
     const debug = document.getElementById("debug");
@@ -627,37 +653,64 @@
       const blocks = rowsToBlocks(reportRows);
       debug.textContent = JSON.stringify(blocks.slice(0, 3), null, 2);
 
-      const months = [...new Set(blocks.map(b => b.mmdd.split("/")[0]))].sort((a,b)=>Number(a)-Number(b));
-      if (!months.length) {
+      if (!blocks.length) {
         status.textContent = "파싱 대기 중";
         return;
       }
 
-      monthSel.innerHTML = `<option value="ALL">연간 요약 (전체)</option>` + 
-                           months.map(m => `<option value="${m}">${Number(m)}월</option>`).join("");
-      monthSel.value = months[months.length - 1];
+      // 🔥 1. 연도 드롭다운 세팅
+      const allYears = [...new Set(blocks.map(b => b.year))].sort();
+      let yearHtml = `<option value="ALL_YEARS">전체 기간 (모든 연도)</option>`;
+      yearHtml += allYears.map(y => `<option value="${y}">${y}년</option>`).join("");
+      yearSel.innerHTML = yearHtml;
+      yearSel.value = allYears[allYears.length - 1]; // 기본: 가장 최근 연도
+
+      // 🔥 2. 월 드롭다운 업데이트 함수
+      function updateMonthDropdown() {
+        const y = yearSel.value;
+        if (y === "ALL_YEARS") {
+            monthSel.innerHTML = `<option value="YEARLY_AGG">연도별 요약 보기</option>`;
+            monthSel.disabled = true;
+            return;
+        }
+        
+        monthSel.disabled = false;
+        const yearBlocks = blocks.filter(b => b.year === y);
+        const months = [...new Set(yearBlocks.map(b => b.month))].sort();
+
+        let optionsHtml = `<option value="ALL">연간 요약 (선택 연도 전체)</option>`;
+        if (months.length > 1) {
+          optionsHtml += `<option value="ALL_PREV">연간 요약 (직전월 마감 누계)</option>`;
+        }
+        optionsHtml += months.map(m => `<option value="${m}">${Number(m)}월</option>`).join("");
+        monthSel.innerHTML = optionsHtml;
+        monthSel.value = months[months.length - 1];
+      }
+
+      updateMonthDropdown();
 
       function rerender() {
+        const y = yearSel.value;
         const m = monthSel.value;
         const symbols = symbolsSel.value.split(",").map(s => s.trim()).filter(Boolean);
         
-        // 1. 순수익 계산
+        // 데이터 전체 순수익 계산
         const allDaily = buildAllDaily(blocks, symbols);
         
         let viewData = [];
-        let isMonthly = false;
+        let viewMode = 'DAILY'; // 'DAILY', 'MONTHLY', 'YEARLY'
 
-        if (m === "ALL") {
-          isMonthly = true;
-          // 🔥 연간 요약: 월별로 묶고 '수익을 누적'하여 합산 (끊김 방지)
-          const monthsMap = new Map();
+        if (y === "ALL_YEARS") {
+          viewMode = 'YEARLY';
+          // 모든 연도를 그룹핑
+          const yearsMap = new Map();
           for(const r of allDaily) {
-            const mm = r.mmdd.split("/")[0];
-            if(!monthsMap.has(mm)) {
-              monthsMap.set(mm, { month: mm, totalDailyProfit: 0 });
-              for(const s of symbols) monthsMap.get(mm)[s] = { profit: 0, sell: 0, tierMax: null };
+            const yy = r.year;
+            if(!yearsMap.has(yy)) {
+              yearsMap.set(yy, { groupKey: yy, totalDailyProfit: 0 });
+              for(const s of symbols) yearsMap.get(yy)[s] = { profit: 0, sell: 0, tierMax: null };
             }
-            const row = monthsMap.get(mm);
+            const row = yearsMap.get(yy);
             for(const s of symbols) {
               row[s].profit += r[s].profit || 0;
               row[s].sell += r[s].sell || 0;
@@ -666,56 +719,94 @@
             row.totalDailyProfit += r.totalDailyProfit || 0;
           }
 
-          let aggData = Array.from(monthsMap.values()).sort((a,b)=>Number(a.month)-Number(b.month));
-
+          let aggData = Array.from(yearsMap.values()).sort((a,b)=>Number(a.groupKey)-Number(b.groupKey));
           let rollingCum = Object.fromEntries(symbols.map(s => [s, 0]));
+          
           viewData = aggData.map(r => {
-             const out = { dateLabel: r.month + "월", totalDailyProfit: r.totalDailyProfit };
+             const out = { dateLabel: r.groupKey + "년", totalDailyProfit: r.totalDailyProfit };
              let rTotalCum = 0;
              for(const s of symbols) {
                 rollingCum[s] += (r[s].profit || 0);
-                out[s] = {
-                   profit: r[s].profit,
-                   sell: r[s].sell,
-                   cum: rollingCum[s],
-                   tierMax: r[s].tierMax
-                };
+                out[s] = { profit: r[s].profit, sell: r[s].sell, cum: rollingCum[s], tierMax: r[s].tierMax };
                 rTotalCum += rollingCum[s];
              }
              out.totalCum = rTotalCum;
              return out;
           });
-        } else {
-          // 🔥 월간 요약: 이번 달 데이터만 필터링하고 '0원부터 누적'하여 합산
-          const monthDaily = allDaily.filter(r => r.mmdd.startsWith(m + "/"));
 
-          let rollingCum = Object.fromEntries(symbols.map(s => [s, 0]));
-          viewData = monthDaily.map(r => {
-             const out = { dateLabel: r.mmdd, totalDailyProfit: r.totalDailyProfit };
-             let rTotalCum = 0;
-             for(const s of symbols) {
-                if (r[s].profit != null) {
-                   rollingCum[s] += r[s].profit;
-                }
-                out[s] = {
-                   profit: r[s].profit,
-                   sell: r[s].sell,
-                   cum: (r[s].profit != null || rollingCum[s] !== 0) ? rollingCum[s] : null,
-                   tierNow: r[s].tierNow,
-                   tierMax: r[s].tierMax
-                };
-                if (out[s].cum != null) rTotalCum += out[s].cum;
-             }
-             out.totalCum = rTotalCum === 0 && r.totalDailyProfit == null ? null : rTotalCum;
-             return out;
-          });
+        } else {
+          const yearDaily = allDaily.filter(r => r.year === y);
+
+          if (m === "ALL" || m === "ALL_PREV") {
+            viewMode = 'MONTHLY';
+            let filteredDaily = yearDaily;
+            if (m === "ALL_PREV") {
+               const latestM = [...new Set(yearDaily.map(r=>r.month))].sort().pop();
+               filteredDaily = yearDaily.filter(r => r.month !== latestM);
+            }
+
+            const monthsMap = new Map();
+            for(const r of filteredDaily) {
+              const mm = r.month;
+              if(!monthsMap.has(mm)) {
+                monthsMap.set(mm, { groupKey: mm, totalDailyProfit: 0 });
+                for(const s of symbols) monthsMap.get(mm)[s] = { profit: 0, sell: 0, tierMax: null };
+              }
+              const row = monthsMap.get(mm);
+              for(const s of symbols) {
+                row[s].profit += r[s].profit || 0;
+                row[s].sell += r[s].sell || 0;
+                if(r[s].tierMax != null) row[s].tierMax = Math.max(row[s].tierMax || 0, r[s].tierMax);
+              }
+              row.totalDailyProfit += r.totalDailyProfit || 0;
+            }
+
+            let aggData = Array.from(monthsMap.values()).sort((a,b)=>Number(a.groupKey)-Number(b.groupKey));
+            let rollingCum = Object.fromEntries(symbols.map(s => [s, 0]));
+            
+            viewData = aggData.map(r => {
+               const out = { dateLabel: r.groupKey + "월", totalDailyProfit: r.totalDailyProfit };
+               let rTotalCum = 0;
+               for(const s of symbols) {
+                  rollingCum[s] += (r[s].profit || 0);
+                  out[s] = { profit: r[s].profit, sell: r[s].sell, cum: rollingCum[s], tierMax: r[s].tierMax };
+                  rTotalCum += rollingCum[s];
+               }
+               out.totalCum = rTotalCum;
+               return out;
+            });
+          } else {
+            // 월별 일간 데이터
+            viewMode = 'DAILY';
+            const monthDaily = yearDaily.filter(r => r.month === m);
+            let rollingCum = Object.fromEntries(symbols.map(s => [s, 0]));
+            
+            viewData = monthDaily.map(r => {
+               const out = { dateLabel: r.mmdd, totalDailyProfit: r.totalDailyProfit };
+               let rTotalCum = 0;
+               for(const s of symbols) {
+                  if (r[s].profit != null) rollingCum[s] += r[s].profit;
+                  out[s] = {
+                     profit: r[s].profit,
+                     sell: r[s].sell,
+                     cum: (r[s].profit != null || rollingCum[s] !== 0) ? rollingCum[s] : null,
+                     tierNow: r[s].tierNow,
+                     tierMax: r[s].tierMax
+                  };
+                  if (out[s].cum != null) rTotalCum += out[s].cum;
+               }
+               out.totalCum = rTotalCum === 0 && r.totalDailyProfit == null ? null : rTotalCum;
+               return out;
+            });
+          }
         }
 
-        renderView(viewData, symbols, isMonthly);
+        renderView(viewData, symbols, viewMode);
         status.textContent = "정상 작동 중";
         status.classList.remove("err");
       }
 
+      yearSel.addEventListener("change", () => { updateMonthDropdown(); rerender(); });
       monthSel.addEventListener("change", rerender);
       symbolsSel.addEventListener("change", rerender);
       rerender();
