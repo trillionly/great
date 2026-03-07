@@ -286,20 +286,18 @@
         if (rawCum != null) {
           if (prevRawCum[sym] != null) {
             let diff = rawCum - prevRawCum[sym];
-            // 🔥 마이너스 감지 로직: 봇이 초기화되어 누계가 떨어졌을 때 그날 일수익을 초기화된 누계와 동일하게 맞춤
             if (diff < -500) {
               profit = rawCum;
             } else {
               profit = diff;
             }
           } else {
-            // 🔥 첫 데이터 로직: 데이터의 첫 줄일 경우 '일수익 = 누적수익'으로 표기
             profit = rawCum;
           }
           prevRawCum[sym] = rawCum;
         }
         r[sym].profit = profit;
-        r[sym].cum = rawCum; // 봇이 보낸 누적액을 그대로 출력 (월별 리셋 자동 반영)
+        r[sym].cum = rawCum; 
       }
       r.totalDailyProfit = sumOrNull(symbols.map(s => r[s].profit));
       r.totalCum = sumOrNull(symbols.map(s => r[s].cum));
@@ -519,18 +517,19 @@
       backgroundColor: bgColors[sym],
       borderColor: borderColors[sym],
       borderWidth: 1,
+      maxBarThickness: 15, // 🔥 막대가 너무 두꺼워지지 않도록 최대 굵기 고정
       stack: 'Stack 0',
       yAxisID: "y"
     }));
 
     datasets.push({
       type: "line", label: "총 누적 수익 ($)", data: viewData.map(r => r.totalCum),
-      borderColor: 'rgb(255, 99, 132)', tension: 0.2, borderWidth: 2, fill: false, spanGaps: true, yAxisID: "y1"
+      borderColor: 'rgb(255, 99, 132)', tension: 0.2, borderWidth: 1.5, pointRadius: 2, fill: false, spanGaps: true, yAxisID: "y1" // 🔥 선 굵기 1.5로 다이어트
     });
 
     datasets.push({
       type: "line", label: "월 목표 (1.5%)", data: viewData.map(() => totalTarget),
-      borderColor: 'rgba(34, 197, 94, 0.8)', borderDash: [5, 5], borderWidth: 2, pointRadius: 0, fill: false, yAxisID: "y1"
+      borderColor: 'rgba(34, 197, 94, 0.8)', borderDash: [5, 5], borderWidth: 1.5, pointRadius: 0, fill: false, yAxisID: "y1" // 🔥 선 굵기 1.5로 다이어트
     });
 
     const canvas = document.getElementById("comboChart");
