@@ -40,6 +40,8 @@
         .btn-primary:hover { background-color: #121858; border-color: #121858; }
         .app-link-btn { border-radius: 20px; font-weight: 700; font-size: 0.85rem; border: 1.5px solid #1a237e; color: #1a237e; text-decoration: none; padding: 4px 12px; transition: all 0.2s; background: white; }
         .app-link-btn:hover { background-color: #1a237e; color: white; }
+        
+        .btn-action { padding: 1px 5px !important; font-size: 0.65rem !important; margin: 0 1px; }
     </style>
 </head>
 <body>
@@ -94,8 +96,8 @@
                             <div class="col-4 border-end px-2">
                                 <label class="form-label text-muted mb-1" style="font-size: 0.75rem;">종목 티커</label>
                                 <div class="input-group input-group-sm">
-                                    <input type="text" id="tickerInput" class="form-control text-center fw-bold text-uppercase" placeholder="SOXL">
-                                    <button class="btn btn-secondary" id="fetchBtn" onclick="fetchTicker()">조회</button>
+                                    <input type="text" id="tickerInput" class="form-control text-center fw-bold text-uppercase" value="SOXL" placeholder="티커">
+                                    <button class="btn btn-secondary" id="fetchBtn" style="min-width: 50px;" onclick="fetchTicker()">조회</button>
                                 </div>
                             </div>
                             <div class="col-4 border-end px-2 text-center">
@@ -208,12 +210,14 @@
         <div class="card mt-4">
             <div class="card-header">최근 매매 기록 내역</div>
             <div class="card-body p-0">
-                <div class="table-responsive scroll-box" style="max-height: 400px;">
+                <div class="table-responsive scroll-box" style="max-height: 500px;">
                     <table class="table-excel mb-0">
                         <thead>
                             <tr>
                                 <th class="sticky-col" style="z-index: 4;">날짜</th>
-                                <th>호기</th><th>구분</th><th>수량</th><th>단가/금액</th><th>총액</th><th>비고</th><th>관리</th>
+                                <th>호기</th><th>구분</th><th>수량</th><th>단가/금액</th><th>총액</th>
+                                <th>수익금</th><th>수익률</th>
+                                <th>비고</th><th style="width: 70px;">관리</th>
                             </tr>
                         </thead>
                         <tbody id="tradeLogBody"></tbody>
@@ -237,12 +241,15 @@
 
         document.getElementById('dateInput').valueAsDate = new Date();
 
+        // 빙글빙글 스피너 로직이 추가된 시세 조회 기능
         async function fetchTicker() {
             const ticker = document.getElementById('tickerInput').value.toUpperCase();
             if(!ticker) { alert("조회할 종목의 티커를 입력하세요."); return; }
             
             const btn = document.getElementById('fetchBtn');
-            btn.innerText = "조회중..."; btn.disabled = true;
+            // 부트스트랩 스피너 코드 삽입
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>'; 
+            btn.disabled = true;
             let price = null;
             const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}`;
 
@@ -259,7 +266,8 @@
                     await new Promise(r => setTimeout(r, 1000)); 
                 }
             }
-            btn.innerText = "조회"; btn.disabled = false;
+            btn.innerHTML = "조회"; 
+            btn.disabled = false;
 
             if(price) {
                 const priceStr = price.toFixed(2);
@@ -269,7 +277,7 @@
                 }
                 calcTodayBuyPrice(); 
             } else {
-                alert("네트워크 통신 지연으로 시세를 가져오지 못했습니다. 다시 눌러주세요.");
+                console.warn("네트워크 통신 지연으로 시세를 가져오지 못했습니다.");
             }
         }
 
@@ -330,7 +338,12 @@
             autoFillTrade();
         }
 
-        window.onload = () => { loadSettings(); loadData(); };
+        // 웹페이지 로드 시 데이터 로딩 후 자동으로 티커 가격을 조회하는 로직 실행
+        window.onload = () => { 
+            loadSettings(); 
+            loadData();
+            fetchTicker(); 
+        };
 
         async function loadData() {
             const { data, error } = await client.from(TABLE_NAME).select('*').order('date', { ascending: false }).order('created_at', { ascending: false });
@@ -347,6 +360,7 @@
                 let q = parseFloat(row.quantity);
                 let p = parseFloat(row.price);
                 row.realizedProfit = 0; 
+                row.profitRate = 0;
 
                 if(row.trade_type === '매수') {
                     if(stats[h].qty === 0) stats[h].firstDate = row.date;
@@ -356,6 +370,9 @@
                 } else if(row.trade_type === '매도') {
                     let realized = (p - stats[h].avgPrice) * q;
                     row.realizedProfit = realized;
+                    if(stats[h].avgPrice > 0) {
+                        row.profitRate = (realized / (stats[h].avgPrice * q)) * 100;
+                    }
                     stats[h].profit += realized;
                     stats[h].qty -= q;
                     
@@ -550,6 +567,14 @@
                 const amount = (row.quantity * row.price).toFixed(2);
                 const typeClass = row.trade_type === '매수' ? 'text-loss' : row.trade_type === '매도' ? 'text-profit' : 'text-success';
                 
+                let profitStr = '-';
+                let rateStr = '-';
+                if (row.trade_type === '매도' && row.realizedProfit !== undefined) {
+                    let sign = row.realizedProfit > 0 ? '+' : '';
+                    profitStr = `<span class="text-profit">${sign}${row.realizedProfit.toLocaleString(undefined, {minimumFractionDigits:2})}</span>`;
+                    rateStr = `<span class="text-profit">${sign}${row.profitRate.toFixed(2)}%</span>`;
+                }
+
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td class="sticky-col">${row.date.substring(5)}</td>
@@ -558,8 +583,10 @@
                     <td>${row.quantity}</td>
                     <td>${row.price.toFixed(2)}</td>
                     <td>${amount}</td>
+                    <td>${profitStr}</td>
+                    <td>${rateStr}</td>
                     <td class="small text-muted">${row.memo || ''}</td>
-                    <td>
+                    <td style="padding: 4px;">
                         <button onclick="editData(${row.id})" class="btn btn-outline-secondary btn-action">수정</button>
                         <button onclick="deleteData(${row.id})" class="btn btn-outline-danger btn-action">삭제</button>
                     </td>
