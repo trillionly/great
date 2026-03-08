@@ -3,114 +3,210 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Investment Logbook</title>
+  <title>그리드매매 시스템</title>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
-    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 18px; background:#f6f8fa; }
-    h1 { margin: 0 0 6px; }
-    .sub { color:#666; margin: 0 0 12px; }
-    .pill { display:inline-block; padding:2px 10px; border-radius:999px; background:#eef2ff; font-size:12px; }
+    /* 🔥 금융 앱 스타일의 전문적인 컬러 팔레트 */
+    :root {
+      --primary: #1e3a8a; /* 짙은 네이비 */
+      --primary-hover: #172a6b;
+      --bg-color: #f1f5f9; /* 차분한 배경색 */
+      --surface: #ffffff;
+      --border: #e2e8f0;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --pos: #0f766e;
+      --neg: #b91c1c;
+    }
+
+    body { 
+      font-family: 'Pretendard', system-ui, -apple-system, sans-serif; 
+      margin: 20px; 
+      background: var(--bg-color); 
+      color: var(--text-main);
+    }
+
+    /* 🔥 상단 헤더 및 네비게이션 영역 */
+    .header-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding-bottom: 16px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid var(--border);
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+    
+    .header-titles h1 { 
+      margin: 0 0 6px; 
+      color: var(--primary);
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+    
+    .header-titles .sub { 
+      color: var(--text-muted); 
+      font-size: 13px; 
+      font-weight: 500;
+    }
+
+    /* 포털 이동 링크 버튼 */
+    .nav-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--surface);
+      color: var(--primary);
+      border: 1px solid var(--primary);
+      padding: 10px 20px;
+      border-radius: 6px; /* 각진 느낌 */
+      text-decoration: none;
+      font-weight: 700;
+      font-size: 14px;
+      transition: all 0.2s ease;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    .nav-btn:hover {
+      background: var(--primary);
+      color: var(--surface);
+    }
+
+    .pill { display:inline-block; padding:3px 12px; border-radius:4px; background:#e0e7ff; color: #3730a3; font-size:12px; font-weight: 600;}
     .err { background:#fee2e2; color:#991b1b; }
 
-    .wrap { overflow-x: auto; border:1px solid #e5e7eb; border-radius:12px; background:#fff; margin-bottom: 20px; }
-    table { border-collapse: collapse; width: 100%; min-width: 800px; white-space: nowrap; }
-
-    th, td { border-bottom: 1px solid #eee; padding: 8px 8px; vertical-align: middle; }
-    th { background:#fafafa; text-align:left; position: sticky; top: 0; z-index: 10; box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
-    
-    th:first-child, td:first-child { position: sticky; left: 0; z-index: 11; border-right: 2px solid #e5e7eb; }
-    th:first-child { z-index: 12; background: #fafafa; }
-
-    tbody tr:nth-child(even) { background-color: #f8fafc; }
-    tbody tr:nth-child(even) td:first-child { background-color: #f8fafc; }
-    tbody tr:nth-child(odd) { background-color: #ffffff; }
-    tbody tr:nth-child(odd) td:first-child { background-color: #ffffff; }
-    tbody tr:hover { background-color: #f1f5f9; }
-    tbody tr:hover td:first-child { background-color: #f1f5f9; }
-
-    .br { border-right: 1px solid #eee; }
-    .right { text-align:right; font-variant-numeric: tabular-nums; }
-    .center { text-align:center; font-variant-numeric: tabular-nums; }
-    
-    .muted { color:#666; }
-    .neg { color:#b00020; font-weight:600; }
-    .pos { color:#0b6b3a; font-weight:600; }
-    .head2 { background:#fff7e6; font-weight:700; }
-    .tot { background:#f2f7ff; font-weight:700; }
-    .avg { background:#fcfdfa; font-weight:600; }
-
-    tfoot tr.avg td:first-child { background-color: #fcfdfa; }
-    tfoot tr.tot td:first-child { background-color: #f2f7ff; }
-
-    .small { font-size: 12px; color:#555; }
-    select { padding:9px 10px; border:1px solid #ddd; border-radius:10px; }
+    /* 카드형 레이아웃 통일 */
+    .card { 
+      background: var(--surface); 
+      border: 1px solid var(--border); 
+      border-radius: 8px; /* 전문적인 느낌을 위해 각을 살림 */
+      padding: 14px 16px; 
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04); 
+      display: flex; flex-direction: column; height: 100%; box-sizing: border-box; min-width: 0;
+    }
     
     .summary-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      margin-bottom: 15px;
-    }
-    .card { 
-      background:#fff; border:1px solid #e5e7eb; border-radius:12px; padding:10px 12px; 
-      box-shadow:0 1px 2px rgba(0,0,0,.04); 
-      display: flex; flex-direction: column; height: 100%; box-sizing: border-box; min-width: 0;
+      gap: 12px;
+      margin-bottom: 20px;
     }
     
-    .k { font-size:12px; color:#666; line-height: 1.2; }
-    .v { font-size:18px; font-weight:700; margin-top:auto; padding-top: 6px; }
+    .k { font-size:13px; color: var(--primary); font-weight: 700; line-height: 1.2; margin-bottom: 8px; }
+    .v { font-size:20px; font-weight:800; margin-top:auto; padding-top: 2px; }
     
+    /* 컨트롤러 (드롭다운) 영역 */
+    .controls { display: flex; gap: 12px; justify-content: flex-end; margin-bottom: 16px; flex-wrap: wrap; }
+    .controls .small { font-size: 12px; color: var(--text-muted); font-weight: 600; margin-bottom: 4px; }
+    select { 
+      padding: 8px 12px; 
+      border: 1px solid #cbd5e1; 
+      border-radius: 6px; 
+      background: #f8fafc;
+      color: var(--text-main);
+      font-weight: 500;
+      font-size: 14px;
+      outline: none;
+    }
+    select:focus { border-color: var(--primary); }
+
+    /* 🔥 테이블 디자인 정교화 */
+    .wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+    table { border-collapse: collapse; width: 100%; min-width: 800px; white-space: nowrap; }
+
+    th, td { border-bottom: 1px solid var(--border); padding: 10px 10px; vertical-align: middle; font-size: 13px; }
+    th { 
+      background: #f8fafc; 
+      color: var(--text-main); 
+      text-align: left; 
+      position: sticky; top: 0; z-index: 10; 
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05); 
+    }
+    
+    /* 테이블 헤더 상단 네이비 라인 (전문성 강조) */
+    .head2 th { border-top: 3px solid var(--primary); color: var(--primary); }
+    
+    th:first-child, td:first-child { position: sticky; left: 0; z-index: 11; border-right: 2px solid var(--border); }
+    th:first-child { z-index: 12; background: #f8fafc; }
+
+    tbody tr:nth-child(even) { background-color: #f8fafc; }
+    tbody tr:nth-child(even) td:first-child { background-color: #f8fafc; }
+    tbody tr:nth-child(odd) { background-color: var(--surface); }
+    tbody tr:nth-child(odd) td:first-child { background-color: var(--surface); }
+    tbody tr:hover { background-color: #f1f5f9; }
+    tbody tr:hover td:first-child { background-color: #f1f5f9; }
+
+    .br { border-right: 1px solid var(--border); }
+    .right { text-align:right; font-variant-numeric: tabular-nums; }
+    .center { text-align:center; font-variant-numeric: tabular-nums; }
+    
+    .muted { color: var(--text-muted); }
+    .neg { color: var(--neg); font-weight:600; }
+    .pos { color: var(--pos); font-weight:600; }
+    
+    .tot { background: #eff6ff; font-weight:700; border-top: 2px solid #cbd5e1; }
+    .avg { background: #f8fafc; font-weight:600; }
+    tfoot tr.avg td:first-child { background-color: #f8fafc; }
+    tfoot tr.tot td:first-child { background-color: #eff6ff; }
+
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
     .wide { min-width: 100%; margin-top: 15px; }
-
-    .controls { display: flex; gap: 10px; justify-content: flex-end; margin-bottom: 15px; flex-wrap: wrap; }
   </style>
 </head>
 <body>
-  <h1>Investment Logbook</h1>
-  <div class="sub">텔레그램 봇 연동 자동화 대시보드 (TQQQ/ETHU/TSLL)</div>
+  
+  <div class="header-container">
+    <div class="header-titles">
+      <h1>그리드매매 시스템</h1>
+      <div class="sub">텔레그램 봇 연동 자동화 대시보드 (TQQQ/ETHU/TSLL)</div>
+    </div>
+    <a href="https://trillionly.github.io/great/trade.html" class="nav-btn">
+      📉 떨사오팔 트레이딩 시스템 ➔
+    </a>
+  </div>
 
   <div class="summary-grid">
     <div class="card">
-      <div class="k">상태</div>
+      <div class="k">연동 상태</div>
       <div class="v"><span id="status" class="pill">로딩 중…</span></div>
     </div>
     <div class="card">
-      <div class="k">레코드 / 일자</div>
-      <div class="v"><span id="count">-</span>건 <span class="small muted" id="latest" style="font-weight:normal;">-</span></div>
+      <div class="k">데이터 파싱 일자</div>
+      <div class="v" style="font-size: 16px; margin-top: auto; padding-top: 6px;"><span id="count">-</span>건 / <span class="muted" id="latest">-</span></div>
     </div>
     <div class="card">
-      <div class="k">누적 수익(합계)</div>
+      <div class="k">총 누적 수익 (합계)</div>
       <div class="v" id="monthProfitAll">-</div>
-      <div class="small muted" id="monthRoiAll" style="margin-bottom: 4px;">-</div>
+      <div class="small muted" id="monthRoiAll" style="margin-bottom: 6px;">-</div>
       <div id="progAll" style="width:100%; margin-top:auto;"></div>
     </div>
 
     <div class="card">
       <div class="k">TQQQ 누적 수익</div>
       <div class="v" id="monthProfitTQQQ">-</div>
-      <div class="small muted" id="monthRoiTQQQ" style="margin-bottom: 4px;">-</div>
+      <div class="small muted" id="monthRoiTQQQ" style="margin-bottom: 6px;">-</div>
       <div id="progTQQQ" style="width:100%; margin-top:auto;"></div>
     </div>
     <div class="card">
       <div class="k">ETHU 누적 수익</div>
       <div class="v" id="monthProfitETHU">-</div>
-      <div class="small muted" id="monthRoiETHU" style="margin-bottom: 4px;">-</div>
+      <div class="small muted" id="monthRoiETHU" style="margin-bottom: 6px;">-</div>
       <div id="progETHU" style="width:100%; margin-top:auto;"></div>
     </div>
     <div class="card">
       <div class="k">TSLL 누적 수익</div>
       <div class="v" id="monthProfitTSLL">-</div>
-      <div class="small muted" id="monthRoiTSLL" style="margin-bottom: 4px;">-</div>
+      <div class="small muted" id="monthRoiTSLL" style="margin-bottom: 6px;">-</div>
       <div id="progTSLL" style="width:100%; margin-top:auto;"></div>
     </div>
   </div>
 
   <div class="controls">
     <div>
-      <div class="small">연도</div>
+      <div class="small">조회 연도</div>
       <select id="yearSel"></select>
     </div>
     <div>
@@ -137,19 +233,20 @@
   </div>
 
   <div class="card wide">
-    <div class="k">수익 콤보 차트 (막대=수익 합산 / 선=누적 / 점선=누적 목표)</div>
+    <div class="k" style="margin-bottom: 12px;">📊 수익 콤보 차트 (막대=수익 합산 / 선=누적 / 점선=누적 목표)</div>
     <div style="position: relative; height: 300px; width: 100%;">
       <canvas id="comboChart"></canvas>
     </div>
   </div>
 
-  <details style="margin-top:12px">
-    <summary class="small">디버그 보기(최근 블록 파싱)</summary>
-    <pre class="mono" id="debug" style="white-space:pre-wrap; font-size:11px;"></pre>
+  <details style="margin-top:20px">
+    <summary class="small" style="color: #64748b; cursor: pointer;">디버그 보기(최근 블록 파싱)</summary>
+    <pre class="mono" id="debug" style="white-space:pre-wrap; font-size:11px; background:#f8fafc; padding:10px; border:1px solid #e2e8f0; border-radius:6px; margin-top:8px;"></pre>
   </details>
 
 <script>
   const SEEDS = { TQQQ: 140000, ETHU: 40000, TSLL: 32000 };
+  const MAX_TIERS = { TQQQ: 140, ETHU: 140, TSLL: 90 };
 
   const esc = (s) => (s ?? "").toString().replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
   const num = (s) => {
@@ -168,7 +265,6 @@
     return nums.reduce((a,b)=>a+b,0);
   };
 
-  // 🔥 업그레이드된 정규식: 이모티콘 무시, 괄호 여백 무시, 콤마/소수점 100% 인식
   function parseGridTier(fullText) {
     if (!fullText) return { tierNow: null, tierMax: null };
     const rows = [];
@@ -196,7 +292,6 @@
     return { tierNow, tierMax };
   }
 
-  // 🔥 줄 단위로 데이터를 스캔하여 쪼개진 메시지를 완벽하게 재조립하는 엔진
   function getLinesWithYear(reportRows) {
       const chronos = [...reportRows].reverse();
       const linesInfo = [];
@@ -223,7 +318,6 @@
           const line = item.text;
           if (!line) continue;
 
-          // 시간 헤더 인식
           const dtM = line.match(/(\d{2})\/(\d{2})일\s+(\d{2}:\d{2})/);
           if (dtM) {
               globalDate = `${dtM[1]}/${dtM[2]}`;
@@ -231,7 +325,6 @@
               globalYear = item.year;
           }
 
-          // 종목 헤더 인식 (공백 무시, 강력한 정규식 적용)
           let symM = line.match(/([A-Z]{2,6})\s*최대필요\s*:/);
           if (!symM) symM = line.match(/([A-Z]{2,6})\s*평가금액\s*:/);
           
@@ -257,18 +350,15 @@
               continue; 
           }
 
-          // 종목을 찾은 이후의 모든 줄은 쪼개진 메시지라도 무조건 해당 종목에 이어붙임
           if (currentKey && recordsMap.has(currentKey)) {
               recordsMap.get(currentKey).raw += line + "\n";
           }
       }
 
-      // 조립이 끝난 거대한 텍스트 덩어리에서 데이터 추출
       return Array.from(recordsMap.values()).map(r => {
           const cumM = r.raw.match(/주문가능-최대필요\s*:\s*([-\d,]+(?:\.\d+)?)/);
           r.cum = cumM ? num(cumM[1]) : null;
 
-          // 매도 횟수도 완벽하게 잡아냅니다 (S 0회, S: 0회 등 모두 대응)
           const sCnt = r.raw.match(/(?:S|매도)\s*[:\-]?\s*([-\d.,]+)\s*회/i);
           r.sellCount = sCnt ? num(sCnt[1]) : null;
 
@@ -357,7 +447,7 @@
           ctx.fillStyle = '#475569';
           ctx.font = 'bold 11px system-ui';
           ctx.textAlign = 'center';
-          ctx.fillText('$' + new Intl.NumberFormat('en-US').format(total), barX, topY - 6);
+          ctx.fillText('$' + new Intl.NumberFormat('en-US').format(total), barX, topY - 8);
           ctx.restore();
         }
       });
@@ -401,26 +491,21 @@
     for (const sym of symbols) {
       const el = document.getElementById(`tier_${sym}`);
       if (el) {
+        const fixedMax = MAX_TIERS[sym] || 140;
+        
         if (viewMode !== 'DAILY') {
-          // 🔥 연간 조회: 봇에서 가져온 진짜 최대 티어 표시 (복구 완료)
-          let maxTier = 0;
-          for (let r of viewData) {
-            if (r[sym] && r[sym].tierMax && r[sym].tierMax > maxTier) maxTier = r[sym].tierMax;
-          }
-          el.textContent = maxTier > 0 ? `${maxTier}` : "";
+          el.textContent = `${fixedMax}`;
         } else {
-          // 🔥 일간 조회: 실제 봇 데이터 기반 동적 티어 표기 (복구 완료)
           let maxDate = viewData[viewData.length - 1]?.maxDate || "9999/99/99";
-          let lastNow = null, lastMax = null, prevNow = null;
+          let lastNow = null, prevNow = null;
           
           for (let i = allDaily.length - 1; i >= 0; i--) {
             if (allDaily[i].yyyymmdd > maxDate) continue; 
             
             const cell = allDaily[i][sym];
-            if (cell && cell.tierNow != null && cell.tierMax != null) {
+            if (cell && cell.tierNow != null) {
               if (lastNow == null) {
                 lastNow = cell.tierNow;
-                lastMax = cell.tierMax;
               } else if (prevNow == null) {
                 prevNow = cell.tierNow;
                 break;
@@ -431,7 +516,7 @@
           if (lastNow != null) {
             const diff = prevNow != null ? (lastNow - prevNow) : 0;
             const diffStr = diff >= 0 ? `+${diff}` : `${diff}`;
-            el.textContent = `${lastNow}/${lastMax} ${diffStr}`;
+            el.textContent = `${lastNow}/${fixedMax} ${diffStr}`;
           } else {
             el.textContent = "";
           }
@@ -525,14 +610,14 @@
       if (p && targetAmt > 0) {
         const pct = Math.max(0, (profit / targetAmt) * 100);
         const isDone = pct >= 100;
-        const color = isDone ? '#16a34a' : '#3b82f6';
+        const color = isDone ? '#10b981' : '#3b82f6';
         
         p.innerHTML = `
-          <div style="display:flex; justify-content:space-between; font-size:11px; color:#666; margin-bottom:4px;">
+          <div style="display:flex; justify-content:space-between; font-size:11px; color:#64748b; margin-bottom:5px;">
             <span>목표 $${fmtInt(targetAmt)}</span>
             <span style="font-weight:700; color:${color}">${fmtFloat1(pct)}%</span>
           </div>
-          <div style="background:#e5e7eb; border-radius:999px; height:6px; width:100%; overflow:hidden;">
+          <div style="background:#e2e8f0; border-radius:999px; height:6px; width:100%; overflow:hidden;">
             <div style="background:${color}; height:100%; width:${Math.min(100, pct)}%; transition:width 0.5s;"></div>
           </div>
         `;
@@ -557,14 +642,14 @@
 
     const labels = viewData.map(r => r.dateLabel);
     const bgColors = {
-      TQQQ: 'rgba(54, 162, 235, 0.7)',
-      ETHU: 'rgba(255, 159, 64, 0.7)',
-      TSLL: 'rgba(153, 102, 255, 0.7)'
+      TQQQ: 'rgba(30, 58, 138, 0.75)', /* 네이비 블루 */
+      ETHU: 'rgba(56, 189, 248, 0.75)', /* 스카이 블루 */
+      TSLL: 'rgba(148, 163, 184, 0.75)' /* 슬레이트 그레이 */
     };
     const borderColors = {
-      TQQQ: 'rgb(54, 162, 235)',
-      ETHU: 'rgb(255, 159, 64)',
-      TSLL: 'rgb(153, 102, 255)'
+      TQQQ: '#1e3a8a',
+      ETHU: '#0284c7',
+      TSLL: '#64748b'
     };
 
     const datasets = symbols.map(sym => ({
@@ -581,7 +666,7 @@
 
     datasets.push({
       type: "line", label: "총 누적 수익 ($)", data: viewData.map(r => r.totalCum),
-      borderColor: 'rgb(255, 99, 132)', tension: 0.2, borderWidth: 2, pointRadius: 3, fill: false, spanGaps: true, yAxisID: "y1"
+      borderColor: '#ef4444', tension: 0.2, borderWidth: 2, pointRadius: 3, fill: false, spanGaps: true, yAxisID: "y1"
     });
 
     let targetLineData = [];
@@ -593,7 +678,7 @@
 
     datasets.push({
       type: "line", label: viewMode !== 'DAILY' ? "누적 목표액" : "월 목표 (1.5%)", data: targetLineData,
-      borderColor: 'rgba(34, 197, 94, 0.8)', borderDash: [5, 5], borderWidth: 2, pointRadius: 0, fill: false, yAxisID: "y1"
+      borderColor: '#10b981', borderDash: [5, 5], borderWidth: 2, pointRadius: 0, fill: false, yAxisID: "y1"
     });
 
     const canvas = document.getElementById("comboChart");
@@ -606,8 +691,12 @@
           responsive: true, maintainAspectRatio: false,
           interaction: { mode: "index", intersect: false },
           plugins: { 
-            legend: { position: "top" },
+            legend: { position: "top", labels: { font: { family: 'system-ui' } } },
             tooltip: {
+              backgroundColor: 'rgba(30, 41, 59, 0.9)',
+              titleFont: { size: 14, family: 'system-ui' },
+              bodyFont: { size: 13, family: 'system-ui' },
+              padding: 12,
               callbacks: {
                 footer: (tooltipItems) => {
                   let sum = 0;
@@ -619,7 +708,7 @@
                     }
                   });
                   if (isBarHovered) {
-                    return '▶ 수익 합계: $' + new Intl.NumberFormat('en-US').format(sum);
+                    return '\n▶ 수익 합계: $' + new Intl.NumberFormat('en-US').format(sum);
                   }
                   return null;
                 }
@@ -627,7 +716,7 @@
             }
           },
           scales: {
-            x: { stacked: true },
+            x: { stacked: true, grid: { display: false } },
             y: { type: "linear", position: "left", stacked: true, ticks: { callback: v => "$" + v } },
             y1: { type: "linear", position: "right", stacked: false, grid: { drawOnChartArea: false }, ticks: { callback: v => "$" + v } }
           }
@@ -671,7 +760,7 @@
       debug.textContent = JSON.stringify(blocks.slice(0, 3), null, 2);
 
       if (!blocks.length) {
-        status.textContent = "파싱 대기 중";
+        status.textContent = "데이터 대기 중";
         return;
       }
 
@@ -823,7 +912,7 @@
       symbolsSel.addEventListener("change", rerender);
       rerender();
     } catch (e) {
-      status.textContent = "연결/데이터 에러";
+      status.textContent = "연결 에러";
       status.classList.add("err");
       console.error(e);
     }
