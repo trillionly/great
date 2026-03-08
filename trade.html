@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>떨사오팔 매매 현황</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        .table-excel { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+        .table-excel th, .table-excel td { border: 1px solid #dee2e6; padding: 6px; text-align: center; }
+        .table-excel th { background-color: #f8f9fa; fw-bold: true; }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="container mt-3" style="max-width: 800px;">
+        <h2 class="text-center mb-4 fw-bold">📈 떨사오팔 매매 현황판</h2>
+        
+        <div class="card mb-4 shadow-sm border-0">
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-4 border-end">
+                        <small class="text-secondary">누적 수익금</small>
+                        <h4 class="text-primary fw-bold" id="totalProfit">0원</h4>
+                    </div>
+                    <div class="col-4 border-end">
+                        <small class="text-secondary">총 수익률</small>
+                        <h4 class="text-success fw-bold" id="totalRate">0.00%</h4>
+                    </div>
+                    <div class="col-4">
+                        <small class="text-secondary">익절 횟수</small>
+                        <h4 class="text-danger fw-bold" id="winCount">0회</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4 shadow-sm border-0 p-3">
+            <h5 class="fw-bold mb-3">📝 새로운 기록 입력</h5>
+            <div class="row g-2 mb-2">
+                <div class="col-6"><input type="date" id="dateInput" class="form-control form-control-lg"></div>
+                <div class="col-6">
+                    <select id="hogiInput" class="form-select form-select-lg">
+                        <option value="1호기">1호기</option><option value="2호기">2호기</option><option value="3호기">3호기</option>
+                        <option value="4호기">4호기</option><option value="5호기">5호기</option><option value="6호기">6호기</option>
+                    </select>
+                </div>
+            </div>
+            <div class="row g-2 mb-2">
+                <div class="col-6">
+                    <select id="typeInput" class="form-select form-select-lg">
+                        <option value="매수">🔴 매수</option><option value="매도">🔵 매도</option>
+                    </select>
+                </div>
+                <div class="col-6"><input type="number" id="qtyInput" class="form-control form-control-lg" placeholder="수량"></div>
+            </div>
+            <div class="row g-2 mb-3">
+                <div class="col-6"><input type="number" id="priceInput" class="form-control form-control-lg" placeholder="단가" step="0.01"></div>
+                <div class="col-6"><input type="text" id="memoInput" class="form-control form-control-lg" placeholder="비고 (선택)"></div>
+            </div>
+            <button onclick="saveData()" class="btn btn-dark btn-lg w-100 fw-bold">저장하기</button>
+        </div>
+
+        <div class="card shadow-sm border-0 p-3 mb-4">
+            <h5 class="fw-bold mb-3">📜 매매 기록 목록</h5>
+            <div class="table-responsive">
+                <table class="table-excel">
+                    <thead>
+                        <tr>
+                            <th>날짜</th><th>호기</th><th>매매</th><th>수량</th><th>단가</th><th>금액</th><th>비고</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tradeLogBody">
+                        </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ★여기에 회원님의 Supabase 주소와 키를 꼭 따옴표 안에 넣어주세요!★
+        const SUPABASE_URL = 'https://qutualbddxsyrhwzaosf.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1dHVhbGJkZHhzeXJod3phb3NmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1ODA1MTEsImV4cCI6MjA4NzE1NjUxMX0.iDcwZg9bGFnbl0DJfU0ks4DZtdVJ24Rh_e2ooDP-dts';
+        
+        const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const TABLE_NAME = 'teol_sa_o_pal'; // 방금 새로 만든 테이블 이름
+
+        // 오늘 날짜 기본 세팅
+        document.getElementById('dateInput').valueAsDate = new Date();
+
+        // 페이지 로드 시 기존 데이터를 불러와서 표에 그리기
+        window.onload = loadData;
+
+        async function loadData() {
+            // Supabase에서 데이터 가져오기 (날짜 역순으로)
+            const { data, error } = await client
+                .from(TABLE_NAME)
+                .select('*')
+                .order('date', { ascending: false });
+
+            if (error) { alert("데이터 불러오기 실패: " + error.message); return; }
+
+            const tbody = document.getElementById('tradeLogBody');
+            tbody.innerHTML = ''; // 기존 표 비우기
+
+            // 데이터를 한 줄씩 표에 그리기
+            data.forEach(row => {
+                const tr = document.createElement('tr');
+                // 금액 자동 계산 (수량 * 단가)
+                const amount = (row.quantity * row.price).toFixed(2);
+                
+                tr.innerHTML = `
+                    <td>${row.date}</td>
+                    <td>${row.hogi}</td>
+                    <td class="${row.trade_type === '매수' ? 'text-danger' : 'text-primary'} fw-bold">${row.trade_type}</td>
+                    <td>${row.quantity}</td>
+                    <td>${row.price.toFixed(2)}</td>
+                    <td>${amount}</td>
+                    <td class="text-muted small">${row.memo || ''}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            // TODO: 여기서 data를 바탕으로 상단 현황판(수익금, 수익률 등) 계산 로직 추가 필요
+        }
+
+        async function saveData() {
+            const date = document.getElementById('dateInput').value;
+            const hogi = document.getElementById('hogiInput').value;
+            const trade_type = document.getElementById('typeInput').value;
+            const quantity = parseFloat(document.getElementById('qtyInput').value);
+            const price = parseFloat(document.getElementById('priceInput').value);
+            const memo = document.getElementById('memoInput').value;
+
+            if(!quantity || !price) { alert("수량과 단가를 모두 입력해 주세요!"); return; }
+
+            const { error } = await client
+                .from(TABLE_NAME)
+                .insert([{ date, hogi, trade_type, quantity, price, memo }]);
+
+            if (error) {
+                alert("저장 실패: " + error.message);
+            } else {
+                alert("성공적으로 저장되었습니다!");
+                // 입력칸 비우기
+                document.getElementById('qtyInput').value = '';
+                document.getElementById('priceInput').value = '';
+                document.getElementById('memoInput').value = '';
+                // 데이터 다시 불러와서 표 업데이트
+                loadData();
+            }
+        }
+    </script>
+</body>
+</html>
