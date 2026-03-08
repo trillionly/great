@@ -28,52 +28,61 @@
       color: var(--text-main);
     }
 
-    /* 🔥 상단 헤더 및 네비게이션 영역 */
+    /* 🔥 상단 헤더 영역 (버튼 우측 상단 고정 로직 적용) */
     .header-container {
       display: flex;
       justify-content: space-between;
-      align-items: flex-end;
+      align-items: flex-start; /* 글씨와 버튼을 상단에 맞춤 */
       padding-bottom: 16px;
       margin-bottom: 20px;
       border-bottom: 2px solid var(--border);
-      flex-wrap: wrap;
-      gap: 15px;
+      gap: 10px;
+      /* flex-wrap 속성 제거: 버튼이 아래로 떨어지지 않게 함 */
     }
     
+    .header-titles {
+      flex: 1; /* 제목 영역이 남는 공간을 다 쓰도록 함 */
+      min-width: 0; /* 화면이 좁을 때 글자가 삐져나가지 않게 방지 */
+    }
+
     .header-titles h1 { 
       margin: 0 0 6px; 
       color: var(--primary);
       font-size: 26px;
       font-weight: 800;
       letter-spacing: -0.5px;
+      word-break: keep-all; /* 한글 단어 끊김 방지 */
     }
     
     .header-titles .sub { 
       color: var(--text-muted); 
       font-size: 13px; 
       font-weight: 500;
+      line-height: 1.4;
     }
 
-    /* 🔥 회원님이 가져오신 완벽한 비율의 앱 버튼 CSS */
+    /* 🔥 수정된 앱 링크 버튼 (크기 축소 및 위치 고정) */
     .app-link-btn { 
         border-radius: 20px; 
         font-weight: 700; 
-        font-size: 0.85rem; 
+        font-size: 0.75rem; /* 0.85rem에서 살짝 줄임 */
         border: 1.5px solid #1a237e; 
         color: #1a237e; 
         text-decoration: none; 
-        padding: 4px 12px; 
+        padding: 3px 10px; /* 여백을 살짝 줄여서 슬림하게 */
         transition: all 0.2s; 
         background: white;
         display: inline-flex; 
         align-items: center; 
         gap: 4px;
+        white-space: nowrap; /* 폰 화면이 좁아도 버튼 안의 글씨는 두 줄이 되지 않음 */
+        flex-shrink: 0; /* 화면이 좁아져도 버튼 크기는 찌그러지지 않게 방어 */
+        margin-top: 4px; /* 제목과 라인을 예쁘게 맞추기 위한 미세조정 */
     }
     .app-link-btn:hover { 
         background-color: #1a237e; 
         color: white; 
     }
-    /* 부트스트랩 shadow-sm 대체 코드 */
     .shadow-sm {
         box-shadow: 0 .125rem .25rem rgba(0,0,0,.075) !important;
     }
@@ -116,7 +125,7 @@
     }
     select:focus { border-color: var(--primary); }
 
-    /* 🔥 테이블 디자인 정교화 */
+    /* 테이블 디자인 */
     .wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
     table { border-collapse: collapse; width: 100%; min-width: 800px; white-space: nowrap; }
 
