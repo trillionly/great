@@ -54,21 +54,21 @@
       font-weight: 500;
     }
 
-    /* 포털 이동 링크 버튼 */
+    /* 🔥 포털 이동 링크 버튼 (둥근 캡슐 스타일로 변경) */
     .nav-btn {
       display: inline-flex;
       align-items: center;
       gap: 6px;
       background: var(--surface);
       color: var(--primary);
-      border: 1px solid var(--primary);
-      padding: 10px 20px;
-      border-radius: 6px; /* 각진 느낌 */
+      border: 2px solid var(--primary); /* 테두리를 조금 더 또렷하게 */
+      padding: 8px 22px; 
+      border-radius: 999px; /* 완전한 둥근 캡슐 형태 */
       text-decoration: none;
       font-weight: 700;
-      font-size: 14px;
+      font-size: 15px;
       transition: all 0.2s ease;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
     .nav-btn:hover {
       background: var(--primary);
@@ -82,7 +82,7 @@
     .card { 
       background: var(--surface); 
       border: 1px solid var(--border); 
-      border-radius: 8px; /* 전문적인 느낌을 위해 각을 살림 */
+      border-radius: 8px; 
       padding: 14px 16px; 
       box-shadow: 0 1px 3px rgba(0,0,0,0.04); 
       display: flex; flex-direction: column; height: 100%; box-sizing: border-box; min-width: 0;
@@ -126,7 +126,6 @@
       box-shadow: 0 1px 2px rgba(0,0,0,0.05); 
     }
     
-    /* 테이블 헤더 상단 네이비 라인 (전문성 강조) */
     .head2 th { border-top: 3px solid var(--primary); color: var(--primary); }
     
     th:first-child, td:first-child { position: sticky; left: 0; z-index: 11; border-right: 2px solid var(--border); }
@@ -164,7 +163,7 @@
       <div class="sub">텔레그램 봇 연동 자동화 대시보드 (TQQQ/ETHU/TSLL)</div>
     </div>
     <a href="https://trillionly.github.io/great/trade.html" class="nav-btn">
-      📉 떨사오팔 트레이딩 시스템 ➔
+      📉 떨사오팔 센터 ➔
     </a>
   </div>
 
@@ -491,21 +490,24 @@
     for (const sym of symbols) {
       const el = document.getElementById(`tier_${sym}`);
       if (el) {
-        const fixedMax = MAX_TIERS[sym] || 140;
-        
         if (viewMode !== 'DAILY') {
-          el.textContent = `${fixedMax}`;
+          let maxTier = 0;
+          for (let r of viewData) {
+            if (r[sym] && r[sym].tierMax && r[sym].tierMax > maxTier) maxTier = r[sym].tierMax;
+          }
+          el.textContent = maxTier > 0 ? `${maxTier}` : "";
         } else {
           let maxDate = viewData[viewData.length - 1]?.maxDate || "9999/99/99";
-          let lastNow = null, prevNow = null;
+          let lastNow = null, lastMax = null, prevNow = null;
           
           for (let i = allDaily.length - 1; i >= 0; i--) {
             if (allDaily[i].yyyymmdd > maxDate) continue; 
             
             const cell = allDaily[i][sym];
-            if (cell && cell.tierNow != null) {
+            if (cell && cell.tierNow != null && cell.tierMax != null) {
               if (lastNow == null) {
                 lastNow = cell.tierNow;
+                lastMax = cell.tierMax;
               } else if (prevNow == null) {
                 prevNow = cell.tierNow;
                 break;
@@ -516,7 +518,7 @@
           if (lastNow != null) {
             const diff = prevNow != null ? (lastNow - prevNow) : 0;
             const diffStr = diff >= 0 ? `+${diff}` : `${diff}`;
-            el.textContent = `${lastNow}/${fixedMax} ${diffStr}`;
+            el.textContent = `${lastNow}/${lastMax} ${diffStr}`;
           } else {
             el.textContent = "";
           }
@@ -642,9 +644,9 @@
 
     const labels = viewData.map(r => r.dateLabel);
     const bgColors = {
-      TQQQ: 'rgba(30, 58, 138, 0.75)', /* 네이비 블루 */
-      ETHU: 'rgba(56, 189, 248, 0.75)', /* 스카이 블루 */
-      TSLL: 'rgba(148, 163, 184, 0.75)' /* 슬레이트 그레이 */
+      TQQQ: 'rgba(30, 58, 138, 0.75)', 
+      ETHU: 'rgba(56, 189, 248, 0.75)', 
+      TSLL: 'rgba(148, 163, 184, 0.75)' 
     };
     const borderColors = {
       TQQQ: '#1e3a8a',
