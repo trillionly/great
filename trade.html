@@ -300,7 +300,7 @@
                 document.getElementById('settingsForm').classList.add('d-none');
                 document.getElementById('settingsSummary').classList.remove('d-none');
                 document.getElementById('lockStatus').classList.remove('d-none');
-                document.getElementById('summaryText').innerText = `[${sysHogis}분할] 기본시드 $${sysSeed.toLocaleString()} | 매도 +${sysTarget}% | 손절 ${sysDday}일`;
+                document.getElementById('summaryText').innerText = `[${sysHogis}분할] 기본시드 $${sysSeed.toLocaleString()} | 매도 +${sysTarget}% | 손절 ${sysDday}일(영업일)`;
             } else {
                 isLocked = false;
                 document.getElementById('settingsForm').classList.remove('d-none');
@@ -389,6 +389,7 @@
             autoFillTrade(); 
         }
 
+        // 영업일(평일) 기준 D-day 로직 적용
         function renderDashboard() {
             const dashBody = document.getElementById('dashboardBody');
             dashBody.innerHTML = '';
@@ -408,15 +409,38 @@
                 let targetPrice = s.avgPrice > 0 ? s.avgPrice * (1 + (sysTarget / 100)) : 0;
                 let orderable = curPrice > 0 ? (compound / curPrice).toFixed(2) : '-';
 
+                // --- 영업일(Business Days) 기준 D-day 산출 ---
                 let dDayStr = '-';
                 if(s.firstDate) {
-                    let start = new Date(s.firstDate);
-                    start.setDate(start.getDate() + sysDday);
-                    let diffTime = start - today;
-                    let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    let sign = diffDays >= 0 ? '-' : '+'; 
-                    dDayStr = `${start.getMonth()+1}/${start.getDate()}(${sign}${Math.abs(diffDays)}일)`;
+                    let firstD = new Date(s.firstDate);
+                    firstD.setHours(0,0,0,0);
+                    
+                    // 1. 목표 손절 날짜 구하기 (평일만 더하기)
+                    let targetD = new Date(firstD);
+                    let added = 0;
+                    while(added < sysDday) {
+                        targetD.setDate(targetD.getDate() + 1);
+                        if(targetD.getDay() !== 0 && targetD.getDay() !== 6) added++; // 0:일, 6:토
+                    }
+                    
+                    // 2. 오늘부터 목표일 사이의 남은 '평일' 며칠인지 계산
+                    let diffDays = 0;
+                    let currentD = new Date(today);
+                    currentD.setHours(0,0,0,0);
+                    
+                    let isPast = currentD > targetD;
+                    let tempD = new Date(isPast ? targetD : currentD);
+                    let endD = new Date(isPast ? currentD : targetD);
+                    
+                    while(tempD < endD) {
+                        tempD.setDate(tempD.getDate() + 1);
+                        if(tempD.getDay() !== 0 && tempD.getDay() !== 6) diffDays++;
+                    }
+                    
+                    let sign = isPast ? '+' : '-'; // 남았으면 -, 지났으면 +
+                    dDayStr = `${targetD.getMonth()+1}/${targetD.getDate()}(${sign}${diffDays}일)`;
                 }
+                // ----------------------------------------
 
                 dashBody.innerHTML += `
                     <tr>
@@ -430,7 +454,7 @@
                         <td>${s.avgPrice > 0 ? s.avgPrice.toFixed(2) : '-'}</td>
                         <td class="text-profit">${targetPrice > 0 ? targetPrice.toFixed(2) : '-'}</td>
                         <td class="fw-bold text-success">${orderable}</td>
-                        <td class="text-muted">${dDayStr}</td>
+                        <td class="text-muted fw-bold">${dDayStr}</td>
                     </tr>
                 `;
             }
@@ -500,7 +524,7 @@
             let chartLabels = [];
             let chartPrincipal = [];
             let chartEvaluated = [];
-            let chartMonthlyProfit = []; // 툴팁 표기용 해당 월 수익금
+            let chartMonthlyProfit = []; 
             
             Object.keys(monthly).sort().forEach(m => {
                 chartLabels.push(`'${m.substring(2,4)}.${parseInt(m.substring(5,7))}`);
@@ -545,10 +569,10 @@
                                 afterBody: function(tooltipItems) {
                                     if(tooltipItems.length === 2) {
                                         let idx = tooltipItems[0].dataIndex;
-                                        let mProfit = chartMonthlyProfit[idx]; // 해당월 수익
+                                        let mProfit = chartMonthlyProfit[idx]; 
                                         let principal = tooltipItems[0].raw;
                                         let evaluated = tooltipItems[1].raw;
-                                        let cProfit = evaluated - principal; // 누적 수익
+                                        let cProfit = evaluated - principal; 
                                         let signM = mProfit >= 0 ? '+' : '';
                                         let signC = cProfit >= 0 ? '+' : '';
                                         return `\n💰 해당월 수익: ${signM}$${mProfit.toLocaleString(undefined, {minimumFractionDigits:2})}\n📈 누적 수익금: ${signC}$${cProfit.toLocaleString(undefined, {minimumFractionDigits:2})}`;
@@ -566,7 +590,6 @@
             const tbody = document.getElementById('tradeLogBody');
             tbody.innerHTML = '';
             globalData.forEach(row => {
-                // 총액에 콤마 추가 적용 (소수점 2자리)
                 const amount = (row.quantity * row.price).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
                 const typeClass = row.trade_type === '매수' ? 'text-loss' : row.trade_type === '매도' ? 'text-profit' : 'text-success';
                 
@@ -608,7 +631,6 @@
                                tInput.value === '매도' ? 'form-select form-select-sm text-profit' :
                                'form-select form-select-sm text-success';
 
-            // 시드추가 시 [시드증액] 비고 자동 완성
             if(tInput.value === '시드추가') {
                 qInput.value = 1; 
                 pInput.value = ''; 
