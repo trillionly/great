@@ -56,7 +56,7 @@
                 <div class="card h-100 mb-0">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <span>매매 시스템 세팅</span>
-                        <span id="lockStatus" class="badge bg-danger d-none" style="font-size: 0.7rem;">잠금됨</span>
+                        <span id="lockStatus" class="badge bg-danger d-none" style="font-size: 0.7rem;">잠금됨 (DB 동기화)</span>
                     </div>
                     <div class="card-body p-3">
                         <div id="settingsForm">
@@ -78,11 +78,11 @@
                                     <select id="setDday" class="form-select form-select-sm"><option value="15">15일</option><option value="30">30일</option><option value="45" selected>45일</option><option value="60">60일</option></select>
                                 </div>
                             </div>
-                            <button class="btn btn-primary btn-sm w-100 fw-bold mt-2" onclick="lockSettings()">새 매매 시작 (설정 확정)</button>
+                            <button id="lockBtn" class="btn btn-primary btn-sm w-100 fw-bold mt-2" onclick="lockSettings()">새 매매 시작 (설정 확정)</button>
                         </div>
                         <div id="settingsSummary" class="d-none bg-light p-2 rounded text-center border mt-1">
                             <span id="summaryText" class="fw-bold me-3" style="color: #1a237e;"></span>
-                            <button class="btn btn-outline-secondary btn-sm" onclick="unlockSettings()" style="font-size:0.7rem;">초기화</button>
+                            <button id="unlockBtn" class="btn btn-outline-secondary btn-sm" onclick="unlockSettings()" style="font-size:0.7rem;">초기화</button>
                         </div>
                     </div>
                 </div>
@@ -231,8 +231,11 @@
         const SUPABASE_URL = 'https://qutualbddxsyrhwzaosf.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1dHVhbGJkZHhzeXJod3phb3NmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1ODA1MTEsImV4cCI6MjA4NzE1NjUxMX0.iDcwZg9bGFnbl0DJfU0ks4DZtdVJ24Rh_e2ooDP-dts';
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        
         const TABLE_NAME = 'teol_sa_o_pal';
+        const SETTINGS_TABLE = 'app_settings'; // 새로 만든 세팅용 테이블
 
+        // 전역 변수 기본값
         let sysHogis = 6, sysSeed = 11000, sysTarget = 0.7, sysDday = 45;
         let isLocked = false;
         let globalData = [];
@@ -243,10 +246,10 @@
 
         async function fetchTicker() {
             const ticker = document.getElementById('tickerInput').value.toUpperCase();
-            if(!ticker) { alert("조회할 종목의 티커를 입력하세요."); return; }
+            if(!ticker) return;
             
             const btn = document.getElementById('fetchBtn');
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>'; 
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>'; 
             btn.disabled = true;
             let price = null;
             const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}`;
@@ -260,12 +263,9 @@
                         price = parsed.chart.result[0].meta.regularMarketPrice;
                         if(price) break; 
                     }
-                } catch(e) {
-                    await new Promise(r => setTimeout(r, 1000)); 
-                }
+                } catch(e) { await new Promise(r => setTimeout(r, 1000)); }
             }
-            btn.innerHTML = "조회"; 
-            btn.disabled = false;
+            btn.innerHTML = "조회"; btn.disabled = false;
 
             if(price) {
                 const priceStr = price.toFixed(2);
@@ -274,8 +274,6 @@
                     document.getElementById('priceInput').value = priceStr; 
                 }
                 calcTodayBuyPrice(); 
-            } else {
-                console.warn("네트워크 통신 지연으로 시세를 가져오지 못했습니다.");
             }
         }
 
@@ -289,13 +287,16 @@
             renderDashboard(); 
         }
 
-        function loadSettings() {
-            if(localStorage.getItem('isLocked') === 'true') {
+        // DB에서 세팅값을 불러오는 핵심 함수 (100% 동기화)
+        async function loadSettings() {
+            const { data, error } = await client.from(SETTINGS_TABLE).select('*').eq('id', 1).single();
+
+            if (data && data.is_locked) {
                 isLocked = true;
-                sysHogis = parseInt(localStorage.getItem('sysHogis'));
-                sysSeed = parseFloat(localStorage.getItem('sysSeed'));
-                sysTarget = parseFloat(localStorage.getItem('sysTarget'));
-                sysDday = parseInt(localStorage.getItem('sysDday'));
+                sysHogis = data.sys_hogis;
+                sysSeed = data.sys_seed;
+                sysTarget = data.sys_target;
+                sysDday = data.sys_dday;
                 
                 document.getElementById('settingsForm').classList.add('d-none');
                 document.getElementById('settingsSummary').classList.remove('d-none');
@@ -303,6 +304,12 @@
                 document.getElementById('summaryText').innerText = `[${sysHogis}분할] 기본시드 $${sysSeed.toLocaleString()} | 매도 +${sysTarget}% | 손절 ${sysDday}일(영업일)`;
             } else {
                 isLocked = false;
+                if(data) {
+                    document.getElementById('setHogis').value = data.sys_hogis;
+                    document.getElementById('setSeed').value = data.sys_seed;
+                    document.getElementById('setTarget').value = data.sys_target;
+                    document.getElementById('setDday').value = data.sys_dday;
+                }
                 document.getElementById('settingsForm').classList.remove('d-none');
                 document.getElementById('settingsSummary').classList.add('d-none');
                 document.getElementById('lockStatus').classList.add('d-none');
@@ -310,20 +317,38 @@
             updateHogiSelect();
         }
 
-        function lockSettings() {
+        // 세팅값을 DB에 저장하는 함수
+        async function lockSettings() {
+            const btn = document.getElementById('lockBtn');
+            btn.innerText = "DB 동기화 중..."; btn.disabled = true;
+
             sysHogis = parseInt(document.getElementById('setHogis').value);
             sysSeed = parseFloat(document.getElementById('setSeed').value);
             sysTarget = parseFloat(document.getElementById('setTarget').value);
             sysDday = parseInt(document.getElementById('setDday').value);
-            localStorage.setItem('sysHogis', sysHogis); localStorage.setItem('sysSeed', sysSeed);
-            localStorage.setItem('sysTarget', sysTarget); localStorage.setItem('sysDday', sysDday);
-            localStorage.setItem('isLocked', 'true');
-            loadSettings(); loadData();
+            
+            const payload = { id: 1, sys_hogis: sysHogis, sys_seed: sysSeed, sys_target: sysTarget, sys_dday: sysDday, is_locked: true };
+
+            // DB에 데이터가 없으면 insert, 있으면 update
+            const check = await client.from(SETTINGS_TABLE).select('id').eq('id', 1).single();
+            if(check.data) {
+                await client.from(SETTINGS_TABLE).update(payload).eq('id', 1);
+            } else {
+                await client.from(SETTINGS_TABLE).insert([payload]);
+            }
+
+            btn.innerText = "새 매매 시작 (설정 확정)"; btn.disabled = false;
+            await loadSettings(); 
+            await loadData();
         }
 
-        function unlockSettings() {
-            if(confirm("설정을 초기화하시겠습니까? 데이터는 유지되나 대시보드 기준이 변경됩니다.")) {
-                localStorage.removeItem('isLocked'); loadSettings();
+        async function unlockSettings() {
+            if(confirm("설정을 초기화하시겠습니까? (PC/모바일 전체 동기화가 해제됩니다)")) {
+                const btn = document.getElementById('unlockBtn');
+                btn.innerText = "..."; btn.disabled = true;
+                await client.from(SETTINGS_TABLE).update({ is_locked: false }).eq('id', 1);
+                btn.innerText = "초기화"; btn.disabled = false;
+                await loadSettings();
             }
         }
 
@@ -336,9 +361,10 @@
             autoFillTrade();
         }
 
-        window.onload = () => { 
-            loadSettings(); 
-            loadData();
+        // 웹사이트가 열릴 때 DB 연동 순서 보장 (세팅 -> 데이터 -> 시세)
+        window.onload = async () => { 
+            await loadSettings(); 
+            await loadData();
             fetchTicker(); 
         };
 
@@ -389,7 +415,6 @@
             autoFillTrade(); 
         }
 
-        // 영업일(평일) 기준 D-day 로직 적용
         function renderDashboard() {
             const dashBody = document.getElementById('dashboardBody');
             dashBody.innerHTML = '';
@@ -409,21 +434,18 @@
                 let targetPrice = s.avgPrice > 0 ? s.avgPrice * (1 + (sysTarget / 100)) : 0;
                 let orderable = curPrice > 0 ? (compound / curPrice).toFixed(2) : '-';
 
-                // --- 영업일(Business Days) 기준 D-day 산출 ---
                 let dDayStr = '-';
                 if(s.firstDate) {
                     let firstD = new Date(s.firstDate);
                     firstD.setHours(0,0,0,0);
                     
-                    // 1. 목표 손절 날짜 구하기 (평일만 더하기)
                     let targetD = new Date(firstD);
                     let added = 0;
                     while(added < sysDday) {
                         targetD.setDate(targetD.getDate() + 1);
-                        if(targetD.getDay() !== 0 && targetD.getDay() !== 6) added++; // 0:일, 6:토
+                        if(targetD.getDay() !== 0 && targetD.getDay() !== 6) added++;
                     }
                     
-                    // 2. 오늘부터 목표일 사이의 남은 '평일' 며칠인지 계산
                     let diffDays = 0;
                     let currentD = new Date(today);
                     currentD.setHours(0,0,0,0);
@@ -437,10 +459,9 @@
                         if(tempD.getDay() !== 0 && tempD.getDay() !== 6) diffDays++;
                     }
                     
-                    let sign = isPast ? '+' : '-'; // 남았으면 -, 지났으면 +
+                    let sign = isPast ? '+' : '-';
                     dDayStr = `${targetD.getMonth()+1}/${targetD.getDate()}(${sign}${diffDays}일)`;
                 }
-                // ----------------------------------------
 
                 dashBody.innerHTML += `
                     <tr>
