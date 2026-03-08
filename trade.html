@@ -3,143 +3,198 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>떨사오팔 매매 현황판</title>
+    <title>떨사오팔 트레이딩 시스템</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { background-color: #f4f7f6; font-size: 0.85rem; }
-        .card { border-radius: 12px; margin-bottom: 15px; }
-        .table-excel { border-collapse: collapse; width: 100%; white-space: nowrap; background: white;}
-        .table-excel th, .table-excel td { border: 1px solid #dee2e6; padding: 6px; text-align: center; vertical-align: middle; }
-        .table-excel th { background-color: #e9ecef; font-weight: bold; }
-        .table-excel .total-row { background-color: #fdfdfe; font-weight: bold; color: black; }
+        body { background-color: #f0f2f5; font-family: 'Noto Sans KR', sans-serif; font-size: 0.85rem; color: #333; }
+        .card { border-radius: 8px; margin-bottom: 20px; border: 1px solid #e1e4e8; box-shadow: 0 2px 4px rgba(0,0,0,0.04); }
+        .card-header { background-color: #ffffff; border-bottom: 2px solid #1a237e; font-weight: 700; font-size: 1rem; color: #1a237e; padding: 12px 16px; border-radius: 8px 8px 0 0 !important; }
         
-        /* 2. 얼룩말 패턴 및 마우스 오버(터치) 효과 적용 */
-        .table-excel tbody tr:nth-child(even) { background-color: #f8f9fa; }
-        .table-excel tbody tr:hover { background-color: #e2e6ea; transition: background-color 0.2s; cursor: pointer; }
+        .table-excel { border-collapse: collapse; width: 100%; white-space: nowrap; background: #ffffff; }
+        .table-excel th, .table-excel td { border: 1px solid #dee2e6; padding: 8px; text-align: center; vertical-align: middle; }
+        .table-excel th { background-color: #f4f6f8; font-weight: 700; color: #495057; }
+        .table-excel tbody tr:nth-child(even) { background-color: #fcfcfc; }
+        .table-excel tbody tr:hover { background-color: #eef2f5; transition: background-color 0.2s; cursor: pointer; }
+        .table-excel .total-row { background-color: #ffffff; font-weight: 700; color: #000; border-top: 2px solid #adb5bd; }
         
-        .text-profit { color: #0275d8; font-weight: bold; } /* 파란색 (익절, 매도가) */
-        .text-loss { color: #d9534f; font-weight: bold; } /* 빨간색 (손절, 매수) */
+        .text-profit { color: #1565c0 !important; font-weight: 700; } 
+        .text-loss { color: #d32f2f !important; font-weight: 700; }
+        .text-success { color: #2e7d32 !important; font-weight: 700; } /* 시드추가용 초록색 */
+        
         .btn-action { padding: 2px 8px; font-size: 0.75rem; margin: 0 2px; }
+        .form-control, .form-select { border-radius: 4px; border: 1px solid #ced4da; }
+        .form-control:focus, .form-select:focus { border-color: #1a237e; box-shadow: 0 0 0 0.2rem rgba(26, 35, 126, 0.25); }
+        .btn-primary { background-color: #1a237e; border-color: #1a237e; }
+        .btn-primary:hover { background-color: #121858; border-color: #121858; }
     </style>
 </head>
 <body>
-    <div class="container mt-3 mb-5" style="max-width: 950px;">
-        <h3 class="text-center mb-4 fw-bold">📈 떨사오팔 매매 대시보드</h3>
+    <div class="container mt-4 mb-5" style="max-width: 1050px;">
+        <h4 class="mb-4 fw-bold" style="color: #1a237e; letter-spacing: -0.5px;">떨사오팔 트레이딩 센터</h4>
         
-        <div class="card shadow-sm border-0 p-3 bg-white">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <h6 class="fw-bold m-0">⚙️ 매매 시스템 세팅</h6>
-                <span id="lockStatus" class="badge bg-danger d-none">🔒 세팅 잠금됨</span>
-            </div>
-            <div id="settingsForm">
-                <div class="row g-2 align-items-end mb-2">
-                    <div class="col-3">
-                        <label class="form-label mb-1" style="font-size: 0.75rem;">운용 호기</label>
-                        <select id="setHogis" class="form-select form-select-sm"><option value="4">4분할</option><option value="6" selected>6분할</option><option value="10">10분할</option></select>
+        <div class="row g-3 mb-3">
+            <div class="col-md-6">
+                <div class="card h-100 mb-0">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>매매 시스템 세팅</span>
+                        <span id="lockStatus" class="badge bg-danger d-none" style="font-size: 0.7rem;">잠금됨</span>
                     </div>
-                    <div class="col-3">
-                        <label class="form-label mb-1" style="font-size: 0.75rem;">최초시드($)</label>
-                        <input type="number" id="setSeed" class="form-control form-control-sm" value="11000">
-                    </div>
-                    <div class="col-3">
-                        <label class="form-label mb-1" style="font-size: 0.75rem;">매도 목표</label>
-                        <select id="setTarget" class="form-select form-select-sm"><option value="0.5">0.5%</option><option value="0.7" selected>0.7%</option><option value="1.0">1.0%</option></select>
-                    </div>
-                    <div class="col-3">
-                        <label class="form-label mb-1" style="font-size: 0.75rem;">손절일(D-day)</label>
-                        <select id="setDday" class="form-select form-select-sm"><option value="15">15일</option><option value="30">30일</option><option value="45" selected>45일</option><option value="60">60일</option></select>
-                    </div>
-                </div>
-                <button class="btn btn-primary btn-sm w-100 fw-bold mt-1" onclick="lockSettings()">🚀 새 매매 시작 (설정 확정)</button>
-            </div>
-            <div id="settingsSummary" class="d-none bg-light p-2 rounded text-center border">
-                <span id="summaryText" class="fw-bold me-3"></span>
-                <button class="btn btn-outline-secondary btn-sm" onclick="unlockSettings()">초기화</button>
-            </div>
-        </div>
-
-        <div class="card shadow-sm border-0 p-2 bg-white mb-3">
-            <div class="row g-2 align-items-center">
-                <div class="col-4 text-center border-end">
-                    <span class="badge bg-dark mb-1">티커 입력</span><br>
-                    <div class="input-group input-group-sm">
-                        <input type="text" id="tickerInput" class="form-control text-center fw-bold text-uppercase" placeholder="SOXL">
-                        <button class="btn btn-secondary" id="fetchBtn" onclick="fetchTicker()">조회</button>
+                    <div class="card-body p-3">
+                        <div id="settingsForm">
+                            <div class="row g-2 align-items-end mb-2">
+                                <div class="col-3">
+                                    <label class="form-label text-muted mb-1" style="font-size: 0.75rem;">운용 호기</label>
+                                    <select id="setHogis" class="form-select form-select-sm"><option value="4">4분할</option><option value="6" selected>6분할</option><option value="10">10분할</option></select>
+                                </div>
+                                <div class="col-3">
+                                    <label class="form-label text-muted mb-1" style="font-size: 0.75rem;">기본시드($)</label>
+                                    <input type="number" id="setSeed" class="form-control form-control-sm" value="11000">
+                                </div>
+                                <div class="col-3">
+                                    <label class="form-label text-muted mb-1" style="font-size: 0.75rem;">매도 목표</label>
+                                    <select id="setTarget" class="form-select form-select-sm"><option value="0.5">0.5%</option><option value="0.7" selected>0.7%</option><option value="1.0">1.0%</option></select>
+                                </div>
+                                <div class="col-3">
+                                    <label class="form-label text-muted mb-1" style="font-size: 0.75rem;">손절(D-day)</label>
+                                    <select id="setDday" class="form-select form-select-sm"><option value="15">15일</option><option value="30">30일</option><option value="45" selected>45일</option><option value="60">60일</option></select>
+                                </div>
+                            </div>
+                            <button class="btn btn-primary btn-sm w-100 fw-bold mt-2" onclick="lockSettings()">새 매매 시작 (설정 확정)</button>
+                        </div>
+                        <div id="settingsSummary" class="d-none bg-light p-2 rounded text-center border mt-1">
+                            <span id="summaryText" class="fw-bold me-3" style="color: #1a237e;"></span>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="unlockSettings()" style="font-size:0.7rem;">초기화</button>
+                        </div>
                     </div>
                 </div>
-                <div class="col-4 text-center border-end">
-                    <span class="badge bg-secondary mb-1">현재가 (조회됨)</span><br>
-                    <input type="number" id="currentPrice" class="form-control form-control-sm text-center fw-bold" step="0.01" oninput="calcTodayBuyPrice()">
-                </div>
-                <div class="col-4 text-center">
-                    <span class="badge bg-success mb-1">오늘 매수 타점 (-0.1%)</span><br>
-                    <h5 id="todayBuyPrice" class="text-success fw-bold m-0 mt-1">-</h5>
-                </div>
-            </div>
-        </div>
-
-        <div class="card shadow-sm border-0 p-2 bg-white mb-4">
-            <h6 class="fw-bold mb-2 ms-1">📊 전체 누적 호기별 현황</h6>
-            <div class="table-responsive">
-                <table class="table-excel">
-                    <thead>
-                        <tr>
-                            <th>호기</th><th>최초시드</th><th>복리시드</th><th>보유수량</th>
-                            <th>수익금</th><th>수익률</th><th>익절</th><th>손절</th>
-                            <th>매수가(평단)</th><th class="text-profit">매도가(목표)</th><th>D-day(손절)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="dashboardBody"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="card shadow-sm border-0 p-3 bg-white mb-4">
-            <h6 class="fw-bold mb-3" id="formTitle">📝 매매 기록 입력 (자동 매칭)</h6>
-            <input type="hidden" id="recordId">
-            <div class="row g-2 mb-2">
-                <div class="col-6"><input type="date" id="dateInput" class="form-control"></div>
-                <div class="col-6"><select id="hogiInput" class="form-select" onchange="autoFillTrade()"></select></div>
-            </div>
-            <div class="row g-2 mb-2">
-                <div class="col-6">
-                    <select id="typeInput" class="form-select text-loss" onchange="this.className=this.value=='매수'?'form-select text-loss':'form-select text-profit'">
-                        <option value="매수" class="text-loss">🔴 매수</option><option value="매도" class="text-profit">🔵 매도</option>
-                    </select>
-                </div>
-                <div class="col-6"><input type="number" id="qtyInput" class="form-control" placeholder="수량"></div>
-            </div>
-            <div class="row g-2 mb-3">
-                <div class="col-6"><input type="number" id="priceInput" class="form-control" placeholder="단가" step="0.01"></div>
-                <div class="col-6"><input type="text" id="memoInput" class="form-control" placeholder="비고 (선택)"></div>
-            </div>
-            <div class="d-flex gap-2">
-                <button id="saveBtn" onclick="saveData()" class="btn btn-dark w-100 fw-bold">저장하기</button>
-                <button id="cancelBtn" onclick="resetForm()" class="btn btn-secondary d-none">취소</button>
-            </div>
-        </div>
-
-        <div class="card shadow-sm border-0 p-3 bg-white mb-5">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="fw-bold m-0">🗓️ 월별 매매 기록 및 요약</h6>
-                <input type="month" id="monthFilter" class="form-control form-control-sm w-auto" onchange="renderMonthly()">
             </div>
             
-            <div class="alert alert-secondary py-2 mb-3 text-center">
-                <span class="fw-bold">해당 월 확정 수익금 : </span> 
-                <span id="monthlyProfit" class="fs-5 fw-bold text-profit">0.00</span> $
+            <div class="col-md-6">
+                <div class="card h-100 mb-0">
+                    <div class="card-header">실시간 시세 및 타점 계산기</div>
+                    <div class="card-body p-3">
+                        <div class="row g-2 align-items-center h-100">
+                            <div class="col-4 border-end px-2">
+                                <label class="form-label text-muted mb-1" style="font-size: 0.75rem;">종목 티커</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="text" id="tickerInput" class="form-control text-center fw-bold text-uppercase" placeholder="SOXL">
+                                    <button class="btn btn-secondary" id="fetchBtn" onclick="fetchTicker()">조회</button>
+                                </div>
+                            </div>
+                            <div class="col-4 border-end px-2 text-center">
+                                <label class="form-label text-muted mb-1" style="font-size: 0.75rem;">현재(LOC) 단가($)</label>
+                                <input type="number" id="currentPrice" class="form-control form-control-sm text-center fw-bold" step="0.01" oninput="calcTodayBuyPrice()">
+                            </div>
+                            <div class="col-4 px-2 text-center">
+                                <label class="form-label text-muted mb-1" style="font-size: 0.75rem;">매수 타점(-0.1%)</label>
+                                <div id="todayBuyPrice" class="fs-5 text-loss fw-bold mt-1">-</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">전체 누적 호기별 현황</div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table-excel mb-0">
+                        <thead>
+                            <tr>
+                                <th>호기</th><th>투입시드</th><th>복리시드</th><th>보유수량</th>
+                                <th>수익금</th><th>수익률</th><th>익절</th><th>손절</th>
+                                <th>매수가(평단)</th><th class="text-profit">매도가(목표)</th><th>주문가능수량</th><th>D-day(손절)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dashboardBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3">
+            <div class="col-md-5">
+                <div class="card h-100 mb-0">
+                    <div class="card-header">월별 마감 현황</div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table-excel mb-0">
+                                <thead>
+                                    <tr>
+                                        <th>월별 마감</th>
+                                        <th>시드 (합계)</th>
+                                        <th>수익금</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="monthlySummaryBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div class="table-responsive">
-                <table class="table-excel">
-                    <thead>
-                        <tr>
-                            <th>날짜</th><th>호기</th><th>매매</th><th>수량</th><th>단가</th><th>비고</th><th>관리</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tradeLogBody"></tbody>
-                </table>
+            <div class="col-md-7">
+                <div class="card h-100 mb-0">
+                    <div class="card-header" id="formTitle">매매 기록 입력</div>
+                    <div class="card-body p-3">
+                        <input type="hidden" id="recordId">
+                        <div class="row g-2 mb-3">
+                            <div class="col-4">
+                                <label class="form-label text-muted mb-1" style="font-size:0.75rem;">날짜</label>
+                                <input type="date" id="dateInput" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label text-muted mb-1" style="font-size:0.75rem;">호기 선택</label>
+                                <select id="hogiInput" class="form-select form-select-sm" onchange="autoFillTrade()"></select>
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label text-muted mb-1" style="font-size:0.75rem;">매매/시드추가</label>
+                                <select id="typeInput" class="form-select form-select-sm text-loss" onchange="handleTypeChange()">
+                                    <option value="매수" class="text-loss">매수</option>
+                                    <option value="매도" class="text-profit">매도</option>
+                                    <option value="시드추가" class="text-success">시드추가</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-4">
+                                <label class="form-label text-muted mb-1" style="font-size:0.75rem;">수량</label>
+                                <input type="number" id="qtyInput" class="form-control form-control-sm" placeholder="0">
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label text-muted mb-1" style="font-size:0.75rem;">단가/금액</label>
+                                <input type="number" id="priceInput" class="form-control form-control-sm" placeholder="0.00" step="0.01">
+                            </div>
+                            <div class="col-4">
+                                <label class="form-label text-muted mb-1" style="font-size:0.75rem;">비고</label>
+                                <input type="text" id="memoInput" class="form-control form-control-sm" placeholder="선택사항">
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button id="saveBtn" onclick="saveData()" class="btn btn-primary w-100 fw-bold">저장하기</button>
+                            <button id="cancelBtn" onclick="resetForm()" class="btn btn-secondary d-none">수정 취소</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-4">
+            <div class="card-header">최근 매매 기록 내역</div>
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table-excel mb-0">
+                        <thead style="position: sticky; top: 0; z-index: 1;">
+                            <tr>
+                                <th>날짜</th><th>호기</th><th>구분</th><th>수량</th><th>단가/금액</th><th>총액</th><th>비고</th><th>관리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tradeLogBody"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -153,33 +208,45 @@
         let sysHogis = 6, sysSeed = 11000, sysTarget = 0.7, sysDday = 45;
         let isLocked = false;
         let globalData = [];
-        let globalStats = {}; // 자동 입력을 위한 호기별 현재 상태 저장
+        let globalStats = {}; 
 
-        // 3. 오늘 날짜 자동 입력 및 이번 달 기본 선택
         document.getElementById('dateInput').valueAsDate = new Date();
-        const todayStr = new Date().toISOString().substring(0, 7);
-        document.getElementById('monthFilter').value = todayStr;
 
-        // 1. 외부 실시간 시세 (프록시 서버 우회)
+        // 시세 조회 시 자동완성 반영
         async function fetchTicker() {
             const ticker = document.getElementById('tickerInput').value.toUpperCase();
-            if(!ticker) { alert("티커를 입력하세요."); return; }
+            if(!ticker) { alert("조회할 종목의 티커를 입력하세요."); return; }
             
             const btn = document.getElementById('fetchBtn');
-            btn.innerText = "⏳";
-            try {
-                const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}`;
-                const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
-                const data = await res.json();
-                const parsed = JSON.parse(data.contents);
-                const price = parsed.chart.result[0].meta.regularMarketPrice;
-                
-                document.getElementById('currentPrice').value = price;
-                calcTodayBuyPrice();
-                btn.innerText = "조회";
-            } catch(e) {
-                alert("시세 조회 실패. 티커가 정확한지 확인해 주세요.");
-                btn.innerText = "조회";
+            btn.innerText = "조회중..."; btn.disabled = true;
+            let price = null;
+            const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}`;
+
+            for(let i=0; i<3; i++) { 
+                try {
+                    const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
+                    const data = await res.json();
+                    if(data.contents) {
+                        const parsed = JSON.parse(data.contents);
+                        price = parsed.chart.result[0].meta.regularMarketPrice;
+                        if(price) break; 
+                    }
+                } catch(e) {
+                    await new Promise(r => setTimeout(r, 1000)); 
+                }
+            }
+            btn.innerText = "조회"; btn.disabled = false;
+
+            if(price) {
+                const priceStr = price.toFixed(2);
+                document.getElementById('currentPrice').value = priceStr;
+                // LOC 종가 자동 세팅!
+                if(document.getElementById('typeInput').value !== '시드추가') {
+                    document.getElementById('priceInput').value = priceStr; 
+                }
+                calcTodayBuyPrice(); 
+            } else {
+                alert("네트워크 통신 지연으로 시세를 가져오지 못했습니다. 다시 눌러주세요.");
             }
         }
 
@@ -187,10 +254,12 @@
             const current = parseFloat(document.getElementById('currentPrice').value);
             if(current && current > 0) {
                 document.getElementById('todayBuyPrice').innerText = (current * 0.999).toFixed(2);
+            } else {
+                document.getElementById('todayBuyPrice').innerText = '-';
             }
+            renderDashboard(); 
         }
 
-        // 설정 로드 
         function loadSettings() {
             if(localStorage.getItem('isLocked') === 'true') {
                 isLocked = true;
@@ -202,7 +271,7 @@
                 document.getElementById('settingsForm').classList.add('d-none');
                 document.getElementById('settingsSummary').classList.remove('d-none');
                 document.getElementById('lockStatus').classList.remove('d-none');
-                document.getElementById('summaryText').innerText = `[${sysHogis}분할] 시드 $${sysSeed} | 매도 +${sysTarget}% | 손절 ${sysDday}일`;
+                document.getElementById('summaryText').innerText = `[${sysHogis}분할] 기본시드 $${sysSeed.toLocaleString()} | 매도 +${sysTarget}% | 손절 ${sysDday}일`;
             } else {
                 isLocked = false;
                 document.getElementById('settingsForm').classList.remove('d-none');
@@ -224,7 +293,7 @@
         }
 
         function unlockSettings() {
-            if(confirm("설정을 초기화하시겠습니까? (기록은 지워지지 않으나 대시보드 계산 기준이 바뀝니다)")) {
+            if(confirm("설정을 초기화하시겠습니까? 데이터는 유지되나 대시보드 기준이 변경됩니다.")) {
                 localStorage.removeItem('isLocked'); loadSettings();
             }
         }
@@ -235,7 +304,7 @@
             for(let i=1; i<=sysHogis; i++) {
                 select.innerHTML += `<option value="${i}호기">${i}호기</option>`;
             }
-            autoFillTrade(); // 선택지 업데이트 후 자동매칭 실행
+            autoFillTrade();
         }
 
         window.onload = () => { loadSettings(); loadData(); };
@@ -254,7 +323,7 @@
                 
                 let q = parseFloat(row.quantity);
                 let p = parseFloat(row.price);
-                row.realizedProfit = 0; // 월별 수익 계산을 위해 각 행에 실현수익 기록
+                row.realizedProfit = 0; 
 
                 if(row.trade_type === '매수') {
                     if(stats[h].qty === 0) stats[h].firstDate = row.date;
@@ -263,21 +332,25 @@
                     stats[h].avgPrice = totalCost / stats[h].qty;
                 } else if(row.trade_type === '매도') {
                     let realized = (p - stats[h].avgPrice) * q;
-                    row.realizedProfit = realized; // 이 매도 건에서 발생한 수익 저장
+                    row.realizedProfit = realized;
                     stats[h].profit += realized;
                     stats[h].qty -= q;
                     
                     if(stats[h].qty <= 0) { stats[h].qty = 0; stats[h].avgPrice = 0; stats[h].firstDate = null; }
                     if(realized > 0) stats[h].win++; else if(realized < 0) stats[h].loss++;
+                } else if(row.trade_type === '시드추가') {
+                    // 시드 추가 로직: 수량(1) * 금액(price) 만큼 해당 호기의 투입시드 증가
+                    stats[h].seed += (q * p);
                 }
             });
 
-            globalData = chronoData.reverse(); // 최신순으로 다시 뒤집어서 전역 저장
-            globalStats = stats; // 스마트 자동 완성을 위해 전역 저장
+            globalData = chronoData.reverse(); 
+            globalStats = stats; 
             
             renderDashboard();
-            renderMonthly(); // 6. 월별 렌더링 함수 호출
-            autoFillTrade(); // 로드 완료 후 입력창 상태 세팅
+            renderMonthlySummary(); 
+            renderTradeLog();       
+            autoFillTrade(); 
         }
 
         function renderDashboard() {
@@ -286,6 +359,7 @@
             let sumSeed = 0, sumCompound = 0, sumQty = 0, sumProfit = 0, sumWin = 0, sumLoss = 0;
             let today = new Date();
             today.setHours(0,0,0,0);
+            let curPrice = parseFloat(document.getElementById('currentPrice').value) || 0;
 
             for(let i=1; i<=sysHogis; i++) {
                 let h = `${i}호기`; let s = globalStats[h];
@@ -296,15 +370,15 @@
                 sumProfit += s.profit; sumWin += s.win; sumLoss += s.loss;
 
                 let targetPrice = s.avgPrice > 0 ? s.avgPrice * (1 + (sysTarget / 100)) : 0;
-                
-                // 4. 손절일 및 남은 기간 계산 기능 (Ex: 4/7(-28일))
+                let orderable = curPrice > 0 ? (compound / curPrice).toFixed(2) : '-';
+
                 let dDayStr = '-';
                 if(s.firstDate) {
                     let start = new Date(s.firstDate);
                     start.setDate(start.getDate() + sysDday);
                     let diffTime = start - today;
                     let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    let sign = diffDays > 0 ? '-' : '+'; // 남았으면 -, 지났으면 +
+                    let sign = diffDays >= 0 ? '-' : '+'; 
                     dDayStr = `${start.getMonth()+1}/${start.getDate()}(${sign}${Math.abs(diffDays)}일)`;
                 }
 
@@ -318,7 +392,9 @@
                         <td>${rate.toFixed(1)}%</td>
                         <td>${s.win}</td><td>${s.loss}</td>
                         <td>${s.avgPrice > 0 ? s.avgPrice.toFixed(2) : '-'}</td>
-                        <td class="text-profit fw-bold">${targetPrice > 0 ? targetPrice.toFixed(2) : '-'}</td> <td class="fw-bold text-secondary">${dDayStr}</td>
+                        <td class="text-profit">${targetPrice > 0 ? targetPrice.toFixed(2) : '-'}</td>
+                        <td class="fw-bold">${orderable}</td>
+                        <td class="text-muted">${dDayStr}</td>
                     </tr>
                 `;
             }
@@ -333,70 +409,121 @@
                     <td class="${sumProfit > 0 ? 'text-profit' : (sumProfit < 0 ? 'text-loss' : '')}">${sumProfit.toLocaleString(undefined,{minimumFractionDigits:2})}</td>
                     <td>${totalRate.toFixed(1)}%</td>
                     <td class="text-profit">${sumWin}</td><td class="text-loss">${sumLoss}</td>
-                    <td>-</td><td>-</td><td>-</td>
+                    <td>-</td><td>-</td><td>-</td><td>-</td>
                 </tr>
             `);
         }
 
-        // 6. 월별 요약 렌더링 기능
-        function renderMonthly() {
-            let selectedMonth = document.getElementById('monthFilter').value;
-            let tbody = document.getElementById('tradeLogBody');
-            tbody.innerHTML = '';
+        function renderMonthlySummary() {
+            let monthly = {};
+            let baseTotalSeed = sysHogis * sysSeed;
+            let runningSeed = baseTotalSeed;
             
-            let monthlyProfitSum = 0;
-
-            globalData.forEach(row => {
-                let rowMonth = row.date.substring(0, 7);
-                if(rowMonth === selectedMonth) {
-                    if(row.trade_type === '매도') {
-                        monthlyProfitSum += row.realizedProfit;
-                    }
-                    
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td>${row.date.substring(5)}</td>
-                        <td>${row.hogi}</td>
-                        <td class="${row.trade_type === '매수' ? 'text-loss' : 'text-profit'}">${row.trade_type}</td>
-                        <td>${row.quantity}</td>
-                        <td>${row.price.toFixed(2)}</td>
-                        <td class="small text-muted">${row.memo || ''}</td>
-                        <td>
-                            <button onclick="editData(${row.id})" class="btn btn-outline-primary btn-action">수정</button>
-                            <button onclick="deleteData(${row.id})" class="btn btn-outline-danger btn-action">삭제</button>
-                        </td>
-                    `;
-                    tbody.appendChild(tr);
+            let chronoData = [...globalData].reverse();
+            chronoData.forEach(row => {
+                let month = row.date.substring(0, 7); 
+                if(!monthly[month]) {
+                    monthly[month] = { profit: 0, endSeed: runningSeed };
                 }
+                if(row.trade_type === '매도' && row.realizedProfit) {
+                    monthly[month].profit += row.realizedProfit;
+                    runningSeed += row.realizedProfit;
+                } else if(row.trade_type === '시드추가') {
+                    // 시드 추가시 월별 시드 합계도 증가
+                    runningSeed += (row.quantity * row.price);
+                }
+                monthly[month].endSeed = runningSeed;
             });
 
-            // 해당 월 수익금 업데이트
-            const profitElem = document.getElementById('monthlyProfit');
-            profitElem.innerText = monthlyProfitSum.toFixed(2);
-            profitElem.className = monthlyProfitSum >= 0 ? 'fs-5 fw-bold text-profit' : 'fs-5 fw-bold text-loss';
+            let sortedMonths = Object.keys(monthly).sort().reverse();
+            let tbody = document.getElementById('monthlySummaryBody');
+            tbody.innerHTML = '';
+
+            sortedMonths.forEach(m => {
+                let mObj = monthly[m];
+                let yy = m.substring(2, 4);
+                let mm = parseInt(m.substring(5, 7));
+                let displayMonth = `'${yy}.${mm}`; 
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="fw-bold">${displayMonth}</td>
+                        <td>${mObj.endSeed.toLocaleString(undefined, {minimumFractionDigits:2})}</td>
+                        <td class="${mObj.profit > 0 ? 'text-profit' : (mObj.profit < 0 ? 'text-loss' : '')} fw-bold">${mObj.profit.toLocaleString(undefined, {minimumFractionDigits:2})}</td>
+                    </tr>
+                `;
+            });
+            if(sortedMonths.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" class="text-muted">기록 없음</td></tr>`;
+            }
         }
 
-        // 3. 매매 입력 스마트 자동 매칭 기능
+        function renderTradeLog() {
+            const tbody = document.getElementById('tradeLogBody');
+            tbody.innerHTML = '';
+            globalData.forEach(row => {
+                const amount = (row.quantity * row.price).toFixed(2);
+                const typeClass = row.trade_type === '매수' ? 'text-loss' : row.trade_type === '매도' ? 'text-profit' : 'text-success';
+                
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${row.date.substring(5)}</td>
+                    <td>${row.hogi}</td>
+                    <td class="${typeClass}">${row.trade_type}</td>
+                    <td>${row.quantity}</td>
+                    <td>${row.price.toFixed(2)}</td>
+                    <td>${amount}</td>
+                    <td class="small text-muted">${row.memo || ''}</td>
+                    <td>
+                        <button onclick="editData(${row.id})" class="btn btn-outline-secondary btn-action">수정</button>
+                        <button onclick="deleteData(${row.id})" class="btn btn-outline-danger btn-action">삭제</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        // 매매 타입 변환 및 LOC 가격 연동 로직
+        function handleTypeChange() {
+            const tInput = document.getElementById('typeInput');
+            const qInput = document.getElementById('qtyInput');
+            const pInput = document.getElementById('priceInput');
+
+            tInput.className = tInput.value === '매수' ? 'form-select form-select-sm text-loss' :
+                               tInput.value === '매도' ? 'form-select form-select-sm text-profit' :
+                               'form-select form-select-sm text-success';
+
+            if(tInput.value === '시드추가') {
+                qInput.value = 1;
+                pInput.value = '';
+                pInput.placeholder = "추가할 금액($)";
+            } else {
+                pInput.placeholder = "0.00";
+                const curPrice = document.getElementById('currentPrice').value;
+                if(curPrice) pInput.value = curPrice; // LOC 종가 자동입력
+            }
+        }
+
         function autoFillTrade() {
             const h = document.getElementById('hogiInput').value;
             const tInput = document.getElementById('typeInput');
             const qInput = document.getElementById('qtyInput');
             
+            // 시드추가 모드일때는 자동완성 무시
+            if(tInput.value === '시드추가') return;
+
             if(globalStats[h] && globalStats[h].qty > 0) {
-                // 이미 보유수량이 있으면 '매도' 선택 및 수량 자동 입력
                 tInput.value = '매도';
-                tInput.className = 'form-select text-profit';
                 qInput.value = globalStats[h].qty;
             } else {
-                // 보유수량이 없으면 '매수' 선택 및 수량 비우기
                 tInput.value = '매수';
-                tInput.className = 'form-select text-loss';
                 qInput.value = '';
             }
+            handleTypeChange(); // 색상 및 LOC 가격 동기화
         }
 
         async function saveData() {
-            if(!isLocked) { alert("먼저 '새 매매 시작' 버튼을 눌러 설정을 확정해주세요!"); return; }
+            if(!isLocked) { alert("먼저 '새 매매 시작' 버튼을 눌러 설정을 확정해주세요."); return; }
 
             const id = document.getElementById('recordId').value;
             const date = document.getElementById('dateInput').value;
@@ -406,7 +533,7 @@
             const price = parseFloat(document.getElementById('priceInput').value);
             const memo = document.getElementById('memoInput').value;
 
-            if(!quantity || !price) { alert("수량과 단가를 입력하세요."); return; }
+            if(!quantity || !price) { alert("수량과 단가(금액)를 입력하세요."); return; }
 
             const payload = { date, hogi, trade_type, quantity, price, memo };
             let error;
@@ -427,10 +554,12 @@
             document.getElementById('dateInput').value = row.date;
             document.getElementById('hogiInput').value = row.hogi;
             document.getElementById('typeInput').value = row.trade_type;
+            handleTypeChange(); // 색상 적용
             document.getElementById('qtyInput').value = row.quantity;
             document.getElementById('priceInput').value = row.price;
             document.getElementById('memoInput').value = row.memo || '';
-            document.getElementById('formTitle').innerText = "✏️ 매매 기록 수정 중...";
+            
+            document.getElementById('formTitle').innerText = "매매 기록 수정 중...";
             document.getElementById('saveBtn').innerText = "수정 완료";
             document.getElementById('cancelBtn').classList.remove('d-none');
             window.scrollTo({ top: 400, behavior: 'smooth' });
@@ -448,10 +577,15 @@
             document.getElementById('qtyInput').value = '';
             document.getElementById('priceInput').value = '';
             document.getElementById('memoInput').value = '';
-            document.getElementById('formTitle').innerText = "📝 매매 기록 입력 (자동 매칭)";
+            document.getElementById('formTitle').innerText = "매매 기록 입력";
             document.getElementById('saveBtn').innerText = "저장하기";
             document.getElementById('cancelBtn').classList.add('d-none');
-            autoFillTrade(); // 폼 초기화 시에도 자동 매칭 1회 실행
+            
+            // 폼 리셋 후엔 기본 매수/매도 모드로 돌아가도록
+            if(document.getElementById('typeInput').value === '시드추가') {
+                document.getElementById('typeInput').value = '매수';
+            }
+            autoFillTrade(); 
         }
     </script>
 </body>
