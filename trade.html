@@ -3,36 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>떨사오팔 트레이딩 시스템</title>
+    <title>떨사오팔 트레이딩 센터</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { background-color: #f0f2f5; font-family: 'Noto Sans KR', sans-serif; font-size: 0.85rem; color: #333; }
-        .card { border-radius: 8px; margin-bottom: 20px; border: 1px solid #e1e4e8; box-shadow: 0 2px 4px rgba(0,0,0,0.04); }
-        .card-header { background-color: #ffffff; border-bottom: 2px solid #1a237e; font-weight: 700; font-size: 1rem; color: #1a237e; padding: 12px 16px; border-radius: 8px 8px 0 0 !important; }
+        .card { border-radius: 12px; margin-bottom: 20px; border: 1px solid #e1e4e8; box-shadow: 0 4px 6px rgba(0,0,0,0.02); overflow: hidden; }
+        .card-header { background-color: #ffffff; border-bottom: 2px solid #1a237e; font-weight: 700; font-size: 1rem; color: #1a237e; padding: 14px 16px; }
         
-        .table-excel { border-collapse: collapse; width: 100%; white-space: nowrap; background: #ffffff; }
-        .table-excel th, .table-excel td { border: 1px solid #dee2e6; padding: 8px; text-align: center; vertical-align: middle; }
-        .table-excel th { background-color: #f4f6f8; font-weight: 700; color: #495057; }
-        .table-excel tbody tr:nth-child(even) { background-color: #fcfcfc; }
+        /* 세련된 표 디자인 */
+        .table-responsive { overflow-x: auto; }
+        .table-excel { border-collapse: separate; border-spacing: 0; width: 100%; white-space: nowrap; background: #ffffff; }
+        .table-excel th, .table-excel td { border-bottom: 1px solid #dee2e6; border-right: 1px solid #dee2e6; padding: 10px 8px; text-align: center; vertical-align: middle; }
+        .table-excel th { background-color: #f8f9fa; font-weight: 700; color: #495057; border-top: 1px solid #dee2e6; }
+        .table-excel tbody tr:nth-child(even) { background-color: #fafbfc; }
         .table-excel tbody tr:hover { background-color: #eef2f5; transition: background-color 0.2s; cursor: pointer; }
-        .table-excel .total-row { background-color: #ffffff; font-weight: 700; color: #000; border-top: 2px solid #adb5bd; }
+        .table-excel .total-row { background-color: #ffffff; font-weight: 700; color: #000; border-top: 2px solid #1a237e; border-bottom: 2px solid #1a237e; }
         
+        /* 모바일 틀 고정 (Sticky Column) */
+        .sticky-col { position: sticky; left: 0; background-color: #ffffff; z-index: 2; border-right: 2px solid #ced4da !important; font-weight: 700; }
+        .table-excel th.sticky-col { background-color: #f8f9fa; z-index: 3; }
+        .table-excel tbody tr:nth-child(even) .sticky-col { background-color: #fafbfc; }
+        .table-excel tbody tr:hover .sticky-col { background-color: #eef2f5; }
+
+        /* 월별 테이블 스크롤 영역 */
+        .scroll-box { max-height: 250px; overflow-y: auto; }
+        .scroll-box thead th { position: sticky; top: 0; z-index: 2; }
+
+        /* 색상 코드 */
         .text-profit { color: #1565c0 !important; font-weight: 700; } 
         .text-loss { color: #d32f2f !important; font-weight: 700; }
-        .text-success { color: #2e7d32 !important; font-weight: 700; } /* 시드추가용 초록색 */
+        .text-success { color: #2e7d32 !important; font-weight: 700; } 
         
-        .btn-action { padding: 2px 8px; font-size: 0.75rem; margin: 0 2px; }
-        .form-control, .form-select { border-radius: 4px; border: 1px solid #ced4da; }
-        .form-control:focus, .form-select:focus { border-color: #1a237e; box-shadow: 0 0 0 0.2rem rgba(26, 35, 126, 0.25); }
+        .form-control, .form-select { border-radius: 6px; border: 1px solid #ced4da; }
         .btn-primary { background-color: #1a237e; border-color: #1a237e; }
         .btn-primary:hover { background-color: #121858; border-color: #121858; }
+        .app-link-btn { border-radius: 20px; font-weight: 700; font-size: 0.85rem; border: 1.5px solid #1a237e; color: #1a237e; text-decoration: none; padding: 4px 12px; transition: all 0.2s; background: white; }
+        .app-link-btn:hover { background-color: #1a237e; color: white; }
     </style>
 </head>
 <body>
-    <div class="container mt-4 mb-5" style="max-width: 1050px;">
-        <h4 class="mb-4 fw-bold" style="color: #1a237e; letter-spacing: -0.5px;">떨사오팔 트레이딩 센터</h4>
+    <div class="container mt-4 mb-5" style="max-width: 1100px;">
+        <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
+            <h4 class="fw-bold m-0" style="color: #1a237e; letter-spacing: -0.5px;">📈 떨사오팔 센터</h4>
+            <a href="https://trillionly.github.io/great/?t=1" class="app-link-btn shadow-sm">🔄 아바타 매매 이동</a>
+        </div>
         
         <div class="row g-3 mb-3">
             <div class="col-md-6">
@@ -104,7 +121,7 @@
                     <table class="table-excel mb-0">
                         <thead>
                             <tr>
-                                <th>호기</th><th>투입시드</th><th>복리시드</th><th>보유수량</th>
+                                <th class="sticky-col">호기</th><th>투입시드</th><th>복리시드</th><th>보유수량</th>
                                 <th>수익금</th><th>수익률</th><th>익절</th><th>손절</th>
                                 <th>매수가(평단)</th><th class="text-profit">매도가(목표)</th><th>주문가능수량</th><th>D-day(손절)</th>
                             </tr>
@@ -116,68 +133,74 @@
         </div>
 
         <div class="row g-3">
-            <div class="col-md-5">
+            <div class="col-md-7">
                 <div class="card h-100 mb-0">
-                    <div class="card-header">월별 마감 현황</div>
-                    <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table-excel mb-0">
-                                <thead>
-                                    <tr>
-                                        <th>월별 마감</th>
-                                        <th>시드 (합계)</th>
-                                        <th>수익금</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="monthlySummaryBody"></tbody>
-                            </table>
-                        </div>
+                    <div class="card-header">월별 자산 성장 추이 (원금 vs 평가금)</div>
+                    <div class="card-body p-3">
+                        <canvas id="monthlyChart" style="max-height: 250px;"></canvas>
                     </div>
                 </div>
             </div>
 
-            <div class="col-md-7">
+            <div class="col-md-5">
                 <div class="card h-100 mb-0">
-                    <div class="card-header" id="formTitle">매매 기록 입력</div>
-                    <div class="card-body p-3">
-                        <input type="hidden" id="recordId">
-                        <div class="row g-2 mb-3">
-                            <div class="col-4">
-                                <label class="form-label text-muted mb-1" style="font-size:0.75rem;">날짜</label>
-                                <input type="date" id="dateInput" class="form-control form-control-sm">
-                            </div>
-                            <div class="col-4">
-                                <label class="form-label text-muted mb-1" style="font-size:0.75rem;">호기 선택</label>
-                                <select id="hogiInput" class="form-select form-select-sm" onchange="autoFillTrade()"></select>
-                            </div>
-                            <div class="col-4">
-                                <label class="form-label text-muted mb-1" style="font-size:0.75rem;">매매/시드추가</label>
-                                <select id="typeInput" class="form-select form-select-sm text-loss" onchange="handleTypeChange()">
-                                    <option value="매수" class="text-loss">매수</option>
-                                    <option value="매도" class="text-profit">매도</option>
-                                    <option value="시드추가" class="text-success">시드추가</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="row g-2 mb-3">
-                            <div class="col-4">
-                                <label class="form-label text-muted mb-1" style="font-size:0.75rem;">수량</label>
-                                <input type="number" id="qtyInput" class="form-control form-control-sm" placeholder="0">
-                            </div>
-                            <div class="col-4">
-                                <label class="form-label text-muted mb-1" style="font-size:0.75rem;">단가/금액</label>
-                                <input type="number" id="priceInput" class="form-control form-control-sm" placeholder="0.00" step="0.01">
-                            </div>
-                            <div class="col-4">
-                                <label class="form-label text-muted mb-1" style="font-size:0.75rem;">비고</label>
-                                <input type="text" id="memoInput" class="form-control form-control-sm" placeholder="선택사항">
-                            </div>
-                        </div>
-                        <div class="d-flex gap-2">
-                            <button id="saveBtn" onclick="saveData()" class="btn btn-primary w-100 fw-bold">저장하기</button>
-                            <button id="cancelBtn" onclick="resetForm()" class="btn btn-secondary d-none">수정 취소</button>
-                        </div>
+                    <div class="card-header">월별 마감 요약</div>
+                    <div class="card-body p-0 scroll-box">
+                        <table class="table-excel mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="width: 25%;">월별</th>
+                                    <th style="width: 30%;">누적시드</th>
+                                    <th style="width: 25%;">수익금</th>
+                                    <th style="width: 20%;">수익률</th>
+                                </tr>
+                            </thead>
+                            <tbody id="monthlySummaryBody"></tbody>
+                        </table>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header" id="formTitle">매매 기록 입력</div>
+            <div class="card-body p-3">
+                <input type="hidden" id="recordId">
+                <div class="row g-2 mb-3">
+                    <div class="col-4">
+                        <label class="form-label text-muted mb-1" style="font-size:0.75rem;">날짜</label>
+                        <input type="date" id="dateInput" class="form-control form-control-sm">
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label text-muted mb-1" style="font-size:0.75rem;">호기 선택</label>
+                        <select id="hogiInput" class="form-select form-select-sm" onchange="autoFillTrade()"></select>
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label text-muted mb-1" style="font-size:0.75rem;">매매/시드추가</label>
+                        <select id="typeInput" class="form-select form-select-sm text-loss" onchange="handleTypeChange()">
+                            <option value="매수" class="text-loss">매수</option>
+                            <option value="매도" class="text-profit">매도</option>
+                            <option value="시드추가" class="text-success">시드추가</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row g-2 mb-3">
+                    <div class="col-4">
+                        <label class="form-label text-muted mb-1" style="font-size:0.75rem;">수량</label>
+                        <input type="number" id="qtyInput" class="form-control form-control-sm" placeholder="0">
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label text-muted mb-1" style="font-size:0.75rem;">단가/금액</label>
+                        <input type="number" id="priceInput" class="form-control form-control-sm" placeholder="0.00" step="0.01">
+                    </div>
+                    <div class="col-4">
+                        <label class="form-label text-muted mb-1" style="font-size:0.75rem;">비고</label>
+                        <input type="text" id="memoInput" class="form-control form-control-sm" placeholder="선택사항">
+                    </div>
+                </div>
+                <div class="d-flex gap-2">
+                    <button id="saveBtn" onclick="saveData()" class="btn btn-primary w-100 fw-bold">저장하기</button>
+                    <button id="cancelBtn" onclick="resetForm()" class="btn btn-secondary d-none">수정 취소</button>
                 </div>
             </div>
         </div>
@@ -185,11 +208,12 @@
         <div class="card mt-4">
             <div class="card-header">최근 매매 기록 내역</div>
             <div class="card-body p-0">
-                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                <div class="table-responsive scroll-box" style="max-height: 400px;">
                     <table class="table-excel mb-0">
-                        <thead style="position: sticky; top: 0; z-index: 1;">
+                        <thead>
                             <tr>
-                                <th>날짜</th><th>호기</th><th>구분</th><th>수량</th><th>단가/금액</th><th>총액</th><th>비고</th><th>관리</th>
+                                <th class="sticky-col" style="z-index: 4;">날짜</th>
+                                <th>호기</th><th>구분</th><th>수량</th><th>단가/금액</th><th>총액</th><th>비고</th><th>관리</th>
                             </tr>
                         </thead>
                         <tbody id="tradeLogBody"></tbody>
@@ -209,10 +233,10 @@
         let isLocked = false;
         let globalData = [];
         let globalStats = {}; 
+        let myChart = null; // 차트 변수
 
         document.getElementById('dateInput').valueAsDate = new Date();
 
-        // 시세 조회 시 자동완성 반영
         async function fetchTicker() {
             const ticker = document.getElementById('tickerInput').value.toUpperCase();
             if(!ticker) { alert("조회할 종목의 티커를 입력하세요."); return; }
@@ -240,7 +264,6 @@
             if(price) {
                 const priceStr = price.toFixed(2);
                 document.getElementById('currentPrice').value = priceStr;
-                // LOC 종가 자동 세팅!
                 if(document.getElementById('typeInput').value !== '시드추가') {
                     document.getElementById('priceInput').value = priceStr; 
                 }
@@ -339,7 +362,6 @@
                     if(stats[h].qty <= 0) { stats[h].qty = 0; stats[h].avgPrice = 0; stats[h].firstDate = null; }
                     if(realized > 0) stats[h].win++; else if(realized < 0) stats[h].loss++;
                 } else if(row.trade_type === '시드추가') {
-                    // 시드 추가 로직: 수량(1) * 금액(price) 만큼 해당 호기의 투입시드 증가
                     stats[h].seed += (q * p);
                 }
             });
@@ -348,7 +370,7 @@
             globalStats = stats; 
             
             renderDashboard();
-            renderMonthlySummary(); 
+            renderMonthlySummaryAndChart(); 
             renderTradeLog();       
             autoFillTrade(); 
         }
@@ -384,7 +406,7 @@
 
                 dashBody.innerHTML += `
                     <tr>
-                        <td class="fw-bold">${h}</td>
+                        <td class="sticky-col">${h}</td>
                         <td>${s.seed.toLocaleString(undefined,{minimumFractionDigits:2})}</td>
                         <td>${compound.toLocaleString(undefined,{minimumFractionDigits:2})}</td>
                         <td>${s.qty}</td>
@@ -393,7 +415,7 @@
                         <td>${s.win}</td><td>${s.loss}</td>
                         <td>${s.avgPrice > 0 ? s.avgPrice.toFixed(2) : '-'}</td>
                         <td class="text-profit">${targetPrice > 0 ? targetPrice.toFixed(2) : '-'}</td>
-                        <td class="fw-bold">${orderable}</td>
+                        <td class="fw-bold text-success">${orderable}</td>
                         <td class="text-muted">${dDayStr}</td>
                     </tr>
                 `;
@@ -402,7 +424,7 @@
             let totalRate = sumSeed > 0 ? (sumProfit / sumSeed) * 100 : 0;
             dashBody.insertAdjacentHTML('afterbegin', `
                 <tr class="total-row">
-                    <td>합계</td>
+                    <td class="sticky-col">합계</td>
                     <td>${sumSeed.toLocaleString(undefined,{minimumFractionDigits:2})}</td>
                     <td>${sumCompound.toLocaleString(undefined,{minimumFractionDigits:2})}</td>
                     <td>${sumQty}</td>
@@ -414,27 +436,31 @@
             `);
         }
 
-        function renderMonthlySummary() {
+        function renderMonthlySummaryAndChart() {
             let monthly = {};
             let baseTotalSeed = sysHogis * sysSeed;
-            let runningSeed = baseTotalSeed;
+            let currentPrincipal = baseTotalSeed;
+            let currentTotalProfit = 0;
             
             let chronoData = [...globalData].reverse();
             chronoData.forEach(row => {
                 let month = row.date.substring(0, 7); 
                 if(!monthly[month]) {
-                    monthly[month] = { profit: 0, endSeed: runningSeed };
+                    monthly[month] = { profit: 0, principal: currentPrincipal, evaluated: currentPrincipal + currentTotalProfit };
                 }
+                
                 if(row.trade_type === '매도' && row.realizedProfit) {
                     monthly[month].profit += row.realizedProfit;
-                    runningSeed += row.realizedProfit;
+                    currentTotalProfit += row.realizedProfit;
                 } else if(row.trade_type === '시드추가') {
-                    // 시드 추가시 월별 시드 합계도 증가
-                    runningSeed += (row.quantity * row.price);
+                    currentPrincipal += (row.quantity * row.price);
                 }
-                monthly[month].endSeed = runningSeed;
+                // 매 월말 시점의 원금과 평가금 갱신
+                monthly[month].principal = currentPrincipal;
+                monthly[month].evaluated = currentPrincipal + currentTotalProfit;
             });
 
+            // 1) 표 그리기 (최신순)
             let sortedMonths = Object.keys(monthly).sort().reverse();
             let tbody = document.getElementById('monthlySummaryBody');
             tbody.innerHTML = '';
@@ -444,18 +470,51 @@
                 let yy = m.substring(2, 4);
                 let mm = parseInt(m.substring(5, 7));
                 let displayMonth = `'${yy}.${mm}`; 
+                let monthlyRate = mObj.principal > 0 ? (mObj.profit / mObj.principal) * 100 : 0;
 
                 tbody.innerHTML += `
                     <tr>
                         <td class="fw-bold">${displayMonth}</td>
-                        <td>${mObj.endSeed.toLocaleString(undefined, {minimumFractionDigits:2})}</td>
+                        <td>${mObj.principal.toLocaleString(undefined, {minimumFractionDigits:2})}</td>
                         <td class="${mObj.profit > 0 ? 'text-profit' : (mObj.profit < 0 ? 'text-loss' : '')} fw-bold">${mObj.profit.toLocaleString(undefined, {minimumFractionDigits:2})}</td>
+                        <td class="fw-bold text-secondary">${monthlyRate.toFixed(1)}%</td>
                     </tr>
                 `;
             });
             if(sortedMonths.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="3" class="text-muted">기록 없음</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="4" class="text-muted">기록 없음</td></tr>`;
             }
+
+            // 2) 차트 그리기 (오래된 순)
+            let chartLabels = [];
+            let chartPrincipal = [];
+            let chartEvaluated = [];
+            
+            Object.keys(monthly).sort().forEach(m => {
+                chartLabels.push(`'${m.substring(2,4)}.${parseInt(m.substring(5,7))}`);
+                chartPrincipal.push(monthly[m].principal);
+                chartEvaluated.push(monthly[m].evaluated);
+            });
+
+            const ctx = document.getElementById('monthlyChart').getContext('2d');
+            if(myChart) myChart.destroy(); // 기존 차트 지우고 새로 그리기
+            
+            myChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartLabels,
+                    datasets: [
+                        { label: '누적 시드(원금)', data: chartPrincipal, borderColor: '#adb5bd', backgroundColor: 'rgba(173, 181, 189, 0.2)', borderWidth: 2, tension: 0.3, fill: true },
+                        { label: '누적 평가금', data: chartEvaluated, borderColor: '#1a237e', backgroundColor: 'rgba(26, 35, 126, 0.1)', borderWidth: 3, tension: 0.3, fill: true }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { legend: { position: 'top', labels: { font: { family: "'Noto Sans KR', sans-serif", size: 11 } } } },
+                    scales: { y: { beginAtZero: false, ticks: { font: { size: 10 } } }, x: { ticks: { font: { size: 10 } } } }
+                }
+            });
         }
 
         function renderTradeLog() {
@@ -467,7 +526,7 @@
                 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td>${row.date.substring(5)}</td>
+                    <td class="sticky-col">${row.date.substring(5)}</td>
                     <td>${row.hogi}</td>
                     <td class="${typeClass}">${row.trade_type}</td>
                     <td>${row.quantity}</td>
@@ -483,7 +542,6 @@
             });
         }
 
-        // 매매 타입 변환 및 LOC 가격 연동 로직
         function handleTypeChange() {
             const tInput = document.getElementById('typeInput');
             const qInput = document.getElementById('qtyInput');
@@ -494,13 +552,11 @@
                                'form-select form-select-sm text-success';
 
             if(tInput.value === '시드추가') {
-                qInput.value = 1;
-                pInput.value = '';
-                pInput.placeholder = "추가할 금액($)";
+                qInput.value = 1; pInput.value = ''; pInput.placeholder = "추가 금액($)";
             } else {
                 pInput.placeholder = "0.00";
                 const curPrice = document.getElementById('currentPrice').value;
-                if(curPrice) pInput.value = curPrice; // LOC 종가 자동입력
+                if(curPrice) pInput.value = curPrice; 
             }
         }
 
@@ -508,18 +564,14 @@
             const h = document.getElementById('hogiInput').value;
             const tInput = document.getElementById('typeInput');
             const qInput = document.getElementById('qtyInput');
-            
-            // 시드추가 모드일때는 자동완성 무시
             if(tInput.value === '시드추가') return;
 
             if(globalStats[h] && globalStats[h].qty > 0) {
-                tInput.value = '매도';
-                qInput.value = globalStats[h].qty;
+                tInput.value = '매도'; qInput.value = globalStats[h].qty;
             } else {
-                tInput.value = '매수';
-                qInput.value = '';
+                tInput.value = '매수'; qInput.value = '';
             }
-            handleTypeChange(); // 색상 및 LOC 가격 동기화
+            handleTypeChange(); 
         }
 
         async function saveData() {
@@ -554,7 +606,7 @@
             document.getElementById('dateInput').value = row.date;
             document.getElementById('hogiInput').value = row.hogi;
             document.getElementById('typeInput').value = row.trade_type;
-            handleTypeChange(); // 색상 적용
+            handleTypeChange(); 
             document.getElementById('qtyInput').value = row.quantity;
             document.getElementById('priceInput').value = row.price;
             document.getElementById('memoInput').value = row.memo || '';
@@ -581,7 +633,6 @@
             document.getElementById('saveBtn').innerText = "저장하기";
             document.getElementById('cancelBtn').classList.add('d-none');
             
-            // 폼 리셋 후엔 기본 매수/매도 모드로 돌아가도록
             if(document.getElementById('typeInput').value === '시드추가') {
                 document.getElementById('typeInput').value = '매수';
             }
