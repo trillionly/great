@@ -3,75 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>떨사오팔 매매 현황</title>
+    <title>떨사오팔 매매 현황판</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { background-color: #f4f7f6; font-size: 0.9rem; }
-        .card { border-radius: 12px; }
-        .table-excel { border-collapse: collapse; width: 100%; white-space: nowrap; font-size: 0.85rem; background: white;}
+        body { background-color: #f4f7f6; font-size: 0.85rem; }
+        .card { border-radius: 12px; margin-bottom: 15px; }
+        .table-excel { border-collapse: collapse; width: 100%; white-space: nowrap; background: white;}
         .table-excel th, .table-excel td { border: 1px solid #dee2e6; padding: 6px; text-align: center; vertical-align: middle; }
         .table-excel th { background-color: #e9ecef; font-weight: bold; }
-        .table-excel .total-row { background-color: #fdfdfe; font-weight: bold; }
-        .text-buy { color: #d9534f; font-weight: bold; }
-        .text-sell { color: #0275d8; font-weight: bold; }
+        .table-excel .total-row { background-color: #fdfdfe; font-weight: bold; color: black; } /* 합계는 검정 굵게 */
+        .text-profit { color: #0275d8; font-weight: bold; } /* 익절은 파란색 */
+        .text-loss { color: #d9534f; font-weight: bold; } /* 손절은 빨간색 */
+        .btn-action { padding: 2px 8px; font-size: 0.75rem; margin: 0 2px; }
     </style>
 </head>
 <body>
-    <div class="container mt-3 mb-5" style="max-width: 900px;">
-        <h3 class="text-center mb-4 fw-bold">📈 떨사오팔 매매 현황판</h3>
+    <div class="container mt-3 mb-5" style="max-width: 950px;">
+        <h3 class="text-center mb-4 fw-bold">📈 떨사오팔 매매 대시보드</h3>
         
-        <div class="card mb-3 shadow-sm border-0 p-3 bg-white">
-            <h6 class="fw-bold mb-2">⚙️ 시스템 설정 (버전 선택)</h6>
-            <div class="row g-2 align-items-end">
-                <div class="col-4">
-                    <label class="form-label" style="font-size: 0.8rem;">운용 호기(분할) 수</label>
-                    <select id="settingHogis" class="form-select form-select-sm" onchange="saveSettingsAndReload()">
-                        <option value="1">1분할</option><option value="2">2분할</option><option value="3">3분할</option>
-                        <option value="4">4분할</option><option value="5">5분할</option><option value="6" selected>6분할</option>
-                        <option value="7">7분할</option><option value="10">10분할</option>
-                    </select>
+        <div class="card shadow-sm border-0 p-3 bg-white">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="fw-bold m-0">⚙️ 매매 시스템 세팅</h6>
+                <span id="lockStatus" class="badge bg-danger d-none">🔒 세팅 잠금됨 (매매 진행 중)</span>
+            </div>
+            
+            <div id="settingsForm">
+                <div class="row g-2 align-items-end mb-2">
+                    <div class="col-3">
+                        <label class="form-label mb-1" style="font-size: 0.75rem;">운용 호기</label>
+                        <select id="setHogis" class="form-select form-select-sm"><option value="4">4분할</option><option value="6" selected>6분할</option><option value="10">10분할</option></select>
+                    </div>
+                    <div class="col-3">
+                        <label class="form-label mb-1" style="font-size: 0.75rem;">최초시드($)</label>
+                        <input type="number" id="setSeed" class="form-control form-control-sm" value="11000">
+                    </div>
+                    <div class="col-3">
+                        <label class="form-label mb-1" style="font-size: 0.75rem;">매도 목표</label>
+                        <select id="setTarget" class="form-select form-select-sm"><option value="0.5">0.5%</option><option value="0.7" selected>0.7%</option><option value="1.0">1.0%</option></select>
+                    </div>
+                    <div class="col-3">
+                        <label class="form-label mb-1" style="font-size: 0.75rem;">손절일(D-day)</label>
+                        <select id="setDday" class="form-select form-select-sm"><option value="15">15일</option><option value="30">30일</option><option value="45" selected>45일</option><option value="60">60일</option></select>
+                    </div>
                 </div>
-                <div class="col-5">
-                    <label class="form-label" style="font-size: 0.8rem;">1호기당 최초시드($)</label>
-                    <input type="number" id="settingSeed" class="form-control form-control-sm" value="11000" onchange="saveSettingsAndReload()">
+                <button class="btn btn-primary btn-sm w-100 fw-bold mt-1" onclick="lockSettings()">🚀 새 매매 시작 (설정 확정)</button>
+            </div>
+
+            <div id="settingsSummary" class="d-none bg-light p-2 rounded text-center border">
+                <span id="summaryText" class="fw-bold me-3"></span>
+                <button class="btn btn-outline-secondary btn-sm" onclick="unlockSettings()">초기화(위험)</button>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 p-2 bg-white mb-3">
+            <div class="row g-2 align-items-center">
+                <div class="col-4 text-center border-end">
+                    <span class="badge bg-dark mb-1">티커</span><br>
+                    <input type="text" id="tickerInput" class="form-control form-control-sm text-center fw-bold text-uppercase" placeholder="SOXL">
                 </div>
-                <div class="col-3">
-                    <button class="btn btn-secondary btn-sm w-100" onclick="saveSettingsAndReload()">적용</button>
+                <div class="col-4 text-center border-end">
+                    <span class="badge bg-secondary mb-1">현재 단가 입력</span><br>
+                    <input type="number" id="currentPrice" class="form-control form-control-sm text-center fw-bold" placeholder="예: 47.89" step="0.01" oninput="calcTodayBuyPrice()">
+                </div>
+                <div class="col-4 text-center">
+                    <span class="badge bg-success mb-1">오늘 매수 타점 (-0.1%)</span><br>
+                    <h5 id="todayBuyPrice" class="text-success fw-bold m-0 mt-1">-</h5>
                 </div>
             </div>
         </div>
 
-        <div class="card mb-4 shadow-sm border-0 p-2 bg-white">
+        <div class="card shadow-sm border-0 p-2 bg-white mb-4">
             <h6 class="fw-bold mb-2 ms-1">📊 호기별 요약 현황</h6>
             <div class="table-responsive">
                 <table class="table-excel">
                     <thead>
                         <tr>
                             <th>호기</th><th>최초시드</th><th>복리시드</th><th>보유수량</th>
-                            <th>수익금</th><th>수익률</th><th>익절</th><th>손절</th><th>매수가(평단)</th>
+                            <th>수익금</th><th>수익률</th><th>익절</th><th>손절</th>
+                            <th>매수가(평단)</th><th class="text-danger">매도가(목표)</th><th>D-day(손절)</th>
                         </tr>
                     </thead>
-                    <tbody id="dashboardBody">
-                        </tbody>
+                    <tbody id="dashboardBody"></tbody>
                 </table>
             </div>
         </div>
 
-        <div class="card mb-4 shadow-sm border-0 p-3 bg-white">
-            <h6 class="fw-bold mb-3">📝 매매 기록 입력</h6>
-            <div class="row g-2 mb-2">
+        <div class="card shadow-sm border-0 p-3 bg-white mb-4">
+            <h6 class="fw-bold mb-3" id="formTitle">📝 매매 기록 입력</h6>
+            <input type="hidden" id="recordId"> <div class="row g-2 mb-2">
                 <div class="col-6"><input type="date" id="dateInput" class="form-control"></div>
-                <div class="col-6">
-                    <select id="hogiInput" class="form-select">
-                        </select>
-                </div>
+                <div class="col-6"><select id="hogiInput" class="form-select"></select></div>
             </div>
             <div class="row g-2 mb-2">
                 <div class="col-6">
-                    <select id="typeInput" class="form-select text-buy" onchange="this.className=this.value=='매수'?'form-select text-buy':'form-select text-sell'">
-                        <option value="매수" class="text-buy">🔴 매수</option>
-                        <option value="매도" class="text-sell">🔵 매도</option>
+                    <select id="typeInput" class="form-select text-loss" onchange="this.className=this.value=='매수'?'form-select text-loss':'form-select text-profit'">
+                        <option value="매수" class="text-loss">🔴 매수</option><option value="매도" class="text-profit">🔵 매도</option>
                     </select>
                 </div>
                 <div class="col-6"><input type="number" id="qtyInput" class="form-control" placeholder="수량"></div>
@@ -80,174 +107,229 @@
                 <div class="col-6"><input type="number" id="priceInput" class="form-control" placeholder="단가" step="0.01"></div>
                 <div class="col-6"><input type="text" id="memoInput" class="form-control" placeholder="비고 (선택)"></div>
             </div>
-            <button onclick="saveData()" class="btn btn-dark w-100 fw-bold">저장하기</button>
+            <div class="d-flex gap-2">
+                <button id="saveBtn" onclick="saveData()" class="btn btn-dark w-100 fw-bold">저장하기</button>
+                <button id="cancelBtn" onclick="resetForm()" class="btn btn-secondary d-none">취소</button>
+            </div>
         </div>
 
-        <div class="card shadow-sm border-0 p-3 mb-4 bg-white">
+        <div class="card shadow-sm border-0 p-3 bg-white mb-5">
             <h6 class="fw-bold mb-3">📜 매매 기록 목록</h6>
             <div class="table-responsive">
                 <table class="table-excel">
                     <thead>
                         <tr>
-                            <th>날짜</th><th>호기</th><th>매매</th><th>수량</th><th>단가</th><th>비고</th>
+                            <th>날짜</th><th>호기</th><th>매매</th><th>수량</th><th>단가</th><th>비고</th><th>관리</th>
                         </tr>
                     </thead>
-                    <tbody id="tradeLogBody">
-                        </tbody>
+                    <tbody id="tradeLogBody"></tbody>
                 </table>
             </div>
         </div>
     </div>
 
     <script>
+        // Supabase 연동 설정
         const SUPABASE_URL = 'https://qutualbddxsyrhwzaosf.supabase.co';
         const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1dHVhbGJkZHhzeXJod3phb3NmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1ODA1MTEsImV4cCI6MjA4NzE1NjUxMX0.iDcwZg9bGFnbl0DJfU0ks4DZtdVJ24Rh_e2ooDP-dts';
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         const TABLE_NAME = 'teol_sa_o_pal';
 
+        // 전역 변수 설정
+        let sysHogis = 6, sysSeed = 11000, sysTarget = 0.7, sysDday = 45;
+        let isLocked = false;
+        let globalData = []; // 수정/삭제 시 원본 데이터를 찾기 위한 배열
+
         document.getElementById('dateInput').valueAsDate = new Date();
 
-        // 1. 설정값 불러오기 및 초기화
-        let numHogis = localStorage.getItem('settingHogis') ? parseInt(localStorage.getItem('settingHogis')) : 6;
-        let seedPerHogi = localStorage.getItem('settingSeed') ? parseFloat(localStorage.getItem('settingSeed')) : 11000;
+        // 1. 설정 잠금 및 로드 로직
+        function loadSettings() {
+            if(localStorage.getItem('isLocked') === 'true') {
+                isLocked = true;
+                sysHogis = parseInt(localStorage.getItem('sysHogis'));
+                sysSeed = parseFloat(localStorage.getItem('sysSeed'));
+                sysTarget = parseFloat(localStorage.getItem('sysTarget'));
+                sysDday = parseInt(localStorage.getItem('sysDday'));
+                
+                document.getElementById('settingsForm').classList.add('d-none');
+                document.getElementById('settingsSummary').classList.remove('d-none');
+                document.getElementById('lockStatus').classList.remove('d-none');
+                document.getElementById('summaryText').innerText = 
+                    `[운용] ${sysHogis}분할 | [시드] $${sysSeed} | [목표] +${sysTarget}% | [손절] ${sysDday}일`;
+            } else {
+                isLocked = false;
+                document.getElementById('settingsForm').classList.remove('d-none');
+                document.getElementById('settingsSummary').classList.add('d-none');
+                document.getElementById('lockStatus').classList.add('d-none');
+            }
+            updateHogiSelect();
+        }
 
-        function applySettingsToUI() {
-            document.getElementById('settingHogis').value = numHogis;
-            document.getElementById('settingSeed').value = seedPerHogi;
+        function lockSettings() {
+            sysHogis = parseInt(document.getElementById('setHogis').value);
+            sysSeed = parseFloat(document.getElementById('setSeed').value);
+            sysTarget = parseFloat(document.getElementById('setTarget').value);
+            sysDday = parseInt(document.getElementById('setDday').value);
             
-            const hogiSelect = document.getElementById('hogiInput');
-            hogiSelect.innerHTML = '';
-            for(let i=1; i<=numHogis; i++) {
-                hogiSelect.innerHTML += `<option value="${i}호기">${i}호기</option>`;
+            localStorage.setItem('sysHogis', sysHogis);
+            localStorage.setItem('sysSeed', sysSeed);
+            localStorage.setItem('sysTarget', sysTarget);
+            localStorage.setItem('sysDday', sysDday);
+            localStorage.setItem('isLocked', 'true');
+            
+            loadSettings();
+            loadData();
+        }
+
+        function unlockSettings() {
+            if(confirm("설정을 초기화하면 대시보드 계산이 현재 설정값 기준으로 변경됩니다. 진행하시겠습니까?")) {
+                localStorage.removeItem('isLocked');
+                loadSettings();
             }
         }
 
-        function saveSettingsAndReload() {
-            numHogis = parseInt(document.getElementById('settingHogis').value);
-            seedPerHogi = parseFloat(document.getElementById('settingSeed').value);
-            localStorage.setItem('settingHogis', numHogis);
-            localStorage.setItem('settingSeed', seedPerHogi);
-            applySettingsToUI();
-            loadData(); // 설정이 바뀌면 대시보드 다시 계산
+        function updateHogiSelect() {
+            const select = document.getElementById('hogiInput');
+            select.innerHTML = '';
+            for(let i=1; i<=sysHogis; i++) {
+                select.innerHTML += `<option value="${i}호기">${i}호기</option>`;
+            }
+        }
+
+        // 2. 현재가 -> 매수 타점 계산 (-0.1%)
+        function calcTodayBuyPrice() {
+            const current = parseFloat(document.getElementById('currentPrice').value);
+            if(current && current > 0) {
+                const target = current * 0.999;
+                document.getElementById('todayBuyPrice').innerText = target.toFixed(2);
+            } else {
+                document.getElementById('todayBuyPrice').innerText = '-';
+            }
         }
 
         window.onload = () => {
-            applySettingsToUI();
+            loadSettings();
             loadData();
         };
 
-        // 2. 데이터 불러오기 및 대시보드 계산 핵심 로직
+        // 3. 데이터 로드 및 계산 엔진
         async function loadData() {
-            const { data, error } = await client.from(TABLE_NAME).select('*').order('date', { ascending: false });
-            if (error) { alert("데이터 불러오기 실패: " + error.message); return; }
-
-            // 하단 표 (기록 목록) 그리기
+            const { data, error } = await client.from(TABLE_NAME).select('*').order('date', { ascending: false }).order('created_at', { ascending: false });
+            if (error) { alert("데이터 로드 실패!"); return; }
+            
+            globalData = data; // 전역 저장
             const tbody = document.getElementById('tradeLogBody');
             tbody.innerHTML = '';
+            
+            // 하단 표 그리기 (수정/삭제 버튼 추가)
             data.forEach(row => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${row.date.substring(5)}</td>
                     <td>${row.hogi}</td>
-                    <td class="${row.trade_type === '매수' ? 'text-buy' : 'text-sell'}">${row.trade_type}</td>
+                    <td class="${row.trade_type === '매수' ? 'text-loss' : 'text-profit'}">${row.trade_type}</td>
                     <td>${row.quantity}</td>
                     <td>${row.price.toFixed(2)}</td>
                     <td class="small text-muted">${row.memo || ''}</td>
+                    <td>
+                        <button onclick="editData(${row.id})" class="btn btn-outline-primary btn-action">수정</button>
+                        <button onclick="deleteData(${row.id})" class="btn btn-outline-danger btn-action">삭제</button>
+                    </td>
                 `;
                 tbody.appendChild(tr);
             });
 
-            // 상단 대시보드 계산 로직 (과거부터 순서대로 계산해야 평단가가 맞음)
-            let chronologicalData = [...data].reverse(); 
-            
-            // 호기별 현황판 데이터 그릇 만들기
+            // 대시보드 계산 (과거순서대로 추적)
+            let chronoData = [...data].reverse();
             let stats = {};
-            for(let i=1; i<=numHogis; i++) {
-                stats[`${i}호기`] = { 
-                    seed: seedPerHogi, qty: 0, avgPrice: 0, profit: 0, win: 0, loss: 0 
-                };
+            for(let i=1; i<=sysHogis; i++) {
+                stats[`${i}호기`] = { seed: sysSeed, qty: 0, avgPrice: 0, profit: 0, win: 0, loss: 0, firstDate: null };
             }
 
-            // 매매 기록을 하나씩 돌면서 계산
-            chronologicalData.forEach(row => {
+            chronoData.forEach(row => {
                 let h = row.hogi;
-                if(!stats[h]) return; // 설정된 호기 수보다 높은 기록은 무시
+                if(!stats[h]) return;
                 
                 let q = parseFloat(row.quantity);
                 let p = parseFloat(row.price);
 
                 if(row.trade_type === '매수') {
-                    // 평단가 계산: ((기존수량*기존평단) + (새수량*새단가)) / 총수량
+                    if(stats[h].qty === 0) stats[h].firstDate = row.date; // 첫 매수일 기록 (D-day용)
                     let totalCost = (stats[h].qty * stats[h].avgPrice) + (q * p);
                     stats[h].qty += q;
                     stats[h].avgPrice = totalCost / stats[h].qty;
-                } 
-                else if(row.trade_type === '매도') {
-                    // 수익금 계산: (매도단가 - 매수평단가) * 수량
-                    let realizedProfit = (p - stats[h].avgPrice) * q;
-                    stats[h].profit += realizedProfit;
-                    stats[h].qty -= q; // 보유수량 차감
+                } else if(row.trade_type === '매도') {
+                    let realized = (p - stats[h].avgPrice) * q;
+                    stats[h].profit += realized;
+                    stats[h].qty -= q;
                     
                     if(stats[h].qty <= 0) {
-                        stats[h].qty = 0;
-                        stats[h].avgPrice = 0; // 전량 매도시 평단가 초기화
+                        stats[h].qty = 0; stats[h].avgPrice = 0; stats[h].firstDate = null; // 전량 매도시 초기화
                     }
-                    
-                    if(realizedProfit > 0) stats[h].win++;
-                    else if(realizedProfit < 0) stats[h].loss++;
+                    if(realized > 0) stats[h].win++; else if(realized < 0) stats[h].loss++;
                 }
             });
 
-            // 계산된 결과를 상단 대시보드 표에 그리기
             const dashBody = document.getElementById('dashboardBody');
             dashBody.innerHTML = '';
-            
             let sumSeed = 0, sumCompound = 0, sumQty = 0, sumProfit = 0, sumWin = 0, sumLoss = 0;
 
-            for(let i=1; i<=numHogis; i++) {
-                let h = `${i}호기`;
-                let s = stats[h];
-                let compoundSeed = s.seed + s.profit; // 복리시드
-                let profitRate = (s.profit / s.seed) * 100; // 수익률
-
-                // 합계 누적
-                sumSeed += s.seed; sumCompound += compoundSeed; sumQty += s.qty;
+            for(let i=1; i<=sysHogis; i++) {
+                let h = `${i}호기`; let s = stats[h];
+                let compound = s.seed + s.profit;
+                let rate = (s.profit / s.seed) * 100;
+                
+                sumSeed += s.seed; sumCompound += compound; sumQty += s.qty;
                 sumProfit += s.profit; sumWin += s.win; sumLoss += s.loss;
+
+                // 목표 매도가 계산 (+sysTarget%)
+                let targetPrice = s.avgPrice > 0 ? s.avgPrice * (1 + (sysTarget / 100)) : 0;
+                
+                // D-day 계산 (첫 매수일 + sysDday)
+                let dDayStr = '-';
+                if(s.firstDate) {
+                    let start = new Date(s.firstDate);
+                    start.setDate(start.getDate() + sysDday);
+                    dDayStr = `${start.getMonth()+1}/${start.getDate()}`;
+                }
 
                 dashBody.innerHTML += `
                     <tr>
                         <td class="fw-bold">${h}</td>
-                        <td>${s.seed.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
-                        <td>${compoundSeed.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                        <td>${s.seed.toLocaleString(undefined,{minimumFractionDigits:2})}</td>
+                        <td>${compound.toLocaleString(undefined,{minimumFractionDigits:2})}</td>
                         <td>${s.qty}</td>
-                        <td class="${s.profit > 0 ? 'text-buy' : (s.profit < 0 ? 'text-sell' : '')}">${s.profit.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
-                        <td>${profitRate.toFixed(1)}%</td>
-                        <td>${s.win}</td>
-                        <td>${s.loss}</td>
+                        <td class="${s.profit > 0 ? 'text-profit' : (s.profit < 0 ? 'text-loss' : '')}">${s.profit.toLocaleString(undefined,{minimumFractionDigits:2})}</td>
+                        <td>${rate.toFixed(1)}%</td>
+                        <td>${s.win}</td><td>${s.loss}</td>
                         <td>${s.avgPrice > 0 ? s.avgPrice.toFixed(2) : '-'}</td>
+                        <td class="text-danger fw-bold">${targetPrice > 0 ? targetPrice.toFixed(2) : '-'}</td>
+                        <td class="fw-bold text-secondary">${dDayStr}</td>
                     </tr>
                 `;
             }
 
-            // 전체 합계 줄 그리기
+            // 합계 줄
             let totalRate = sumSeed > 0 ? (sumProfit / sumSeed) * 100 : 0;
             dashBody.insertAdjacentHTML('afterbegin', `
-                <tr class="total-row text-primary">
+                <tr class="total-row">
                     <td>합계</td>
-                    <td>${sumSeed.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
-                    <td>${sumCompound.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                    <td>${sumSeed.toLocaleString(undefined,{minimumFractionDigits:2})}</td>
+                    <td>${sumCompound.toLocaleString(undefined,{minimumFractionDigits:2})}</td>
                     <td>${sumQty}</td>
-                    <td class="${sumProfit > 0 ? 'text-buy' : (sumProfit < 0 ? 'text-sell' : '')}">${sumProfit.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
+                    <td class="${sumProfit > 0 ? 'text-profit' : (sumProfit < 0 ? 'text-loss' : '')}">${sumProfit.toLocaleString(undefined,{minimumFractionDigits:2})}</td>
                     <td>${totalRate.toFixed(1)}%</td>
-                    <td>${sumWin}</td>
-                    <td>${sumLoss}</td>
-                    <td>-</td>
+                    <td class="text-profit">${sumWin}</td><td class="text-loss">${sumLoss}</td>
+                    <td>-</td><td>-</td><td>-</td>
                 </tr>
             `);
         }
 
-        // 3. 저장 기능
+        // 4. 저장 및 데이터 처리 (수정/입력)
         async function saveData() {
+            if(!isLocked) { alert("먼저 '새 매매 시작' 버튼을 눌러 설정을 확정해주세요!"); return; }
+
+            const id = document.getElementById('recordId').value;
             const date = document.getElementById('dateInput').value;
             const hogi = document.getElementById('hogiInput').value;
             const trade_type = document.getElementById('typeInput').value;
@@ -255,17 +337,63 @@
             const price = parseFloat(document.getElementById('priceInput').value);
             const memo = document.getElementById('memoInput').value;
 
-            if(!quantity || !price) { alert("수량과 단가를 모두 입력해 주세요!"); return; }
+            if(!quantity || !price) { alert("수량과 단가를 입력하세요."); return; }
 
-            const { error } = await client.from(TABLE_NAME).insert([{ date, hogi, trade_type, quantity, price, memo }]);
+            const payload = { date, hogi, trade_type, quantity, price, memo };
+            let error;
 
-            if (error) { alert("저장 실패: " + error.message); } 
-            else {
-                document.getElementById('qtyInput').value = '';
-                document.getElementById('priceInput').value = '';
-                document.getElementById('memoInput').value = '';
-                loadData(); // 저장 성공시 대시보드 및 목록 즉시 업데이트
+            if(id) { // ID가 있으면 UPDATE
+                const res = await client.from(TABLE_NAME).update(payload).eq('id', id);
+                error = res.error;
+            } else { // ID가 없으면 INSERT
+                const res = await client.from(TABLE_NAME).insert([payload]);
+                error = res.error;
             }
+
+            if(error) alert("처리 실패: " + error.message);
+            else { resetForm(); loadData(); }
+        }
+
+        // 수정 버튼 클릭 시
+        function editData(id) {
+            const row = globalData.find(d => d.id === id);
+            if(!row) return;
+            
+            document.getElementById('recordId').value = row.id;
+            document.getElementById('dateInput').value = row.date;
+            document.getElementById('hogiInput').value = row.hogi;
+            document.getElementById('typeInput').value = row.trade_type;
+            document.getElementById('qtyInput').value = row.quantity;
+            document.getElementById('priceInput').value = row.price;
+            document.getElementById('memoInput').value = row.memo || '';
+            
+            document.getElementById('formTitle').innerText = "✏️ 매매 기록 수정 중...";
+            document.getElementById('saveBtn').innerText = "수정 완료";
+            document.getElementById('saveBtn').classList.replace('btn-dark', 'btn-primary');
+            document.getElementById('cancelBtn').classList.remove('d-none');
+            
+            window.scrollTo({ top: 400, behavior: 'smooth' }); // 입력창으로 부드럽게 스크롤
+        }
+
+        // 삭제 버튼 클릭 시
+        async function deleteData(id) {
+            if(confirm("정말 이 기록을 삭제하시겠습니까?")) {
+                const { error } = await client.from(TABLE_NAME).delete().eq('id', id);
+                if(error) alert("삭제 실패: " + error.message);
+                else loadData();
+            }
+        }
+
+        // 폼 초기화
+        function resetForm() {
+            document.getElementById('recordId').value = '';
+            document.getElementById('qtyInput').value = '';
+            document.getElementById('priceInput').value = '';
+            document.getElementById('memoInput').value = '';
+            document.getElementById('formTitle').innerText = "📝 매매 기록 입력";
+            document.getElementById('saveBtn').innerText = "저장하기";
+            document.getElementById('saveBtn').classList.replace('btn-primary', 'btn-dark');
+            document.getElementById('cancelBtn').classList.add('d-none');
         }
     </script>
 </body>
