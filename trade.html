@@ -241,13 +241,11 @@
 
         document.getElementById('dateInput').valueAsDate = new Date();
 
-        // 빙글빙글 스피너 로직이 추가된 시세 조회 기능
         async function fetchTicker() {
             const ticker = document.getElementById('tickerInput').value.toUpperCase();
             if(!ticker) { alert("조회할 종목의 티커를 입력하세요."); return; }
             
             const btn = document.getElementById('fetchBtn');
-            // 부트스트랩 스피너 코드 삽입
             btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>'; 
             btn.disabled = true;
             let price = null;
@@ -338,7 +336,6 @@
             autoFillTrade();
         }
 
-        // 웹페이지 로드 시 데이터 로딩 후 자동으로 티커 가격을 조회하는 로직 실행
         window.onload = () => { 
             loadSettings(); 
             loadData();
@@ -503,11 +500,13 @@
             let chartLabels = [];
             let chartPrincipal = [];
             let chartEvaluated = [];
+            let chartMonthlyProfit = []; // 툴팁 표기용 해당 월 수익금
             
             Object.keys(monthly).sort().forEach(m => {
                 chartLabels.push(`'${m.substring(2,4)}.${parseInt(m.substring(5,7))}`);
                 chartPrincipal.push(monthly[m].principal);
                 chartEvaluated.push(monthly[m].evaluated);
+                chartMonthlyProfit.push(monthly[m].profit);
             });
 
             const chartWrapper = document.getElementById('chartWrapper');
@@ -545,11 +544,14 @@
                                 },
                                 afterBody: function(tooltipItems) {
                                     if(tooltipItems.length === 2) {
+                                        let idx = tooltipItems[0].dataIndex;
+                                        let mProfit = chartMonthlyProfit[idx]; // 해당월 수익
                                         let principal = tooltipItems[0].raw;
                                         let evaluated = tooltipItems[1].raw;
-                                        let profit = evaluated - principal;
-                                        let sign = profit >= 0 ? '+' : '';
-                                        return `\n💰 월 확정 수익: ${sign}$${profit.toLocaleString(undefined, {minimumFractionDigits:2})}`;
+                                        let cProfit = evaluated - principal; // 누적 수익
+                                        let signM = mProfit >= 0 ? '+' : '';
+                                        let signC = cProfit >= 0 ? '+' : '';
+                                        return `\n💰 해당월 수익: ${signM}$${mProfit.toLocaleString(undefined, {minimumFractionDigits:2})}\n📈 누적 수익금: ${signC}$${cProfit.toLocaleString(undefined, {minimumFractionDigits:2})}`;
                                     }
                                 }
                             }
@@ -564,7 +566,8 @@
             const tbody = document.getElementById('tradeLogBody');
             tbody.innerHTML = '';
             globalData.forEach(row => {
-                const amount = (row.quantity * row.price).toFixed(2);
+                // 총액에 콤마 추가 적용 (소수점 2자리)
+                const amount = (row.quantity * row.price).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
                 const typeClass = row.trade_type === '매수' ? 'text-loss' : row.trade_type === '매도' ? 'text-profit' : 'text-success';
                 
                 let profitStr = '-';
@@ -581,7 +584,7 @@
                     <td>${row.hogi}</td>
                     <td class="${typeClass}">${row.trade_type}</td>
                     <td>${row.quantity}</td>
-                    <td>${row.price.toFixed(2)}</td>
+                    <td>${row.price.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
                     <td>${amount}</td>
                     <td>${profitStr}</td>
                     <td>${rateStr}</td>
@@ -599,17 +602,23 @@
             const tInput = document.getElementById('typeInput');
             const qInput = document.getElementById('qtyInput');
             const pInput = document.getElementById('priceInput');
+            const memoInput = document.getElementById('memoInput');
 
             tInput.className = tInput.value === '매수' ? 'form-select form-select-sm text-loss' :
                                tInput.value === '매도' ? 'form-select form-select-sm text-profit' :
                                'form-select form-select-sm text-success';
 
+            // 시드추가 시 [시드증액] 비고 자동 완성
             if(tInput.value === '시드추가') {
-                qInput.value = 1; pInput.value = ''; pInput.placeholder = "추가 금액($)";
+                qInput.value = 1; 
+                pInput.value = ''; 
+                pInput.placeholder = "추가 금액($)";
+                if(memoInput.value === '') memoInput.value = '[시드증액]';
             } else {
                 pInput.placeholder = "0.00";
                 const curPrice = document.getElementById('currentPrice').value;
                 if(curPrice) pInput.value = curPrice; 
+                if(memoInput.value === '[시드증액]') memoInput.value = '';
             }
         }
 
