@@ -10,9 +10,9 @@
   <style>
     /* 🔥 금융 앱 스타일의 전문적인 컬러 팔레트 */
     :root {
-      --primary: #1e3a8a; /* 짙은 네이비 */
+      --primary: #1e3a8a;
       --primary-hover: #172a6b;
-      --bg-color: #f1f5f9; /* 차분한 배경색 */
+      --bg-color: #f1f5f9;
       --surface: #ffffff;
       --border: #e2e8f0;
       --text-main: #1e293b;
@@ -28,51 +28,61 @@
       color: var(--text-main);
     }
 
-    /* 🔥 상단 헤더 및 네비게이션 영역 */
+    /* 🔥 상단 헤더 영역 (모바일 절대 방어 레이아웃) */
     .header-container {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
       padding-bottom: 16px;
       margin-bottom: 20px;
       border-bottom: 2px solid var(--border);
-      flex-wrap: wrap;
-      gap: 15px;
     }
     
-    .header-titles h1 { 
-      margin: 0 0 6px; 
-      color: var(--primary);
-      font-size: 26px;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-    }
-    
-    .header-titles .sub { 
-      color: var(--text-muted); 
-      font-size: 13px; 
-      font-weight: 500;
+    .title-row {
+      display: flex;
+      justify-content: space-between; /* 제목은 왼쪽, 버튼은 오른쪽 끝 */
+      align-items: center; /* 상하 수직 중앙 정렬 */
+      gap: 10px; /* 제목과 버튼 사이 간격 */
+      flex-wrap: nowrap; /* 🔥 화면이 좁아도 절대 줄바꿈 되지 않음! */
     }
 
-    /* 🔥 포털 이동 링크 버튼 (둥근 캡슐 스타일로 변경) */
-    .nav-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: var(--surface);
+    .title-row h1 { 
+      margin: 0; 
       color: var(--primary);
-      border: 2px solid var(--primary); /* 테두리를 조금 더 또렷하게 */
-      padding: 8px 22px; 
-      border-radius: 999px; /* 완전한 둥근 캡슐 형태 */
-      text-decoration: none;
-      font-weight: 700;
-      font-size: 15px;
-      transition: all 0.2s ease;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      font-size: 22px; /* 모바일에서 버튼과 함께 한 줄에 들어가도록 폰트 살짝 조정 */
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      white-space: nowrap; /* 제목이 두 줄로 깨지는 것 방지 */
     }
-    .nav-btn:hover {
-      background: var(--primary);
-      color: var(--surface);
+    
+    .sub { 
+      color: var(--text-muted); 
+      font-size: 12.5px; 
+      font-weight: 500;
+      margin-top: 8px; /* 타이틀 줄과 간격 확보 */
+      line-height: 1.4;
+    }
+
+    /* 🔥 완벽한 앱 스타일 링크 버튼 (더 작고 세련되게 다듬음) */
+    .app-link-btn { 
+        border-radius: 20px; 
+        font-weight: 700; 
+        font-size: 0.7rem; /* 크기 축소 */
+        border: 1px solid #1a237e; /* 얇아진 버튼에 맞게 테두리 미세 조정 */
+        color: #1a237e; 
+        text-decoration: none; 
+        padding: 2px 8px; /* 여백을 줄여서 전체 크기를 앙증맞게 만듦 */
+        transition: all 0.2s; 
+        background: white;
+        display: inline-flex; 
+        align-items: center; 
+        gap: 3px;
+        white-space: nowrap; /* 글씨 줄바꿈 방지 */
+        flex-shrink: 0; /* 좁은 화면에서 버튼 찌그러짐 완벽 방어 */
+    }
+    .app-link-btn:hover { 
+        background-color: #1a237e; 
+        color: white; 
+    }
+    .shadow-sm {
+        box-shadow: 0 .125rem .25rem rgba(0,0,0,.075) !important;
     }
 
     .pill { display:inline-block; padding:3px 12px; border-radius:4px; background:#e0e7ff; color: #3730a3; font-size:12px; font-weight: 600;}
@@ -113,7 +123,7 @@
     }
     select:focus { border-color: var(--primary); }
 
-    /* 🔥 테이블 디자인 정교화 */
+    /* 테이블 디자인 */
     .wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
     table { border-collapse: collapse; width: 100%; min-width: 800px; white-space: nowrap; }
 
@@ -158,13 +168,13 @@
 <body>
   
   <div class="header-container">
-    <div class="header-titles">
+    <div class="title-row">
       <h1>그리드매매 시스템</h1>
-      <div class="sub">텔레그램 봇 연동 자동화 대시보드 (TQQQ/ETHU/TSLL)</div>
+      <a href="https://trillionly.github.io/great/trade.html?v=1" class="app-link-btn shadow-sm">
+        📉 떨사오팔 센터 ➔
+      </a>
     </div>
-    <a href="https://trillionly.github.io/great/trade.html" class="nav-btn">
-      📉 떨사오팔 센터 ➔
-    </a>
+    <div class="sub">텔레그램 봇 연동 자동화 대시보드 (TQQQ/ETHU/TSLL)</div>
   </div>
 
   <div class="summary-grid">
@@ -490,24 +500,21 @@
     for (const sym of symbols) {
       const el = document.getElementById(`tier_${sym}`);
       if (el) {
+        const fixedMax = MAX_TIERS[sym] || 140;
+        
         if (viewMode !== 'DAILY') {
-          let maxTier = 0;
-          for (let r of viewData) {
-            if (r[sym] && r[sym].tierMax && r[sym].tierMax > maxTier) maxTier = r[sym].tierMax;
-          }
-          el.textContent = maxTier > 0 ? `${maxTier}` : "";
+          el.textContent = `${fixedMax}`;
         } else {
           let maxDate = viewData[viewData.length - 1]?.maxDate || "9999/99/99";
-          let lastNow = null, lastMax = null, prevNow = null;
+          let lastNow = null, prevNow = null;
           
           for (let i = allDaily.length - 1; i >= 0; i--) {
             if (allDaily[i].yyyymmdd > maxDate) continue; 
             
             const cell = allDaily[i][sym];
-            if (cell && cell.tierNow != null && cell.tierMax != null) {
+            if (cell && cell.tierNow != null) {
               if (lastNow == null) {
                 lastNow = cell.tierNow;
-                lastMax = cell.tierMax;
               } else if (prevNow == null) {
                 prevNow = cell.tierNow;
                 break;
@@ -518,7 +525,7 @@
           if (lastNow != null) {
             const diff = prevNow != null ? (lastNow - prevNow) : 0;
             const diffStr = diff >= 0 ? `+${diff}` : `${diff}`;
-            el.textContent = `${lastNow}/${lastMax} ${diffStr}`;
+            el.textContent = `${lastNow}/${fixedMax} ${diffStr}`;
           } else {
             el.textContent = "";
           }
