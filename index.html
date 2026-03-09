@@ -10,9 +10,9 @@
   <style>
     /* 🔥 금융 앱 스타일의 전문적인 컬러 팔레트 */
     :root {
-      --primary: #1e3a8a;
+      --primary: #1e3a8a; /* 짙은 네이비 */
       --primary-hover: #172a6b;
-      --bg-color: #f1f5f9;
+      --bg-color: #f1f5f9; /* 차분한 배경색 */
       --surface: #ffffff;
       --border: #e2e8f0;
       --text-main: #1e293b;
@@ -28,59 +28,52 @@
       color: var(--text-main);
     }
 
-    /* 🔥 상단 헤더 영역 (모바일 절대 방어 레이아웃) */
+    /* 🔥 상단 헤더 및 네비게이션 영역 */
     .header-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
       padding-bottom: 16px;
       margin-bottom: 20px;
       border-bottom: 2px solid var(--border);
+      flex-wrap: wrap;
+      gap: 15px;
     }
     
-    .title-row {
-      display: flex;
-      justify-content: space-between; /* 제목은 왼쪽, 버튼은 오른쪽 끝 */
-      align-items: center; /* 상하 수직 중앙 정렬 */
-      gap: 10px; /* 제목과 버튼 사이 간격 */
-      flex-wrap: nowrap; /* 🔥 화면이 좁아도 절대 줄바꿈 되지 않음! */
-    }
-
-    .title-row h1 { 
-      margin: 0; 
+    .header-titles h1 { 
+      margin: 0 0 6px; 
       color: var(--primary);
-      font-size: 26px; /* 🔥 요청하신 대로 제목 크기를 다시 시원하게 키웠습니다! */
+      font-size: 26px;
       font-weight: 800;
       letter-spacing: -0.5px;
-      white-space: nowrap; /* 제목이 두 줄로 깨지는 것 방지 */
     }
     
-    .sub { 
+    .header-titles .sub { 
       color: var(--text-muted); 
-      font-size: 12.5px; 
+      font-size: 13px; 
       font-weight: 500;
-      margin-top: 8px; /* 타이틀 줄과 간격 확보 */
-      line-height: 1.4;
     }
 
-    /* 🔥 완벽한 앱 스타일 링크 버튼 (더 작고 세련되게 다듬음) */
+    /* 🔥 [수정] 피씨/모바일 모두 잘 보이도록 사이즈를 시원하게 키운 앱 버튼 */
     .app-link-btn { 
-        border-radius: 20px; 
+        border-radius: 24px; /* 버튼 크기에 맞춰 더 둥글게 */
         font-weight: 700; 
-        font-size: 0.7rem; /* 크기 축소 */
-        border: 1px solid #1a237e; /* 얇아진 버튼에 맞게 테두리 미세 조정 */
+        font-size: 1.05rem; /* 🔥 글씨 크기를 시원하게 키움 (기존 0.85rem) */
+        border: 2px solid #1a237e; /* 🔥 테두리도 좀 더 또렷하게 */
         color: #1a237e; 
         text-decoration: none; 
-        padding: 2px 8px; /* 여백을 줄여서 전체 크기를 앙증맞게 만듦 */
+        padding: 10px 20px; /* 🔥 여백을 팍팍 늘려 버튼 덩치를 키움 (기존 4px 12px) */
         transition: all 0.2s; 
         background: white;
         display: inline-flex; 
         align-items: center; 
-        gap: 3px;
-        white-space: nowrap; /* 글씨 줄바꿈 방지 */
-        flex-shrink: 0; /* 좁은 화면에서 버튼 찌그러짐 완벽 방어 */
+        gap: 6px; /* 아이콘과 글씨 간격 살짝 넓힘 */
     }
     .app-link-btn:hover { 
         background-color: #1a237e; 
         color: white; 
     }
+    /* 부트스트랩 shadow-sm 대체 코드 */
     .shadow-sm {
         box-shadow: 0 .125rem .25rem rgba(0,0,0,.075) !important;
     }
@@ -92,7 +85,7 @@
     .card { 
       background: var(--surface); 
       border: 1px solid var(--border); 
-      border-radius: 8px; 
+      border-radius: 8px; /* 전문적인 느낌을 위해 각을 살림 */
       padding: 14px 16px; 
       box-shadow: 0 1px 3px rgba(0,0,0,0.04); 
       display: flex; flex-direction: column; height: 100%; box-sizing: border-box; min-width: 0;
@@ -123,7 +116,7 @@
     }
     select:focus { border-color: var(--primary); }
 
-    /* 테이블 디자인 */
+    /* 🔥 테이블 디자인 정교화 */
     .wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
     table { border-collapse: collapse; width: 100%; min-width: 800px; white-space: nowrap; }
 
@@ -136,6 +129,7 @@
       box-shadow: 0 1px 2px rgba(0,0,0,0.05); 
     }
     
+    /* 테이블 헤더 상단 네이비 라인 (전문성 강조) */
     .head2 th { border-top: 3px solid var(--primary); color: var(--primary); }
     
     th:first-child, td:first-child { position: sticky; left: 0; z-index: 11; border-right: 2px solid var(--border); }
@@ -168,13 +162,13 @@
 <body>
   
   <div class="header-container">
-    <div class="title-row">
+    <div class="header-titles">
       <h1>그리드매매 시스템</h1>
-      <a href="https://trillionly.github.io/great/trade.html?v=1" class="app-link-btn shadow-sm">
-        📉 떨사오팔 센터 ➔
-      </a>
+      <div class="sub">텔레그램 봇 연동 자동화 대시보드 (TQQQ/ETHU/TSLL)</div>
     </div>
-    <div class="sub">텔레그램 봇 연동 자동화 대시보드 (TQQQ/ETHU/TSLL)</div>
+    <a href="https://trillionly.github.io/great/trade.html" class="app-link-btn shadow-sm">
+      📉 떨사오팔 센터 ➔
+    </a>
   </div>
 
   <div class="summary-grid">
@@ -651,9 +645,9 @@
 
     const labels = viewData.map(r => r.dateLabel);
     const bgColors = {
-      TQQQ: 'rgba(30, 58, 138, 0.75)', 
-      ETHU: 'rgba(56, 189, 248, 0.75)', 
-      TSLL: 'rgba(148, 163, 184, 0.75)' 
+      TQQQ: 'rgba(30, 58, 138, 0.75)', /* 네이비 블루 */
+      ETHU: 'rgba(56, 189, 248, 0.75)', /* 스카이 블루 */
+      TSLL: 'rgba(148, 163, 184, 0.75)' /* 슬레이트 그레이 */
     };
     const borderColors = {
       TQQQ: '#1e3a8a',
