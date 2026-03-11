@@ -28,56 +28,54 @@
       color: var(--text-main);
     }
 
-    /* 🔥 상단 헤더 영역 (버튼 우측 상단 고정 로직 적용) */
+    /* 🔥 상단 헤더 영역 */
     .header-container {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start; /* 글씨와 버튼을 상단에 맞춤 */
       padding-bottom: 16px;
       margin-bottom: 20px;
       border-bottom: 2px solid var(--border);
-      gap: 10px;
-      /* flex-wrap 속성 제거: 버튼이 아래로 떨어지지 않게 함 */
     }
     
-    .header-titles {
-      flex: 1; /* 제목 영역이 남는 공간을 다 쓰도록 함 */
-      min-width: 0; /* 화면이 좁을 때 글자가 삐져나가지 않게 방지 */
+    .title-row {
+      display: flex;
+      justify-content: space-between; 
+      align-items: center; 
+      gap: 10px; 
+      flex-wrap: nowrap; 
     }
 
-    .header-titles h1 { 
-      margin: 0 0 6px; 
+    .title-row h1 { 
+      margin: 0; 
       color: var(--primary);
-      font-size: 26px;
+      font-size: 26px; 
       font-weight: 800;
       letter-spacing: -0.5px;
-      word-break: keep-all; /* 한글 단어 끊김 방지 */
+      white-space: nowrap; 
     }
     
-    .header-titles .sub { 
+    .sub { 
       color: var(--text-muted); 
-      font-size: 13px; 
+      font-size: 12.5px; 
       font-weight: 500;
+      margin-top: 8px; 
       line-height: 1.4;
     }
 
-    /* 🔥 수정된 앱 링크 버튼 (크기 축소 및 위치 고정) */
+    /* 앱 스타일 링크 버튼 */
     .app-link-btn { 
         border-radius: 20px; 
         font-weight: 700; 
-        font-size: 0.75rem; /* 0.85rem에서 살짝 줄임 */
+        font-size: 0.85rem; 
         border: 1.5px solid #1a237e; 
         color: #1a237e; 
         text-decoration: none; 
-        padding: 3px 10px; /* 여백을 살짝 줄여서 슬림하게 */
+        padding: 6px 14px; 
         transition: all 0.2s; 
         background: white;
         display: inline-flex; 
         align-items: center; 
         gap: 4px;
-        white-space: nowrap; /* 폰 화면이 좁아도 버튼 안의 글씨는 두 줄이 되지 않음 */
-        flex-shrink: 0; /* 화면이 좁아져도 버튼 크기는 찌그러지지 않게 방어 */
-        margin-top: 4px; /* 제목과 라인을 예쁘게 맞추기 위한 미세조정 */
+        white-space: nowrap; 
+        flex-shrink: 0; 
     }
     .app-link-btn:hover { 
         background-color: #1a237e; 
@@ -87,8 +85,23 @@
         box-shadow: 0 .125rem .25rem rgba(0,0,0,.075) !important;
     }
 
+    /* 🔥 에러 알림 배너 */
+    #errorBanner {
+      background-color: #fef2f2;
+      border: 1px solid #f87171;
+      color: #991b1b;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      line-height: 1.5;
+      display: none; 
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    #errorBanner strong { color: #7f1d1d; font-size: 14px; display: block; margin-bottom: 4px; }
+
     .pill { display:inline-block; padding:3px 12px; border-radius:4px; background:#e0e7ff; color: #3730a3; font-size:12px; font-weight: 600;}
-    .err { background:#fee2e2; color:#991b1b; }
+    .err-pill { background:#fee2e2 !important; color:#991b1b !important; }
 
     /* 카드형 레이아웃 통일 */
     .card { 
@@ -170,14 +183,16 @@
 <body>
   
   <div class="header-container">
-    <div class="header-titles">
+    <div class="title-row">
       <h1>그리드매매 시스템</h1>
-      <div class="sub">텔레그램 봇 연동 자동화 대시보드 (TQQQ/ETHU/TSLL)</div>
+      <a href="https://trillionly.github.io/great/trade.html?v=1" class="app-link-btn shadow-sm">
+        📉 떨사오팔 센터 ➔
+      </a>
     </div>
-    <a href="https://trillionly.github.io/great/trade.html" class="app-link-btn shadow-sm">
-      📉 떨사오팔 센터 ➔
-    </a>
+    <div class="sub">텔레그램 봇 연동 자동화 대시보드 (TQQQ/ETHU/TSLL)</div>
   </div>
+
+  <div id="errorBanner"></div>
 
   <div class="summary-grid">
     <div class="card">
@@ -376,6 +391,23 @@
           const { tierNow, tierMax } = parseGridTier(r.raw);
           r.tierNow = tierNow;
           r.tierMax = tierMax;
+
+          // 🔥 무결성 검증 엔진 (보유수량 vs 테이블 총재고)
+          const holdM = r.raw.match(/보유수량:\s*([-\d.,]+)주/);
+          const holdQty = holdM ? num(holdM[1]) : null;
+
+          const invM = r.raw.match(/테이블\s*총재고\s*:\s*([-\d.,]+)/);
+          const invQty = invM ? num(invM[1]) : null;
+
+          r.isValid = true;
+          r.errorMsg = "";
+
+          if (holdQty !== null && invQty !== null) {
+              if (holdQty !== invQty) {
+                  r.isValid = false;
+                  r.errorMsg = `[${r.mmdd} ${r.time}] <b>${r.symbol}</b> 수량 불일치 (입력: ${holdQty}주 vs 표: ${invQty})`;
+              }
+          }
 
           return r;
       });
@@ -744,6 +776,7 @@
     const monthSel = document.getElementById("monthSel");
     const symbolsSel = document.getElementById("symbolsSel");
     const debug = document.getElementById("debug");
+    const errorBanner = document.getElementById("errorBanner"); 
 
     try {
       let reportRows = [];
@@ -775,11 +808,33 @@
         return;
       }
 
-      const allYears = [...new Set(blocks.map(b => b.year))].sort();
+      // 🔥 불일치 에러 검출 로직
+      const errorBlocks = blocks.filter(b => b.isValid === false);
+      
+      // 🔥 연대 책임 엔진: 에러가 발생한 날짜(yyyymmdd)를 색출합니다.
+      const errorDates = new Set(errorBlocks.map(b => b.yyyymmdd));
+
+      // 🔥 에러가 발생한 날짜에 속한 데이터는 '정상인 종목'이더라도 모조리 연대책임으로 날려버립니다. (전체 입력 차단)
+      const validBlocks = blocks.filter(b => !errorDates.has(b.yyyymmdd));
+
+      if (errorBlocks.length > 0) {
+          status.textContent = "수정 요청 대기중";
+          status.className = "pill err-pill";
+          
+          errorBanner.style.display = "block";
+          errorBanner.innerHTML = "<strong>🚨 데이터 수정 요청 (수량 불일치 감지 - 해당 일자 전체 업데이트 차단됨)</strong>" + 
+                                  errorBlocks.map(b => b.errorMsg).join("<br>");
+      } else {
+          status.textContent = "정상 작동 중";
+          status.className = "pill";
+          errorBanner.style.display = "none";
+      }
+
+      const allYears = [...new Set(validBlocks.map(b => b.year))].sort();
       let yearHtml = `<option value="ALL_YEARS">전체 기간 (모든 연도)</option>`;
       yearHtml += allYears.map(y => `<option value="${y}">${y}년</option>`).join("");
       yearSel.innerHTML = yearHtml;
-      yearSel.value = allYears[allYears.length - 1];
+      yearSel.value = allYears.length ? allYears[allYears.length - 1] : "ALL_YEARS";
 
       function updateMonthDropdown() {
         const y = yearSel.value;
@@ -790,7 +845,7 @@
         }
         
         monthSel.disabled = false;
-        const yearBlocks = blocks.filter(b => b.year === y);
+        const yearBlocks = validBlocks.filter(b => b.year === y);
         const months = [...new Set(yearBlocks.map(b => b.month))].sort();
 
         let optionsHtml = `<option value="ALL">연간 요약 (선택 연도 전체)</option>`;
@@ -799,7 +854,7 @@
         }
         optionsHtml += months.map(m => `<option value="${m}">${Number(m)}월</option>`).join("");
         monthSel.innerHTML = optionsHtml;
-        monthSel.value = months[months.length - 1];
+        if (months.length > 0) monthSel.value = months[months.length - 1];
       }
 
       updateMonthDropdown();
@@ -809,7 +864,7 @@
         const m = monthSel.value;
         const symbols = symbolsSel.value.split(",").map(s => s.trim()).filter(Boolean);
         
-        const allDaily = buildAllDaily(blocks, symbols);
+        const allDaily = buildAllDaily(validBlocks, symbols);
         
         let viewData = [];
         let viewMode = 'DAILY'; 
@@ -914,8 +969,6 @@
         }
 
         renderView(viewData, symbols, viewMode, allDaily);
-        status.textContent = "정상 작동 중";
-        status.classList.remove("err");
       }
 
       yearSel.addEventListener("change", () => { updateMonthDropdown(); rerender(); });
@@ -924,7 +977,7 @@
       rerender();
     } catch (e) {
       status.textContent = "연결 에러";
-      status.classList.add("err");
+      status.classList.add("err-pill");
       console.error(e);
     }
   }
