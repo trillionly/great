@@ -34,76 +34,50 @@
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
             
             <div class="lg:col-span-3 card p-6 shadow-lg table-container">
-                <h2 class="text-lg font-semibold mb-4 flex items-center">
-                    <span class="w-2 h-2 rounded-full bg-indigo-500 mr-2"></span> 자산 현황 보드
+                <h2 class="text-lg font-semibold mb-4 flex items-center justify-between">
+                    <div><span class="w-2 h-2 rounded-full bg-indigo-500 mr-2 inline-block"></span> 자산 현황 보드</div>
+                    <span id="price-status" class="text-xs text-slate-500">주가 연동 상태 대기중...</span>
                 </h2>
                 <table class="w-full text-right">
                     <thead>
                         <tr>
-                            <th class="text-left">종목</th>
-                            <th>현재가</th>
-                            <th>수량</th>
-                            <th>총 금액</th>
-                            <th>평단가</th>
-                            <th>매입 금액</th>
-                            <th>평가 손익</th>
-                            <th>수익률</th>
-                            <th>비중</th>
-                            <th>적정수량(4:6)</th>
-                            <th>전일비</th>
-                            <th>전주비</th>
-                            <th>전월비</th>
-                            <th>전년비</th>
+                            <th class="text-left">종목</th><th>현재가</th><th>수량</th><th>총 금액</th><th>평단가</th><th>매입 금액</th><th>평가 손익</th><th>수익률</th><th>비중</th><th>적정수량(4:6)</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr class="hover:bg-slate-800 transition-colors">
                             <td class="text-left font-bold text-yellow-400">SCHD</td>
-                            <td>$30.90</td>
-                            <td>1,810</td>
-                            <td>$55,929.00</td>
-                            <td>$28.19</td>
-                            <td>$51,027.70</td>
-                            <td class="text-up">+$4,901.30</td>
-                            <td class="text-up">+9.6%</td>
-                            <td class="font-bold">43.4%</td>
-                            <td class="text-slate-400">1,669</td>
-                            <td class="text-down">-0.4%</td>
-                            <td class="text-down">-2.0%</td>
-                            <td class="text-down">-1.0%</td>
-                            <td class="text-up">+11.0%</td>
+                            <td id="schd-price">로딩중</td>
+                            <td id="schd-qty">0</td>
+                            <td id="schd-total">$0</td>
+                            <td id="schd-avg">$0</td>
+                            <td id="schd-invested">$0</td>
+                            <td id="schd-pl">$0</td>
+                            <td id="schd-return">0%</td>
+                            <td id="schd-ratio" class="font-bold">0%</td>
+                            <td id="schd-target" class="text-slate-400">0</td>
                         </tr>
                         <tr class="hover:bg-slate-800 transition-colors">
                             <td class="text-left font-bold text-blue-400">QLD</td>
-                            <td>$67.91</td>
-                            <td>1,075</td>
-                            <td>$73,003.25</td>
-                            <td>$70.12</td>
-                            <td>$75,374.92</td>
-                            <td class="text-down">-$2,371.67</td>
-                            <td class="text-down">-3.1%</td>
-                            <td class="font-bold text-red-400">56.6%</td>
-                            <td class="text-slate-400">1,139</td>
-                            <td class="text-slate-400">0.0%</td>
-                            <td class="text-down">-1.0%</td>
-                            <td class="text-down">-3.0%</td>
-                            <td class="text-up">+50.0%</td>
+                            <td id="qld-price">로딩중</td>
+                            <td id="qld-qty">0</td>
+                            <td id="qld-total">$0</td>
+                            <td id="qld-avg">$0</td>
+                            <td id="qld-invested">$0</td>
+                            <td id="qld-pl">$0</td>
+                            <td id="qld-return">0%</td>
+                            <td id="qld-ratio" class="font-bold">0%</td>
+                            <td id="qld-target" class="text-slate-400">0</td>
                         </tr>
                         <tr class="bg-slate-800 font-bold border-t-2 border-slate-600">
                             <td class="text-left">총계</td>
+                            <td>-</td><td>-</td>
+                            <td id="total-asset" class="text-green-400">$0</td>
                             <td>-</td>
-                            <td>-</td>
-                            <td class="text-green-400">$128,932.25</td>
-                            <td>-</td>
-                            <td>$126,402.62</td>
-                            <td class="text-up">+$2,529.63</td>
-                            <td class="text-up">+2.0%</td>
-                            <td>100.0%</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>-</td>
-                            <td>-</td>
+                            <td id="total-invested">$0</td>
+                            <td id="total-pl">$0</td>
+                            <td id="total-return">0%</td>
+                            <td>100.0%</td><td>-</td>
                         </tr>
                     </tbody>
                 </table>
@@ -111,7 +85,7 @@
 
             <div class="lg:col-span-1 card p-6 shadow-lg">
                 <h2 class="text-lg font-semibold mb-5 flex items-center">
-                    <span class="w-2 h-2 rounded-full bg-blue-500 mr-2"></span> 거래 입력
+                    <span class="w-2 h-2 rounded-full bg-blue-500 mr-2 inline-block"></span> 거래 입력
                 </h2>
                 <div class="space-y-4">
                     <select id="ticker" class="input-field text-sm">
@@ -134,25 +108,22 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
             <div class="lg:col-span-2 card p-6 shadow-lg">
                 <h2 class="text-lg font-semibold mb-4 flex items-center">
-                    <span class="w-2 h-2 rounded-full bg-green-500 mr-2"></span> 자산 성장 추이
+                    <span class="w-2 h-2 rounded-full bg-green-500 mr-2 inline-block"></span> 자산 성장 추이
                 </h2>
                 <div class="relative h-64 w-full">
                     <canvas id="growthChart"></canvas>
                 </div>
             </div>
-
             <div class="lg:col-span-1 card p-6 shadow-lg">
                 <h2 class="text-lg font-semibold mb-4 flex items-center">
-                    <span class="w-2 h-2 rounded-full bg-yellow-500 mr-2"></span> 포트폴리오 비중
+                    <span class="w-2 h-2 rounded-full bg-yellow-500 mr-2 inline-block"></span> 포트폴리오 비중 (목표 SCHD 4 : QLD 6)
                 </h2>
                 <div class="relative h-64 w-full flex justify-center">
                     <canvas id="weightChart"></canvas>
                 </div>
             </div>
-
         </div>
     </div>
 
@@ -161,110 +132,172 @@
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1dHVhbGJkZHhzeXJod3phb3NmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1ODA1MTEsImV4cCI6MjA4NzE1NjUxMX0.iDcwZg9bGFnbl0DJfU0ks4DZtdVJ24Rh_e2ooDP-dts';
     const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // [거래 저장 함수]
+    // [무료 주가 API 키 세팅 공간]
+    // 팩트: 실시간 주가를 가져오려면 Finnhub 같은 무료 API 키가 필요합니다. 
+    // 키가 없으면 어제 날짜 기준의 소장님 백데이터 종가로 임시 계산되도록 안전장치를 걸어두었습니다.
+    const FINNHUB_API_KEY = 'YOUR_API_KEY_HERE'; 
+
+    let weightChartInstance = null; // 차트 업데이트용 변수
+
+    // 통화 포맷 함수
+    const fmt = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
+    const fmtPct = (num) => (num > 0 ? '+' : '') + num.toFixed(2) + '%';
+    const colorClass = (num) => num > 0 ? 'text-up' : (num < 0 ? 'text-down' : '');
+
+    // 1. 거래 저장 함수
     async function saveData() {
         const ticker = document.getElementById('ticker').value;
         const tradeType = document.getElementById('tradeType').value;
         const quantity = parseInt(document.getElementById('quantity').value);
         const price = parseFloat(document.getElementById('price').value);
 
-        if(!quantity || !price) return alert('수량과 체결 단가를 입력해 주십시오.');
+        if(!quantity || !price) return alert('수량과 단가를 입력해 주십시오.');
 
-        const totalAmount = quantity * price;
-
-        const { data, error } = await db
-            .from('long_term_trade')
-            .insert([{ ticker, trade_type: tradeType, price, quantity, total_amount: totalAmount }]);
+        const { error } = await db.from('long_term_trade')
+            .insert([{ ticker, trade_type: tradeType, price, quantity, total_amount: quantity * price }]);
 
         if (error) alert('❌ 저장 실패: ' + error.message);
         else {
-            alert('✅ 데이터가 저장되었습니다! 🫡');
-            document.getElementById('quantity').value = '';
-            document.getElementById('price').value = '';
+            alert('✅ 데이터 저장 완료!');
+            location.reload(); // 저장 후 즉시 화면 새로고침하여 계산 반영
         }
     }
 
-    // [대시보드 차트 그리기 함수 - DB 연동]
-    async function drawDashboard() {
-        // 1. Supabase에서 스냅샷 데이터 불러오기
-        const { data, error } = await db.from('daily_snapshot').select('*');
+    // 2. 완벽 지표 자동화 메인 함수
+    async function runAutomation() {
+        // --- STEP 1: DB에서 매매 기록 긁어오기 ---
+        const { data: trades, error: dbError } = await db.from('long_term_trade').select('*');
         
-        if (error) {
-            console.error('데이터 로드 실패:', error);
-            return;
-        }
+        let schd = { qty: 0, invested: 0 };
+        let qld = { qty: 0, invested: 0 };
 
-        // 데이터가 없으면 종료
-        if (!data || data.length === 0) {
-            console.log('불러올 그래프 데이터가 없습니다.');
-        } else {
-            // 2. 날짜순 정렬
-            data.sort((a, b) => new Date(a.record_date) - new Date(b.record_date));
-
-            // 3. 차트용 데이터 추출
-            const labels = data.map(row => row.record_date);
-            const totalAssets = data.map(row => row.total_asset);
-            const principals = data.map(row => row.principal);
-
-            // 4. 우상향 라인 차트 렌더링
-            const ctxGrowth = document.getElementById('growthChart').getContext('2d');
-            new Chart(ctxGrowth, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: '총 자산 ($)',
-                            data: totalAssets,
-                            borderColor: '#3b82f6',
-                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                            borderWidth: 2,
-                            fill: true,
-                            tension: 0.1
-                        },
-                        {
-                            label: '투자 원금 ($)',
-                            data: principals,
-                            borderColor: '#94a3b8',
-                            borderDash: [5, 5],
-                            borderWidth: 2,
-                            fill: false,
-                            tension: 0.1
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { labels: { color: '#cbd5e1' } } },
-                    scales: {
-                        x: { ticks: { color: '#94a3b8', maxTicksLimit: 10 }, grid: { display: false } },
-                        y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
-                    }
+        if (trades) {
+            trades.forEach(t => {
+                let target = t.ticker === 'SCHD' ? schd : qld;
+                if (t.trade_type === '매수') {
+                    target.qty += t.quantity;
+                    target.invested += t.total_amount;
+                } else if (t.trade_type === '매도') {
+                    target.qty -= t.quantity;
+                    // 매도시 원금 차감 로직 (평단가 기준)
+                    let avgPrice = target.invested / (target.qty + t.quantity);
+                    target.invested -= avgPrice * t.quantity;
                 }
             });
         }
 
-        // 5. 비중 도넛 차트 (현재 표와 동일하게 고정값 유지)
+        // --- STEP 2: 실시간 주가 로드 (또는 백업 데이터) ---
+        let schdPrice = 30.90; // 임시 고정값
+        let qldPrice = 67.91;  // 임시 고정값
+
+        if (FINNHUB_API_KEY !== 'YOUR_API_KEY_HERE') {
+            try {
+                const [schdRes, qldRes] = await Promise.all([
+                    fetch(`https://finnhub.io/api/v1/quote?symbol=SCHD&token=${FINNHUB_API_KEY}`).then(r=>r.json()),
+                    fetch(`https://finnhub.io/api/v1/quote?symbol=QLD&token=${FINNHUB_API_KEY}`).then(r=>r.json())
+                ]);
+                schdPrice = schdRes.c; qldPrice = qldRes.c;
+                document.getElementById('price-status').innerText = '🟢 실시간 주가 연동 중';
+                document.getElementById('price-status').classList.add('text-green-500');
+            } catch(e) { console.log('주가 로드 실패, 고정값 사용'); }
+        } else {
+            document.getElementById('price-status').innerText = '🟠 API 키 필요 (임시 주가 사용 중)';
+        }
+
+        // --- STEP 3: 핵심 지표 연산 ---
+        // SCHD 연산
+        const schdTotal = schd.qty * schdPrice;
+        const schdAvg = schd.qty > 0 ? schd.invested / schd.qty : 0;
+        const schdPl = schdTotal - schd.invested;
+        const schdRt = schd.invested > 0 ? (schdPl / schd.invested) * 100 : 0;
+
+        // QLD 연산
+        const qldTotal = qld.qty * qldPrice;
+        const qldAvg = qld.qty > 0 ? qld.invested / qld.qty : 0;
+        const qldPl = qldTotal - qld.invested;
+        const qldRt = qld.invested > 0 ? (qldPl / qld.invested) * 100 : 0;
+
+        // 총계 연산
+        const totalAsset = schdTotal + qldTotal;
+        const totalInvested = schd.invested + qld.invested;
+        const totalPl = totalAsset - totalInvested;
+        const totalRt = totalInvested > 0 ? (totalPl / totalInvested) * 100 : 0;
+
+        // 비중 연산 (방어 코드: 자산이 0일 때 NaN 방지)
+        const schdRatio = totalAsset > 0 ? (schdTotal / totalAsset) * 100 : 0;
+        const qldRatio = totalAsset > 0 ? (qldTotal / totalAsset) * 100 : 0;
+
+        // 적정 수량 (목표 SCHD 4 : QLD 6)
+        const schdTargetQty = schdPrice > 0 ? Math.round((totalAsset * 0.4) / schdPrice) : 0;
+        const qldTargetQty = qldPrice > 0 ? Math.round((totalAsset * 0.6) / qldPrice) : 0;
+
+        // --- STEP 4: 화면 표 업데이트 ---
+        document.getElementById('schd-price').innerText = fmt(schdPrice);
+        document.getElementById('schd-qty').innerText = schd.qty.toLocaleString();
+        document.getElementById('schd-total').innerText = fmt(schdTotal);
+        document.getElementById('schd-avg').innerText = fmt(schdAvg);
+        document.getElementById('schd-invested').innerText = fmt(schd.invested);
+        document.getElementById('schd-pl').innerHTML = `<span class="${colorClass(schdPl)}">${fmt(schdPl)}</span>`;
+        document.getElementById('schd-return').innerHTML = `<span class="${colorClass(schdRt)}">${fmtPct(schdRt)}</span>`;
+        document.getElementById('schd-ratio').innerText = schdRatio.toFixed(1) + '%';
+        document.getElementById('schd-target').innerText = schdTargetQty.toLocaleString();
+
+        document.getElementById('qld-price').innerText = fmt(qldPrice);
+        document.getElementById('qld-qty').innerText = qld.qty.toLocaleString();
+        document.getElementById('qld-total').innerText = fmt(qldTotal);
+        document.getElementById('qld-avg').innerText = fmt(qldAvg);
+        document.getElementById('qld-invested').innerText = fmt(qld.invested);
+        document.getElementById('qld-pl').innerHTML = `<span class="${colorClass(qldPl)}">${fmt(qldPl)}</span>`;
+        document.getElementById('qld-return').innerHTML = `<span class="${colorClass(qldRt)}">${fmtPct(qldRt)}</span>`;
+        document.getElementById('qld-ratio').innerText = qldRatio.toFixed(1) + '%';
+        document.getElementById('qld-target').innerText = qldTargetQty.toLocaleString();
+
+        document.getElementById('total-asset').innerText = fmt(totalAsset);
+        document.getElementById('total-invested').innerText = fmt(totalInvested);
+        document.getElementById('total-pl').innerHTML = `<span class="${colorClass(totalPl)}">${fmt(totalPl)}</span>`;
+        document.getElementById('total-return').innerHTML = `<span class="${colorClass(totalRt)}">${fmtPct(totalRt)}</span>`;
+
+        // --- STEP 5: 도넛 차트 업데이트 ---
         const ctxWeight = document.getElementById('weightChart').getContext('2d');
-        new Chart(ctxWeight, {
+        if(weightChartInstance) weightChartInstance.destroy();
+        weightChartInstance = new Chart(ctxWeight, {
             type: 'doughnut',
             data: {
-                labels: ['SCHD (43.4%)', 'QLD (56.6%)'],
-                datasets: [{
-                    data: [43.4, 56.6],
-                    backgroundColor: ['#eab308', '#ef4444'],
-                    borderColor: '#1e293b',
-                    borderWidth: 2,
-                    hoverOffset: 4
-                }]
+                labels: [`SCHD (${schdRatio.toFixed(1)}%)`, `QLD (${qldRatio.toFixed(1)}%)`],
+                datasets: [{ data: [schdRatio, qldRatio], backgroundColor: ['#eab308', '#ef4444'], borderColor: '#1e293b', borderWidth: 2 }]
             },
-            options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'bottom', labels: { color: '#cbd5e1', padding: 20 } } } }
+            options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'bottom', labels: { color: '#cbd5e1' } } } }
+        });
+
+        // 우상향 그래프 로드 함수 호출
+        drawGrowthChart();
+    }
+
+    // [기존 백데이터 연동 우상향 그래프]
+    async function drawGrowthChart() {
+        const { data, error } = await db.from('daily_snapshot').select('*');
+        if (error || !data || data.length === 0) return;
+        data.sort((a, b) => new Date(a.record_date) - new Date(b.record_date));
+        
+        const labels = data.map(row => row.record_date);
+        const totalAssets = data.map(row => row.total_asset);
+        const principals = data.map(row => row.principal);
+
+        new Chart(document.getElementById('growthChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: '총 자산 ($)', data: totalAssets, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderWidth: 2, fill: true, tension: 0.1 },
+                    { label: '투자 원금 ($)', data: principals, borderColor: '#94a3b8', borderDash: [5, 5], borderWidth: 2, fill: false, tension: 0.1 }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#cbd5e1' } } }, scales: { x: { ticks: { color: '#94a3b8', maxTicksLimit: 10 }, grid: { display: false } }, y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } } } }
         });
     }
 
-    // 화면 켜지면 실행
-    window.onload = drawDashboard;
+    // 엔진 시작
+    window.onload = runAutomation;
     </script>
 </body>
 </html>
