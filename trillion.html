@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>장투리밸런싱 시스템</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-white p-4 md:p-8">
+    <div class="max-w-4xl mx-auto">
+        <header class="flex justify-between items-center mb-8 border-b border-gray-700 pb-4">
+            <h1 class="text-2xl md:text-3xl font-bold">📊 트릴리언 전략 사령부</h1>
+            <nav class="space-x-4 text-sm">
+                <a href="index.html" class="text-gray-400 hover:text-white">그리드 매매</a>
+                <a href="trade.html" class="text-gray-400 hover:text-white">떨사오팔</a>
+            </nav>
+        </header>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            <div class="bg-gray-800 p-4 rounded-lg">
+                <p class="text-gray-400 text-sm">총 자산</p>
+                <p class="text-xl font-bold text-green-400" id="total-asset">$0</p>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg">
+                <p class="text-gray-400 text-sm">목표 달성률 ($400k)</p>
+                <p class="text-xl font-bold text-blue-400" id="goal-percent">0.00%</p>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg">
+                <p class="text-gray-400 text-sm">SCHD 비중</p>
+                <p class="text-xl font-bold text-yellow-400" id="schd-ratio">0.0%</p>
+            </div>
+            <div class="bg-gray-800 p-4 rounded-lg">
+                <p class="text-gray-400 text-sm">QLD 비중 (목표 60%)</p>
+                <p class="text-xl font-bold text-red-400" id="qld-ratio">0.0%</p>
+            </div>
+        </div>
+
+        <div class="bg-gray-800 p-6 rounded-lg mb-8">
+            <h2 class="text-xl font-bold mb-4">📥 텔레그램 리포트 입력</h2>
+            <textarea id="telegram-input" rows="5" class="w-full bg-gray-700 text-white p-3 rounded-lg border border-gray-600 focus:outline-none focus:border-blue-500" placeholder="여기에 텔레그램 리포트를 붙여넣으세요..."></textarea>
+            <button id="parse-btn" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 font-bold py-2 px-4 rounded-lg transition duration-200">
+                데이터 분석 및 저장
+            </button>
+        </div>
+    </div>
+</body>
+</html>
