@@ -77,12 +77,12 @@
     </div>
 
     <script>
-    // 1. 복사해 온 열쇠를 여기에 붙여넣습니다. (작은따옴표 ' ' 안에 넣으셔야 합니다)
+    // 1. 소장님의 고유 URL과 KEY
     const SUPABASE_URL = 'https://qutualbddxsyrhwzaosf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1dHVhbGJkZHhzeXJod3phb3NmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1ODA1MTEsImV4cCI6MjA4NzE1NjUxMX0.iDcwZg9bGFnbl0DJfU0ks4DZtdVJ24Rh_e2ooDP-dts';
     
-    // Supabase 엔진 시동
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // 버그 수정 완료: 변수명을 supabase -> db 로 변경하여 충돌 방지
+    const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     // 2. 기록 저장 및 업데이트 함수
     async function saveData() {
@@ -99,8 +99,8 @@
 
         const totalAmount = quantity * price;
 
-        // DB로 데이터 전송
-        const { data, error } = await supabase
+        // db.from() 으로 데이터베이스에 접근하도록 수정
+        const { data, error } = await db
             .from('long_term_trade')
             .insert([
                 { ticker: ticker, trade_type: tradeType, price: price, quantity: quantity, total_amount: totalAmount }
@@ -110,7 +110,6 @@
             alert('❌ 저장 실패: ' + error.message);
         } else {
             alert('✅ 팩트 기반 데이터가 성공적으로 저장되었습니다! 🫡');
-            // 저장 후 입력창 깔끔하게 비우기
             document.getElementById('quantity').value = '';
             document.getElementById('price').value = '';
         }
