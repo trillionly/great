@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>장투리밸런싱 시스템 v3.2</title>
+    <title>장투리밸런싱 시스템 v3.3</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -47,7 +47,7 @@
                     <table>
                         <thead>
                             <tr>
-                                <th>종목</th><th>현재가</th><th>수량</th><th>평가금액</th><th>평단가</th><th>수익률</th><th>비중</th>
+                                <th>종목</th><th>현재가</th><th>수량</th><th>평단가</th><th>매입 금액</th><th>평가 금액</th><th>평가 손익</th><th>수익률</th><th>비중</th>
                                 <th class="leading-tight">적정수량<br><span class="text-xs font-normal text-slate-500">(4:6)</span></th>
                                 <th class="leading-tight">리밸런싱<br><span class="text-xs font-normal text-slate-500">가이드</span></th>
                             </tr>
@@ -162,7 +162,8 @@
         const qldVal = assets.QLD.qty * prices.QLD;
         const totalUsd = schdVal + qldVal;
         const totalInvested = assets.SCHD.cost + assets.QLD.cost;
-        const totalRt = totalInvested > 0 ? ((totalUsd - totalInvested) / totalInvested) * 100 : 0; // 총 수익률 계산
+        const totalPl = totalUsd - totalInvested;
+        const totalRt = totalInvested > 0 ? (totalPl / totalInvested) * 100 : 0; 
 
         const tbody = document.getElementById('asset-table-body');
         tbody.innerHTML = '';
@@ -174,9 +175,11 @@
             const val = item.id === 'SCHD' ? schdVal : qldVal;
             const data = assets[item.id];
             const price = prices[item.id];
+            
+            const pl = val - data.cost;
+            const profitRate = data.cost > 0 ? (pl / data.cost) * 100 : 0;
             const ratio = totalUsd > 0 ? (val / totalUsd) * 100 : 0;
             const avg = data.qty > 0 ? data.cost / data.qty : 0;
-            const profitRate = avg > 0 ? ((price - avg) / avg) * 100 : 0;
 
             const targetVal = totalUsd * item.target;
             const diffQty = Math.round((targetVal - val) / price);
@@ -189,9 +192,11 @@
                     <td class="font-bold text-left ${item.color}">${item.id}</td>
                     <td>${fmt(price)}</td>
                     <td>${data.qty.toLocaleString()}</td>
-                    <td>${fmt(val)}</td>
                     <td class="text-slate-400">${fmt(avg)}</td>
-                    <td class="${profitRate >= 0 ? 'text-up' : 'text-down'} font-bold">${(profitRate >= 0 ? '+' : '')}${profitRate.toFixed(2)}%</td>
+                    <td>${fmt(data.cost)}</td>
+                    <td class="font-bold">${fmt(val)}</td>
+                    <td class="${pl >= 0 ? 'text-up' : 'text-down'} font-bold">${pl >= 0 ? '+' : ''}${fmt(pl)}</td>
+                    <td class="${profitRate >= 0 ? 'text-up' : 'text-down'} font-bold">${profitRate >= 0 ? '+' : ''}${profitRate.toFixed(2)}%</td>
                     <td class="font-bold">${ratio.toFixed(1)}%</td>
                     <td class="text-slate-400">${diffQty === 0 ? '-' : Math.round(targetVal/price).toLocaleString()}</td>
                     <td class="bg-slate-800/50">${guide}</td>
@@ -199,15 +204,17 @@
             `;
         });
 
-        // 🚀 누락되었던 [총계] 줄 완벽 복구
+        // ✅ 총계 줄에 총 매입 금액, 총 평가 손익 복구
         tbody.innerHTML += `
             <tr class="bg-slate-800 font-bold border-t-2 border-slate-600">
                 <td class="text-left text-white">총계</td>
                 <td>-</td>
                 <td>-</td>
+                <td>-</td>
+                <td class="text-slate-300">${fmt(totalInvested)}</td>
                 <td class="text-green-400">${fmt(totalUsd)}</td>
-                <td class="text-slate-400">-</td>
-                <td class="${totalRt >= 0 ? 'text-up' : 'text-down'}">${(totalRt >= 0 ? '+' : '')}${totalRt.toFixed(2)}%</td>
+                <td class="${totalPl >= 0 ? 'text-up' : 'text-down'}">${totalPl >= 0 ? '+' : ''}${fmt(totalPl)}</td>
+                <td class="${totalRt >= 0 ? 'text-up' : 'text-down'}">${totalRt >= 0 ? '+' : ''}${totalRt.toFixed(2)}%</td>
                 <td>100.0%</td>
                 <td class="text-slate-400">-</td>
                 <td class="bg-slate-800/50">-</td>
