@@ -21,9 +21,15 @@
 </head>
 <body class="p-4 md:p-8">
     <div class="max-w-7xl mx-auto">
-        <header class="flex justify-between items-center mb-6 pb-4 border-b border-slate-700">
-            <h1 class="text-2xl font-bold tracking-tight">📊 장투리밸런싱 시스템</h1>
-            <div id="fx-rate" class="text-sm font-bold text-slate-400">💵 환율 로딩중...</div>
+        <header class="flex flex-col md:flex-row justify-between items-center mb-6 pb-4 border-b border-slate-700">
+            <div class="flex items-center space-x-4 mb-4 md:mb-0">
+                <h1 class="text-2xl font-bold tracking-tight">📊 장투리밸런싱 시스템</h1>
+                <span id="fx-rate" class="text-sm font-bold text-slate-400 bg-slate-800 px-3 py-1 rounded-full">💵 환율 로딩중...</span>
+            </div>
+            <nav class="flex space-x-5 text-sm font-medium text-slate-400">
+                <a href="https://trillionly.github.io/great/index.html" class="hover:text-white transition-colors">그리드매매 시스템</a>
+                <a href="https://trillionly.github.io/great/trade.html" class="hover:text-white transition-colors">떨사오팔 센터</a>
+            </nav>
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
@@ -253,7 +259,6 @@
         });
     }
 
-    // 매도 시 수익 계산 및 버튼 소형화 적용
     async function loadTradeHistory() {
         const { data } = await db.from('long_term_trade').select('*').order('created_at', { ascending: true });
         
@@ -287,7 +292,6 @@
             let pnlText = '<span class="text-slate-500">-</span>';
             let pnlRateText = '<span class="text-slate-500">-</span>';
             
-            // 매도 체결 시 파란색으로 수익금/수익률 노출
             if (t.trade_type === '매도' && profitInfo[t.id]) {
                 pnlText = `<span class="text-blue-500 font-bold">$${profitInfo[t.id].pnl.toFixed(2)}</span>`;
                 pnlRateText = `<span class="text-blue-500 font-bold">${profitInfo[t.id].pnlRate.toFixed(2)}%</span>`;
