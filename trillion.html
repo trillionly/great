@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>장투리밸런싱 시스템 v3.0</title>
+    <title>장투리밸런싱 시스템 v3.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -13,19 +13,16 @@
         .input-field { background-color: #0f172a; border: 1px solid #334155; color: white; width: 100%; padding: 0.75rem; border-radius: 0.5rem; outline: none; }
         .table-container { overflow-x: auto; }
         table { width: 100%; text-align: center; border-collapse: collapse; white-space: nowrap; }
-        /* 폰트 1포인트 키움 */
         th, td { padding: 0.75rem 0.5rem; border-bottom: 1px solid #334155; font-size: 1rem; }
         th { background-color: #0f172a; color: #94a3b8; font-weight: 600; text-align: center; }
         .text-up { color: #ef4444; } 
         .text-down { color: #3b82f6; }
-        .btn-sm { padding: 4px 8px; font-size: 12px; border-radius: 4px; transition: opacity 0.2s; }
-        .btn-sm:hover { opacity: 0.8; }
     </style>
 </head>
 <body class="p-4 md:p-8">
     <div class="max-w-7xl mx-auto">
         <header class="flex justify-between items-center mb-6 pb-4 border-b border-slate-700">
-            <h1 class="text-2xl font-bold tracking-tight">📊 장투 사령부 v3.0</h1>
+            <h1 class="text-2xl font-bold tracking-tight">📊 장투리밸런싱 시스템</h1>
             <div id="fx-rate" class="text-sm font-bold text-slate-400">💵 환율 로딩중...</div>
         </header>
 
@@ -49,8 +46,7 @@
                                 <th class="leading-tight">리밸런싱<br><span class="text-xs font-normal text-slate-500">가이드</span></th>
                             </tr>
                         </thead>
-                        <tbody id="asset-table-body">
-                            </tbody>
+                        <tbody id="asset-table-body"></tbody>
                     </table>
                 </div>
             </div>
@@ -78,8 +74,14 @@
                 <h2 class="text-lg font-semibold mb-4 flex items-center">
                     <span class="w-2 h-2 rounded-full bg-red-500 mr-2 inline-block"></span> 매매 기록 (수정/삭제)
                 </h2>
-                <table class="text-sm">
-                    <thead><tr><th>날짜</th><th>종목</th><th>구분</th><th>수량</th><th>단가</th><th>관리</th></tr></thead>
+                <table class="w-full text-center text-sm">
+                    <thead>
+                        <tr>
+                            <th class="text-center">날짜</th><th class="text-center">종목</th><th class="text-center">구분</th><th class="text-center">수량</th><th class="text-center">단가</th>
+                            <th class="text-center">수익금</th><th class="text-center">수익률</th>
+                            <th class="text-center w-1 whitespace-nowrap px-1">관리</th>
+                        </tr>
+                    </thead>
                     <tbody id="trade-history-body"></tbody>
                 </table>
             </div>
@@ -110,8 +112,6 @@
 
     const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
     const fmtKrw = (n) => new Intl.NumberFormat('ko-KR').format(Math.round(n));
-
-    // 날짜 포맷팅 함수: 2026. 3. 15 -> 26/3/15
     const formatShortDate = (dateStr) => {
         const match = dateStr.match(/(\d{4})[^\d]+(\d{1,2})[^\d]+(\d{1,2})/);
         if(match) return `${match[1].slice(-2)}/${match[2]}/${match[3]}`;
@@ -174,7 +174,6 @@
             const targetVal = totalUsd * item.target;
             const diffQty = Math.round((targetVal - val) / price);
             
-            // "매수/매도" 단어 제거하고 직관적인 표기
             const guide = diffQty > 0 ? `<span class="text-up font-bold">+${diffQty}주</span>` : 
                           (diffQty < 0 ? `<span class="text-down font-bold">${diffQty}주</span>` : '<span class="text-slate-400">-</span>');
 
@@ -195,7 +194,6 @@
 
         document.getElementById('total-krw').innerText = '₩' + fmtKrw(totalUsd * usdToKrw);
 
-        // 색상 동기화: SCHD(노랑), QLD(파랑)
         const schdRatio = totalUsd > 0 ? (schdVal / totalUsd) * 100 : 0;
         const qldRatio = totalUsd > 0 ? (qldVal / totalUsd) * 100 : 0;
         
@@ -210,7 +208,6 @@
             options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom', labels: { color: '#cbd5e1' } } } }
         });
 
-        // 💡 일단위 차트 자동 업데이트 로직
         await drawGrowthChart(totalUsd, totalInvested);
     }
 
@@ -218,11 +215,9 @@
         const { data } = await db.from('daily_snapshot').select('*');
         let chartData = data || [];
         
-        // 오늘 날짜 생성
         const d = new Date();
         const todayStr = `${d.getFullYear()}. ${d.getMonth()+1}. ${d.getDate()}`;
         
-        // 오늘 기록이 DB에 없으면 백그라운드에서 조용히 추가 (자동화)
         if(currentTotal > 0 && !chartData.find(r => r.record_date === todayStr)) {
             await db.from('daily_snapshot').insert([{ record_date: todayStr, total_asset: currentTotal, principal: currentPrincipal }]);
             chartData.push({ record_date: todayStr, total_asset: currentTotal, principal: currentPrincipal });
@@ -230,7 +225,6 @@
 
         chartData.sort((a, b) => new Date(a.record_date.replace(/\.\s/g, '-')) - new Date(b.record_date.replace(/\.\s/g, '-')));
         
-        // 날짜 축약 포맷 적용 (26/3/15)
         const labels = chartData.map(row => formatShortDate(row.record_date));
         const totalAssets = chartData.map(row => row.total_asset);
         const principals = chartData.map(row => row.principal);
@@ -249,32 +243,64 @@
                 responsive: true, maintainAspectRatio: false, 
                 plugins: { 
                     legend: { labels: { color: '#cbd5e1' } },
-                    // 툴팁 포맷: $128.5K
                     tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: $${(ctx.raw/1000).toFixed(1)}K` } }
                 }, 
                 scales: { 
                     x: { ticks: { color: '#94a3b8', maxTicksLimit: 12 }, grid: { display: false } }, 
-                    // Y축 포맷: $128K 잘라서 표기
                     y: { ticks: { color: '#94a3b8', callback: (val) => '$' + (val/1000).toFixed(0) + 'K' }, grid: { color: '#334155' } } 
                 } 
             }
         });
     }
 
+    // 매도 시 수익 계산 및 버튼 소형화 적용
     async function loadTradeHistory() {
-        const { data } = await db.from('long_term_trade').select('*').order('created_at', { ascending: false }).limit(6);
+        const { data } = await db.from('long_term_trade').select('*').order('created_at', { ascending: true });
+        
+        let avgCost = { SCHD: { qty: 0, cost: 0 }, QLD: { qty: 0, cost: 0 } };
+        let profitInfo = {}; 
+
+        if (data) {
+            data.forEach(t => {
+                let target = avgCost[t.ticker];
+                if (t.trade_type === '매수') {
+                    target.qty += t.quantity; target.cost += t.total_amount;
+                } else if (t.trade_type === '매도') {
+                    let avg = target.qty > 0 ? target.cost / target.qty : 0;
+                    let pnl = (t.price - avg) * t.quantity;
+                    let pnlRate = avg > 0 ? ((t.price - avg) / avg) * 100 : 0;
+                    profitInfo[t.id] = { pnl, pnlRate };
+                    target.qty -= t.quantity; target.cost -= avg * t.quantity;
+                }
+            });
+        }
+
         const tbody = document.getElementById('trade-history-body');
         tbody.innerHTML = '';
-        data?.forEach(t => {
+        
+        const recentData = data ? data.reverse().slice(0, 6) : [];
+
+        recentData.forEach(t => {
             const dateShort = formatShortDate(t.created_at.split('T')[0]);
-            const color = t.trade_type === '매수' ? 'text-up font-bold' : 'text-down font-bold';
+            const typeColor = t.trade_type === '매수' ? 'text-up font-bold' : 'text-down font-bold';
+            
+            let pnlText = '<span class="text-slate-500">-</span>';
+            let pnlRateText = '<span class="text-slate-500">-</span>';
+            
+            // 매도 체결 시 파란색으로 수익금/수익률 노출
+            if (t.trade_type === '매도' && profitInfo[t.id]) {
+                pnlText = `<span class="text-blue-500 font-bold">$${profitInfo[t.id].pnl.toFixed(2)}</span>`;
+                pnlRateText = `<span class="text-blue-500 font-bold">${profitInfo[t.id].pnlRate.toFixed(2)}%</span>`;
+            }
+
             tbody.innerHTML += `
                 <tr class="hover:bg-slate-800 border-b border-slate-700">
-                    <td>${dateShort}</td><td class="font-bold">${t.ticker}</td><td class="${color}">${t.trade_type}</td>
+                    <td>${dateShort}</td><td class="font-bold">${t.ticker}</td><td class="${typeColor}">${t.trade_type}</td>
                     <td>${t.quantity}</td><td>$${t.price}</td>
-                    <td>
-                        <button onclick="editTrade('${t.id}', '${t.ticker}', '${t.trade_type}', ${t.quantity}, ${t.price})" class="bg-blue-600 hover:bg-blue-500 text-white btn-sm mr-1">수정</button>
-                        <button onclick="deleteTrade('${t.id}')" class="bg-red-600 hover:bg-red-500 text-white btn-sm">삭제</button>
+                    <td>${pnlText}</td><td>${pnlRateText}</td>
+                    <td class="w-1 whitespace-nowrap px-1">
+                        <button onclick="editTrade('${t.id}', '${t.ticker}', '${t.trade_type}', ${t.quantity}, ${t.price})" class="bg-blue-600 hover:bg-blue-500 text-white px-2 py-0.5 rounded text-[10px] mr-1">수정</button>
+                        <button onclick="deleteTrade('${t.id}')" class="bg-red-600 hover:bg-red-500 text-white px-2 py-0.5 rounded text-[10px]">삭제</button>
                     </td>
                 </tr>
             `;
