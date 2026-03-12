@@ -1,980 +1,171 @@
-<!doctype html>
-<html lang="ko">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>그리드매매 시스템</title>
+import fetch from "node-fetch";
+import express from "express";
+import { createClient } from "@supabase/supabase-js";
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+const app = express();
+app.use(express.json());
 
-  <style>
-    /* 🔥 금융 앱 스타일의 전문적인 컬러 팔레트 */
-    :root {
-      --primary: #1e3a8a;
-      --primary-hover: #172a6b;
-      --bg-color: #f1f5f9;
-      --surface: #ffffff;
-      --border: #e2e8f0;
-      --text-main: #1e293b;
-      --text-muted: #64748b;
-      --pos: #0f766e;
-      --neg: #b91c1c;
-    }
+// 모든 요청 로그 찍기 (중요)
+app.use((req, res, next) => {
+  console.log(`[REQ] ${req.method} ${req.url}`);
+  next();
+});
 
-    body { 
-      font-family: 'Pretendard', system-ui, -apple-system, sans-serif; 
-      margin: 20px; 
-      background: var(--bg-color); 
-      color: var(--text-main);
-    }
+// ===============================
+// 환경변수
+// ===============================
+const {
+  SUPABASE_URL,
+  SUPABASE_KEY,
+  GH_TOKEN,
+  GH_OWNER,
+  GH_REPO,
+  PORT
+} = process.env;
 
-    /* 🔥 상단 헤더 영역 */
-    .header-container {
-      padding-bottom: 16px;
-      margin-bottom: 20px;
-      border-bottom: 2px solid var(--border);
-    }
-    
-    .title-row {
-      display: flex;
-      justify-content: space-between; 
-      align-items: center; 
-      gap: 10px; 
-      flex-wrap: nowrap; 
-    }
+// ===============================
+// Supabase 연결
+// ===============================
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    .title-row h1 { 
-      margin: 0; 
-      color: var(--primary);
-      font-size: 26px; 
-      font-weight: 800;
-      letter-spacing: -0.5px;
-      white-space: nowrap; 
-    }
+// ===============================
+// GitHub 업서트 함수
+// ===============================
+async function upsertToGitHub(path, contentText, message) {
+  if (!GH_TOKEN || !GH_OWNER || !GH_REPO) {
+    console.log("[GH] Missing env vars, skip GitHub update");
+    return;
+  }
 
-    /* 2개의 링크 버튼을 나란히 담는 컨테이너 */
-    .nav-buttons {
-      display: flex;
-      gap: 12px; /* 텍스트 사이 간격 */
-      align-items: center;
-      flex-shrink: 0; 
-    }
-    
-    .sub { 
-      color: var(--text-muted); 
-      font-size: 12.5px; 
-      font-weight: 500;
-      margin-top: 8px; 
-      line-height: 1.4;
-    }
+  console.log("[GH] about to update GitHub");
 
-    /* 🔥 배경/테두리를 완전히 없앤 미니멀 텍스트 링크 */
-    .nav-link { 
-        font-weight: 600; 
-        font-size: 14px; 
-        color: #64748b; /* 평소에는 차분한 회색 */
-        text-decoration: none; 
-        padding: 4px 2px; /* 모바일 터치를 위한 투명 여백 */
-        transition: color 0.2s ease; 
-        white-space: nowrap; 
-    }
-    .nav-link:hover, .nav-link:active { 
-        color: var(--primary); /* 터치하거나 마우스 올릴 때 짙은 네이비로 변경 */
-    }
+  const api = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${path}`;
 
-    /* 🔥 에러 알림 배너 */
-    #errorBanner {
-      background-color: #fef2f2;
-      border: 1px solid #f87171;
-      color: #991b1b;
-      padding: 12px 16px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-      font-size: 13px;
-      line-height: 1.5;
-      display: none; 
-      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-    }
-    #errorBanner strong { color: #7f1d1d; font-size: 14px; display: block; margin-bottom: 4px; }
-
-    .pill { display:inline-block; padding:3px 12px; border-radius:4px; background:#e0e7ff; color: #3730a3; font-size:12px; font-weight: 600;}
-    .err-pill { background:#fee2e2 !important; color:#991b1b !important; }
-
-    /* 카드형 레이아웃 통일 */
-    .card { 
-      background: var(--surface); 
-      border: 1px solid var(--border); 
-      border-radius: 8px; 
-      padding: 14px 16px; 
-      box-shadow: 0 1px 3px rgba(0,0,0,0.04); 
-      display: flex; flex-direction: column; height: 100%; box-sizing: border-box; min-width: 0;
-    }
-    
-    .summary-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-    
-    .k { font-size:13px; color: var(--primary); font-weight: 700; line-height: 1.2; margin-bottom: 8px; }
-    .v { font-size:20px; font-weight:800; margin-top:auto; padding-top: 2px; }
-    
-    /* 컨트롤러 (드롭다운) 영역 */
-    .controls { display: flex; gap: 12px; justify-content: flex-end; margin-bottom: 16px; flex-wrap: wrap; }
-    .controls .small { font-size: 12px; color: var(--text-muted); font-weight: 600; margin-bottom: 4px; }
-    select { 
-      padding: 8px 12px; 
-      border: 1px solid #cbd5e1; 
-      border-radius: 6px; 
-      background: #f8fafc;
-      color: var(--text-main);
-      font-weight: 500;
-      font-size: 14px;
-      outline: none;
-    }
-    select:focus { border-color: var(--primary); }
-
-    /* 테이블 디자인 */
-    .wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
-    table { border-collapse: collapse; width: 100%; min-width: 800px; white-space: nowrap; }
-
-    th, td { border-bottom: 1px solid var(--border); padding: 10px 10px; vertical-align: middle; font-size: 13px; }
-    th { 
-      background: #f8fafc; 
-      color: var(--text-main); 
-      text-align: left; 
-      position: sticky; top: 0; z-index: 10; 
-      box-shadow: 0 1px 2px rgba(0,0,0,0.05); 
-    }
-    
-    .head2 th { border-top: 3px solid var(--primary); color: var(--primary); }
-    
-    th:first-child, td:first-child { position: sticky; left: 0; z-index: 11; border-right: 2px solid var(--border); }
-    th:first-child { z-index: 12; background: #f8fafc; }
-
-    tbody tr:nth-child(even) { background-color: #f8fafc; }
-    tbody tr:nth-child(even) td:first-child { background-color: #f8fafc; }
-    tbody tr:nth-child(odd) { background-color: var(--surface); }
-    tbody tr:nth-child(odd) td:first-child { background-color: var(--surface); }
-    tbody tr:hover { background-color: #f1f5f9; }
-    tbody tr:hover td:first-child { background-color: #f1f5f9; }
-
-    .br { border-right: 1px solid var(--border); }
-    .right { text-align:right; font-variant-numeric: tabular-nums; }
-    .center { text-align:center; font-variant-numeric: tabular-nums; }
-    
-    .muted { color: var(--text-muted); }
-    .neg { color: var(--neg); font-weight:600; }
-    .pos { color: var(--pos); font-weight:600; }
-    
-    .tot { background: #eff6ff; font-weight:700; border-top: 2px solid #cbd5e1; }
-    .avg { background: #f8fafc; font-weight:600; }
-    tfoot tr.avg td:first-child { background-color: #f8fafc; }
-    tfoot tr.tot td:first-child { background-color: #eff6ff; }
-
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
-    .wide { min-width: 100%; margin-top: 15px; }
-  </style>
-</head>
-<body>
-  
-  <div class="header-container">
-    <div class="title-row">
-      <h1>그리드매매 시스템</h1>
-      <div class="nav-buttons">
-        <a href="https://trillionly.github.io/great/trade.html?v=1" class="nav-link">떨사오팔 센터</a>
-        <a href="https://trillionly.github.io/great/trillion.html" class="nav-link">장투리밸런싱 시스템</a>
-      </div>
-    </div>
-    <div class="sub">텔레그램 봇 연동 자동화 대시보드 (TQQQ/ETHU/TSLL)</div>
-  </div>
-
-  <div id="errorBanner"></div>
-
-  <div class="summary-grid">
-    <div class="card">
-      <div class="k">연동 상태</div>
-      <div class="v"><span id="status" class="pill">로딩 중…</span></div>
-    </div>
-    <div class="card">
-      <div class="k">데이터 파싱 일자</div>
-      <div class="v" style="font-size: 16px; margin-top: auto; padding-top: 6px;"><span id="count">-</span>건 / <span class="muted" id="latest">-</span></div>
-    </div>
-    <div class="card">
-      <div class="k">총 누적 수익 (합계)</div>
-      <div class="v" id="monthProfitAll">-</div>
-      <div class="small muted" id="monthRoiAll" style="margin-bottom: 6px;">-</div>
-      <div id="progAll" style="width:100%; margin-top:auto;"></div>
-    </div>
-
-    <div class="card">
-      <div class="k">TQQQ 누적 수익</div>
-      <div class="v" id="monthProfitTQQQ">-</div>
-      <div class="small muted" id="monthRoiTQQQ" style="margin-bottom: 6px;">-</div>
-      <div id="progTQQQ" style="width:100%; margin-top:auto;"></div>
-    </div>
-    <div class="card">
-      <div class="k">ETHU 누적 수익</div>
-      <div class="v" id="monthProfitETHU">-</div>
-      <div class="small muted" id="monthRoiETHU" style="margin-bottom: 6px;">-</div>
-      <div id="progETHU" style="width:100%; margin-top:auto;"></div>
-    </div>
-    <div class="card">
-      <div class="k">TSLL 누적 수익</div>
-      <div class="v" id="monthProfitTSLL">-</div>
-      <div class="small muted" id="monthRoiTSLL" style="margin-bottom: 6px;">-</div>
-      <div id="progTSLL" style="width:100%; margin-top:auto;"></div>
-    </div>
-  </div>
-
-  <div class="controls">
-    <div>
-      <div class="small">조회 연도</div>
-      <select id="yearSel"></select>
-    </div>
-    <div>
-      <div class="small">조회 기간</div>
-      <select id="monthSel"></select>
-    </div>
-    <div>
-      <div class="small">표시 종목</div>
-      <select id="symbolsSel">
-        <option value="TQQQ,ETHU,TSLL" selected>3종목 전체</option>
-        <option value="TQQQ">TQQQ만</option>
-        <option value="ETHU">ETHU만</option>
-        <option value="TSLL">TSLL만</option>
-      </select>
-    </div>
-  </div>
-
-  <div class="wrap">
-    <table>
-      <thead id="thead"></thead>
-      <tbody id="tbody"></tbody>
-      <tfoot id="tfoot"></tfoot>
-    </table>
-  </div>
-
-  <div class="card wide">
-    <div class="k" style="margin-bottom: 12px;">📊 수익 콤보 차트 (막대=수익 합산 / 선=누적 / 점선=누적 목표)</div>
-    <div style="position: relative; height: 300px; width: 100%;">
-      <canvas id="comboChart"></canvas>
-    </div>
-  </div>
-
-  <details style="margin-top:20px">
-    <summary class="small" style="color: #64748b; cursor: pointer;">디버그 보기(최근 블록 파싱)</summary>
-    <pre class="mono" id="debug" style="white-space:pre-wrap; font-size:11px; background:#f8fafc; padding:10px; border:1px solid #e2e8f0; border-radius:6px; margin-top:8px;"></pre>
-  </details>
-
-<script>
-  const SEEDS = { TQQQ: 140000, ETHU: 40000, TSLL: 32000 };
-  const MAX_TIERS = { TQQQ: 140, ETHU: 140, TSLL: 90 };
-
-  const esc = (s) => (s ?? "").toString().replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
-  const num = (s) => {
-    if (s == null) return null;
-    const x = (s+"").replace(/[,원$주\s]/g, "");
-    const n = Number(x);
-    return Number.isFinite(n) ? n : null;
-  };
-  const fmtInt = (n) => n == null ? "" : new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(n);
-  const fmtFloat1 = (n) => n == null ? "" : Number(n).toFixed(1);
-  const fmtPct1 = (x) => (x == null || !Number.isFinite(x)) ? "" : (x * 100).toFixed(1) + "%";
-  const clsPN = (n) => (n == null) ? "" : (n < 0 ? "neg" : (n > 0 ? "pos" : ""));
-  const sumOrNull = (arr) => {
-    const nums = arr.filter(v => typeof v === "number" && Number.isFinite(v));
-    if (!nums.length) return null;
-    return nums.reduce((a,b)=>a+b,0);
+  const headers = {
+    Authorization: `Bearer ${GH_TOKEN}`,
+    Accept: "application/vnd.github+json",
+    "User-Agent": "telegram-invest-server"
   };
 
-  function parseGridTier(fullText) {
-    if (!fullText) return { tierNow: null, tierMax: null };
-    const rows = [];
-    const re = /(?:^|\n)[^\d\n]*(\d+)\)\s*([-\d.,]+)\s+([-\d.,]+)\s+([-\d.,]+)\s+([-\d.,]+)/g;
-    let m;
-    while ((m = re.exec(fullText)) !== null) {
-      rows.push({
-        idx: Number(m[1]),
-        sellQty: Number(m[5].replace(/,/g, ''))
-      });
-    }
-    if (!rows.length) return { tierNow: null, tierMax: null };
-    
-    rows.sort((a,b)=>a.idx-b.idx);
-    const tierMax = rows[rows.length - 1].idx;
-    
-    let tierNow = null;
-    for (let i = rows.length - 1; i >= 0; i--) {
-      if (rows[i].sellQty > 0) {
-        tierNow = rows[i].idx;
-        break;
-      }
-    }
-    if (tierNow == null) tierNow = rows[0].idx; 
-    return { tierNow, tierMax };
-  }
+  try {
+    // 기존 파일 SHA 확인
+    let sha = null;
+    const getRes = await fetch(api, { headers });
 
-  function getLinesWithYear(reportRows) {
-      const chronos = [...reportRows].reverse();
-      const linesInfo = [];
-      for (const r of chronos) {
-          const y = r.date ? r.date.split("-")[0] : String(new Date().getFullYear());
-          const msg = (r.raw_message || "").replace(/주문가능-최대필요:\s*2066/g, "주문가능-최대필요: 66");
-          const lines = msg.split('\n');
-          for (const l of lines) {
-              linesInfo.push({ text: l.trim(), year: y });
-          }
-      }
-      return linesInfo;
-  }
-
-  function extractBlocksFromRows(reportRows) {
-      const linesInfo = getLinesWithYear(reportRows);
-      const recordsMap = new Map();
-      let currentKey = null;
-      let globalDate = null;
-      let globalTime = null;
-      let globalYear = null;
-
-      for (const item of linesInfo) {
-          const line = item.text;
-          if (!line) continue;
-
-          const dtM = line.match(/(\d{2})\/(\d{2})일\s+(\d{2}:\d{2})/);
-          if (dtM) {
-              globalDate = `${dtM[1]}/${dtM[2]}`;
-              globalTime = dtM[3];
-              globalYear = item.year;
-          }
-
-          let symM = line.match(/([A-Z]{2,6})\s*최대필요\s*:/);
-          if (!symM) symM = line.match(/([A-Z]{2,6})\s*평가금액\s*:/);
-          
-          if (symM && globalDate) {
-              const symbol = symM[1];
-              currentKey = `${globalYear}/${globalDate}|${symbol}`;
-              if (!recordsMap.has(currentKey)) {
-                  recordsMap.set(currentKey, {
-                      year: globalYear,
-                      month: globalDate.split("/")[0],
-                      mmdd: globalDate,
-                      yyyymmdd: `${globalYear}/${globalDate}`,
-                      time: globalTime,
-                      symbol: symbol,
-                      raw: line + "\n"
-                  });
-              } else {
-                  recordsMap.get(currentKey).raw += line + "\n";
-                  if (globalTime > recordsMap.get(currentKey).time) {
-                      recordsMap.get(currentKey).time = globalTime;
-                  }
-              }
-              continue; 
-          }
-
-          if (currentKey && recordsMap.has(currentKey)) {
-              recordsMap.get(currentKey).raw += line + "\n";
-          }
-      }
-
-      return Array.from(recordsMap.values()).map(r => {
-          const cumM = r.raw.match(/주문가능-최대필요\s*:\s*([-\d,]+(?:\.\d+)?)/);
-          r.cum = cumM ? num(cumM[1]) : null;
-
-          const sCnt = r.raw.match(/(?:S|매도)\s*[:\-]?\s*([-\d.,]+)\s*회/i);
-          r.sellCount = sCnt ? num(sCnt[1]) : null;
-
-          const { tierNow, tierMax } = parseGridTier(r.raw);
-          r.tierNow = tierNow;
-          r.tierMax = tierMax;
-
-          const holdM = r.raw.match(/보유수량:\s*([-\d.,]+)주/);
-          const holdQty = holdM ? num(holdM[1]) : null;
-
-          const invM = r.raw.match(/테이블\s*총재고\s*:\s*([-\d.,]+)/);
-          const invQty = invM ? num(invM[1]) : null;
-
-          r.isValid = true;
-          r.errorMsg = "";
-
-          if (holdQty !== null && invQty !== null) {
-              if (holdQty !== invQty) {
-                  r.isValid = false;
-                  r.errorMsg = `[${r.mmdd} ${r.time}] <b>${r.symbol}</b> 수량 불일치 (입력: ${holdQty}주 vs 표: ${invQty})`;
-              }
-          }
-
-          return r;
-      });
-  }
-
-  function buildAllDaily(blocks, symbols) {
-    const byKey = new Map();
-    for (const r of blocks) {
-      if (!symbols.includes(r.symbol)) continue;
-      const key = `${r.yyyymmdd}|${r.symbol}`;
-      const prev = byKey.get(key);
-      if (!prev || (r.time || "") > (prev.time || "")) byKey.set(key, r);
+    if (getRes.status === 200) {
+      const j = await getRes.json();
+      sha = j.sha;
+    } else if (getRes.status !== 404) {
+      const t = await getRes.text();
+      console.error("[GH] GET failed:", getRes.status, t);
+      return;
     }
 
-    const dates = [...new Set([...byKey.keys()].map(k => k.split("|")[0]))].sort();
+    const body = {
+      message,
+      content: Buffer.from(contentText, "utf8").toString("base64"),
+      ...(sha ? { sha } : {})
+    };
 
-    const table = dates.map(yyyymmdd => {
-      const [y, m, d] = yyyymmdd.split("/");
-      const row = { yyyymmdd, year: y, month: m, mmdd: `${m}/${d}` };
-      for (const sym of symbols) {
-        const rec = byKey.get(`${yyyymmdd}|${sym}`) || null;
-        row[sym] = rec
-          ? { sell: rec.sellCount, rawCum: rec.cum, tierNow: rec.tierNow, tierMax: rec.tierMax }
-          : { sell:null, rawCum:null, tierNow:null, tierMax:null };
-      }
-      return row;
+    const putRes = await fetch(api, {
+      method: "PUT",
+      headers: { ...headers, "Content-Type": "application/json" },
+      body: JSON.stringify(body)
     });
 
-    const prevRawCum = Object.fromEntries(symbols.map(s => [s, null]));
-
-    for (const r of table) {
-      for (const sym of symbols) {
-        const rawCum = r[sym].rawCum;
-        let profit = null;
-
-        if (rawCum != null) {
-          if (prevRawCum[sym] != null) {
-            let diff = rawCum - prevRawCum[sym];
-            if (diff < -500) profit = rawCum; 
-            else profit = diff;
-          } else {
-            profit = rawCum; 
-          }
-          prevRawCum[sym] = rawCum;
-        }
-        r[sym].profit = profit; 
-      }
-      r.totalDailyProfit = sumOrNull(symbols.map(s => r[s].profit));
-    }
-    return table;
-  }
-
-  const stackedTotalPlugin = {
-    id: 'stackedTotalPlugin',
-    afterDatasetsDraw: (chart) => {
-      const { ctx } = chart;
-      chart.data.labels.forEach((_, i) => {
-        let total = 0;
-        let topY = Number.MAX_VALUE;
-        let barX = null;
-        let hasBar = false;
-
-        chart.data.datasets.forEach((dataset, j) => {
-          if (dataset.type === 'bar') {
-            const meta = chart.getDatasetMeta(j);
-            if (!meta.hidden && dataset.data[i] != null && dataset.data[i] !== 0) {
-              hasBar = true;
-              total += dataset.data[i];
-              const element = meta.data[i];
-              if (element && element.y < topY) {
-                topY = element.y;
-                barX = element.x;
-              }
-            }
-          }
-        });
-
-        if (hasBar && barX !== null && total !== 0) {
-          ctx.save();
-          ctx.fillStyle = '#475569';
-          ctx.font = 'bold 11px system-ui';
-          ctx.textAlign = 'center';
-          ctx.fillText('$' + new Intl.NumberFormat('en-US').format(total), barX, topY - 8);
-          ctx.restore();
-        }
-      });
-    }
-  };
-
-  function renderView(viewData, symbols, viewMode, allDaily) {
-    const thead = document.getElementById("thead");
-    const tbody = document.getElementById("tbody");
-    const tfoot = document.getElementById("tfoot");
-
-    const symLabel = (sym) => `${sym} (${fmtInt(SEEDS[sym])})`;
-    const currentSeedTotal = symbols.reduce((a,s) => a + (SEEDS[s] || 0), 0);
-    
-    let dateColName = "날짜";
-    let avgLabel = "일평균";
-    if (viewMode === 'YEARLY') { dateColName = "연도"; avgLabel = "연평균"; }
-    else if (viewMode === 'MONTHLY') { dateColName = "월 (Month)"; avgLabel = "월평균"; }
-
-    thead.innerHTML = `
-      <tr class="head2">
-        <th rowspan="2" class="center br" style="width:70px">${dateColName}</th>
-        ${symbols.map(sym => `<th class="center br" colspan="3">${esc(symLabel(sym))}<div class="small muted" id="tier_${sym}"></div></th>`).join("")}
-        <th rowspan="2" class="center br" style="width:80px">총 매도</th>
-        <th colspan="2" class="center" style="width:160px">
-          총합 수익
-          <div class="small muted" style="font-weight:normal;">(${fmtInt(currentSeedTotal)})</div>
-        </th>
-      </tr>
-      <tr>
-        ${symbols.map(_ => `
-          <th class="center" style="width:50px">매도</th>
-          <th class="right" style="width:70px">수익</th>
-          <th class="right br" style="width:80px">누적수익</th>
-        `).join("")}
-        <th class="center" style="width:80px">${viewMode !== 'DAILY' ? "합계" : "일"}</th>
-        <th class="center" style="width:80px">누계</th>
-      </tr>
-    `;
-
-    for (const sym of symbols) {
-      const el = document.getElementById(`tier_${sym}`);
-      if (el) {
-        const fixedMax = MAX_TIERS[sym] || 140;
-        
-        if (viewMode !== 'DAILY') {
-          el.textContent = `${fixedMax}`;
-        } else {
-          let maxDate = viewData[viewData.length - 1]?.maxDate || "9999/99/99";
-          let lastNow = null, prevNow = null;
-          
-          for (let i = allDaily.length - 1; i >= 0; i--) {
-            if (allDaily[i].yyyymmdd > maxDate) continue; 
-            
-            const cell = allDaily[i][sym];
-            if (cell && cell.tierNow != null) {
-              if (lastNow == null) {
-                lastNow = cell.tierNow;
-              } else if (prevNow == null) {
-                prevNow = cell.tierNow;
-                break;
-              }
-            }
-          }
-
-          if (lastNow != null) {
-            const diff = prevNow != null ? (lastNow - prevNow) : 0;
-            const diffStr = diff >= 0 ? `+${diff}` : `${diff}`;
-            el.textContent = `${lastNow}/${fixedMax} ${diffStr}`;
-          } else {
-            el.textContent = "";
-          }
-        }
-      }
-    }
-
-    tbody.innerHTML = viewData.map(r => {
-      const totalSell = (sumOrNull(symbols.map(s => r[s].sell)) ?? 0);
-      const rowDaily = r.totalDailyProfit;
-      const rowCum = r.totalCum;
-
-      return `
-        <tr>
-          <td class="center br" style="font-weight:600;">${esc(r.dateLabel)}</td>
-          ${symbols.map(sym => {
-            return `
-              <td class="center">${r[sym].sell || r[sym].sell === 0 ? r[sym].sell : ""}</td>
-              <td class="right ${clsPN(r[sym].profit)}">${r[sym].profit == null ? "" : "$" + fmtInt(r[sym].profit)}</td>
-              <td class="right br">${r[sym].cum == null ? "" : "$" + fmtInt(r[sym].cum)}</td>
-            `;
-          }).join("")}
-          <td class="center br">${fmtInt(totalSell)}</td>
-          <td class="right ${clsPN(rowDaily)}">${rowDaily == null ? "" : "$" + fmtInt(rowDaily)}</td>
-          <td class="right">${rowCum == null ? "" : "$" + fmtInt(rowCum)}</td>
-        </tr>
-      `;
-    }).join("") || `<tr><td colspan="${4 + symbols.length*3}" class="muted">데이터 없음</td></tr>`;
-
-    const sumSellBySym = Object.fromEntries(symbols.map(s => [s, sumOrNull(viewData.map(r => r[s].sell))]));
-    const sumProfitBySym = Object.fromEntries(symbols.map(s => [s, sumOrNull(viewData.map(r => r[s].profit))]));
-    const lastCumBySym = Object.fromEntries(symbols.map(s => {
-      let v = null;
-      for (let i = viewData.length-1; i>=0; i--) { if (viewData[i][s].cum != null) { v = viewData[i][s].cum; break; } }
-      return [s, v];
-    }));
-
-    const totalSellAll = (sumOrNull(Object.values(sumSellBySym)) ?? 0);
-    const lastCumAll = sumOrNull(Object.values(lastCumBySym));
-    
-    const countDivisor = viewData.length || 1;
-    const avgSellBySym = Object.fromEntries(symbols.map(s => [s, (sumSellBySym[s] || 0) / countDivisor]));
-    const avgProfitBySym = Object.fromEntries(symbols.map(s => [s, (sumProfitBySym[s] || 0) / countDivisor]));
-    const avgTotalSellAll = totalSellAll / countDivisor;
-    const avgTotalProfitAll = sumOrNull(Object.values(sumProfitBySym)) / countDivisor;
-
-    tfoot.innerHTML = `
-      <tr class="avg">
-        <td class="center br">${avgLabel}</td>
-        ${symbols.map(sym => `
-          <td class="center">${fmtFloat1(avgSellBySym[sym])}</td>
-          <td class="right ${clsPN(avgProfitBySym[sym])}">$${fmtInt(avgProfitBySym[sym])}</td>
-          <td class="right br">-</td>
-        `).join("")}
-        <td class="center br">${fmtFloat1(avgTotalSellAll)}</td>
-        <td class="right ${clsPN(avgTotalProfitAll)}">$${fmtInt(avgTotalProfitAll)}</td>
-        <td class="right">-</td>
-      </tr>
-      <tr class="tot">
-        <td class="center br">합계</td>
-        ${symbols.map(sym => {
-          const seed = SEEDS[sym] || null;
-          const roiCum = (seed && lastCumBySym[sym] != null) ? (lastCumBySym[sym] / seed) : null;
-          return `
-            <td class="center">${sumSellBySym[sym] ?? ""}</td>
-            <td class="right">-</td>
-            <td class="right br">
-              <div>$${fmtInt(lastCumBySym[sym])}</div>
-              ${roiCum != null ? `<div style="color:#2563eb; font-size:14px; font-weight:700;">(${fmtPct1(roiCum)})</div>` : ""}
-            </td>
-          `;
-        }).join("")}
-        <td class="center br">${fmtInt(totalSellAll)}</td>
-        <td class="right">-</td>
-        <td class="right">
-          <div>${lastCumAll == null ? "" : "$" + fmtInt(lastCumAll)}</div>
-          ${currentSeedTotal > 0 ? `<div style="color:#2563eb; font-size:14px; font-weight:700;">(${fmtPct1(lastCumAll / currentSeedTotal)})</div>` : ""}
-        </td>
-      </tr>
-    `;
-
-    const setCard = (idV, idR, idProg, profit, roi, targetAmt) => {
-      const v = document.getElementById(idV);
-      const r = document.getElementById(idR);
-      const p = document.getElementById(idProg);
-      
-      v.textContent = "$" + fmtInt(profit);
-      v.className = "v " + clsPN(profit);
-      r.textContent = (roi == null) ? "" : `수익률 ${fmtPct1(roi)}`;
-      
-      if (p && targetAmt > 0) {
-        const pct = Math.max(0, (profit / targetAmt) * 100);
-        const isDone = pct >= 100;
-        const color = isDone ? '#10b981' : '#3b82f6';
-        
-        p.innerHTML = `
-          <div style="display:flex; justify-content:space-between; font-size:11px; color:#64748b; margin-bottom:5px;">
-            <span>목표 $${fmtInt(targetAmt)}</span>
-            <span style="font-weight:700; color:${color}">${fmtFloat1(pct)}%</span>
-          </div>
-          <div style="background:#e2e8f0; border-radius:999px; height:6px; width:100%; overflow:hidden;">
-            <div style="background:${color}; height:100%; width:${Math.min(100, pct)}%; transition:width 0.5s;"></div>
-          </div>
-        `;
-      } else if (p) {
-        p.innerHTML = "";
-      }
-    };
-
-    const periodCount = viewMode !== 'DAILY' ? (viewData.length || 1) : 1;
-    const periodMultiplier = viewMode === 'YEARLY' ? 12 : 1;
-    const finalMultiplier = periodCount * periodMultiplier;
-    
-    const totalTarget = currentSeedTotal * 0.015 * finalMultiplier;
-    setCard("monthProfitAll", "monthRoiAll", "progAll", lastCumAll, currentSeedTotal ? (lastCumAll / currentSeedTotal) : null, totalTarget);
-
-    for (const sym of ["TQQQ","ETHU","TSLL"]) {
-      const cumVal = lastCumBySym[sym] ?? 0;
-      const roi = SEEDS[sym] ? (cumVal / SEEDS[sym]) : null;
-      const targetAmt = SEEDS[sym] ? SEEDS[sym] * 0.015 * finalMultiplier : 0;
-      setCard("monthProfit"+sym, "monthRoi"+sym, "prog"+sym, cumVal, roi, targetAmt);
-    }
-
-    const labels = viewData.map(r => r.dateLabel);
-    const bgColors = {
-      TQQQ: 'rgba(30, 58, 138, 0.75)', 
-      ETHU: 'rgba(56, 189, 248, 0.75)', 
-      TSLL: 'rgba(148, 163, 184, 0.75)' 
-    };
-    const borderColors = {
-      TQQQ: '#1e3a8a',
-      ETHU: '#0284c7',
-      TSLL: '#64748b'
-    };
-
-    const datasets = symbols.map(sym => ({
-      type: "bar",
-      label: `${sym} 수익 ($)`,
-      data: viewData.map(r => r[sym].profit),
-      backgroundColor: bgColors[sym],
-      borderColor: borderColors[sym],
-      borderWidth: 1,
-      maxBarThickness: 35,
-      stack: 'Stack 0',
-      yAxisID: "y"
-    }));
-
-    datasets.push({
-      type: "line", label: "총 누적 수익 ($)", data: viewData.map(r => r.totalCum),
-      borderColor: '#ef4444', tension: 0.2, borderWidth: 2, pointRadius: 3, fill: false, spanGaps: true, yAxisID: "y1"
-    });
-
-    let targetLineData = [];
-    if (viewMode !== 'DAILY') {
-      targetLineData = viewData.map((_, idx) => currentSeedTotal * 0.015 * periodMultiplier * (idx + 1));
+    // 테스트용
+    if (![200, 201].includes(putRes.status)) {
+      const t = await putRes.text();
+      console.error("[GH] PUT failed:", putRes.status, t);
     } else {
-      targetLineData = viewData.map(() => currentSeedTotal * 0.015);
+      console.log("[GH] report.json updated");
     }
 
-    datasets.push({
-      type: "line", label: viewMode !== 'DAILY' ? "누적 목표액" : "월 목표 (1.5%)", data: targetLineData,
-      borderColor: '#10b981', borderDash: [5, 5], borderWidth: 2, pointRadius: 0, fill: false, yAxisID: "y1"
+  } catch (err) {
+    console.error("[GH] error:", err);
+  }
+}
+
+// ===============================
+// 기본 테스트
+// ===============================
+app.get("/", (req, res) => {
+  res.send("서버 살아있음");
+});
+
+// ===============================
+// 리포트 조회 API (최근 50개 기록을 JSON으로 보여줌)
+// ===============================
+app.get("/report", async (req, res) => {
+  const { data, error } = await supabase
+    .from("daily_records")
+    .select("date, raw_message, created_at")
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error) {
+    console.error("[SUPABASE] select error:", error);
+    return res.status(500).json({ ok: false, error });
+  }
+
+  res.json({ ok: true, rows: data });
+});
+
+// ===============================
+// 텔레그램 Webhook
+// ===============================
+app.post("/telegram", async (req, res) => {
+  try {
+    const text = req.body?.message?.text;
+    const chatId = req.body?.message?.chat?.id;
+
+    console.log("[TG] update body:", JSON.stringify(req.body).slice(0, 500));
+    console.log("[TG] text:", text);
+
+    // 텍스트가 없으면 그냥 200
+    if (!text) return res.sendStatus(200);
+
+    const today = new Date().toISOString().slice(0, 10);
+
+    const { error } = await supabase.from("daily_records").insert({
+      date: today,
+      raw_message: text
     });
 
-    const canvas = document.getElementById("comboChart");
-    if (canvas) {
-      if (window.__comboChart) window.__comboChart.destroy();
-      window.__comboChart = new Chart(canvas, {
-        data: { labels, datasets },
-        plugins: [stackedTotalPlugin],
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          interaction: { mode: "index", intersect: false },
-          plugins: { 
-            legend: { position: "top", labels: { font: { family: 'system-ui' } } },
-            tooltip: {
-              backgroundColor: 'rgba(30, 41, 59, 0.9)',
-              titleFont: { size: 14, family: 'system-ui' },
-              bodyFont: { size: 13, family: 'system-ui' },
-              padding: 12,
-              callbacks: {
-                footer: (tooltipItems) => {
-                  let sum = 0;
-                  let isBarHovered = false;
-                  tooltipItems.forEach(item => {
-                    if (item.dataset.type === 'bar') {
-                      isBarHovered = true;
-                      sum += item.raw;
-                    }
-                  });
-                  if (isBarHovered) {
-                    return '\n▶ 수익 합계: $' + new Intl.NumberFormat('en-US').format(sum);
-                  }
-                  return null;
-                }
-              }
-            }
-          },
-          scales: {
-            x: { stacked: true, grid: { display: false } },
-            y: { type: "linear", position: "left", stacked: true, ticks: { callback: v => "$" + v } },
-            y1: { type: "linear", position: "right", stacked: false, grid: { drawOnChartArea: false }, ticks: { callback: v => "$" + v } }
-          }
-        }
-      });
+    if (error) {
+      console.error("[SUPABASE] insert error:", error);
+    } else {
+      console.log("[SUPABASE] insert OK");
     }
-  }
 
-  async function main() {
-    const status = document.getElementById("status");
-    const count = document.getElementById("count");
-    const latest = document.getElementById("latest");
-    const yearSel = document.getElementById("yearSel");
-    const monthSel = document.getElementById("monthSel");
-    const symbolsSel = document.getElementById("symbolsSel");
-    const debug = document.getElementById("debug");
-    const errorBanner = document.getElementById("errorBanner"); 
+    // 최신 데이터 조회하여 GitHub에 업데이트
+    const { data: rows, error: selErr } = await supabase
+      .from("daily_records")
+      .select("date, raw_message, created_at")
+      .order("created_at", { ascending: false })
+      .limit(50);
 
-    try {
-      let reportRows = [];
-      
-      try {
-        const resHist = await fetch("./data/history.json?t=" + Date.now(), { cache: "no-store" });
-        if(resHist.ok) {
-          const jHist = await resHist.json();
-          reportRows = reportRows.concat(jHist.rows || []);
-        }
-      } catch(e) {}
+    if (!selErr) {
+      const report = { ok: true, rows };
 
-      try {
-        const resRep = await fetch("./data/report.json?t=" + Date.now(), { cache: "no-store" });
-        if(resRep.ok) {
-          const jRep = await resRep.json();
-          reportRows = reportRows.concat(jRep.rows || []);
-        }
-      } catch(e) {}
-
-      count.textContent = String(reportRows.length);
-      latest.textContent = reportRows[reportRows.length-1]?.date || "-";
-
-      const blocks = extractBlocksFromRows(reportRows);
-      debug.textContent = JSON.stringify(blocks.slice(0, 3), null, 2);
-
-      if (!blocks.length) {
-        status.textContent = "데이터 대기 중";
-        return;
-      }
-
-      const errorBlocks = blocks.filter(b => b.isValid === false);
-      const errorDates = new Set(errorBlocks.map(b => b.yyyymmdd));
-      const validBlocks = blocks.filter(b => !errorDates.has(b.yyyymmdd));
-
-      if (errorBlocks.length > 0) {
-          status.textContent = "수정 요청 대기중";
-          status.className = "pill err-pill";
-          
-          errorBanner.style.display = "block";
-          errorBanner.innerHTML = "<strong>🚨 데이터 수정 요청 (수량 불일치 감지 - 해당 일자 전체 업데이트 차단됨)</strong>" + 
-                                  errorBlocks.map(b => b.errorMsg).join("<br>");
-      } else {
-          status.textContent = "정상 작동 중";
-          status.className = "pill";
-          errorBanner.style.display = "none";
-      }
-
-      const allYears = [...new Set(validBlocks.map(b => b.year))].sort();
-      let yearHtml = `<option value="ALL_YEARS">전체 기간 (모든 연도)</option>`;
-      yearHtml += allYears.map(y => `<option value="${y}">${y}년</option>`).join("");
-      yearSel.innerHTML = yearHtml;
-      yearSel.value = allYears.length ? allYears[allYears.length - 1] : "ALL_YEARS";
-
-      function updateMonthDropdown() {
-        const y = yearSel.value;
-        if (y === "ALL_YEARS") {
-            monthSel.innerHTML = `<option value="YEARLY_AGG">연도별 요약 보기</option>`;
-            monthSel.disabled = true;
-            return;
-        }
-        
-        monthSel.disabled = false;
-        const yearBlocks = validBlocks.filter(b => b.year === y);
-        const months = [...new Set(yearBlocks.map(b => b.month))].sort();
-
-        let optionsHtml = `<option value="ALL">연간 요약 (선택 연도 전체)</option>`;
-        if (months.length > 1) {
-          optionsHtml += `<option value="ALL_PREV">연간 요약 (직전월 마감 누계)</option>`;
-        }
-        optionsHtml += months.map(m => `<option value="${m}">${Number(m)}월</option>`).join("");
-        monthSel.innerHTML = optionsHtml;
-        if (months.length > 0) monthSel.value = months[months.length - 1];
-      }
-
-      updateMonthDropdown();
-
-      function rerender() {
-        const y = yearSel.value;
-        const m = monthSel.value;
-        const symbols = symbolsSel.value.split(",").map(s => s.trim()).filter(Boolean);
-        
-        const allDaily = buildAllDaily(validBlocks, symbols);
-        
-        let viewData = [];
-        let viewMode = 'DAILY'; 
-
-        if (y === "ALL_YEARS") {
-          viewMode = 'YEARLY';
-          const yearsMap = new Map();
-          for(const r of allDaily) {
-            const yy = r.year;
-            if(!yearsMap.has(yy)) {
-              yearsMap.set(yy, { groupKey: yy, totalDailyProfit: 0 });
-              for(const s of symbols) yearsMap.get(yy)[s] = { profit: 0, sell: 0, tierMax: null };
-            }
-            const row = yearsMap.get(yy);
-            for(const s of symbols) {
-              row[s].profit += r[s].profit || 0;
-              row[s].sell += r[s].sell || 0;
-              if(r[s].tierMax != null) row[s].tierMax = Math.max(row[s].tierMax || 0, r[s].tierMax);
-            }
-            row.totalDailyProfit += r.totalDailyProfit || 0;
-          }
-
-          let aggData = Array.from(yearsMap.values()).sort((a,b)=>Number(a.groupKey)-Number(b.groupKey));
-          let rollingCum = Object.fromEntries(symbols.map(s => [s, 0]));
-          
-          viewData = aggData.map(r => {
-             const out = { dateLabel: r.groupKey + "년", totalDailyProfit: r.totalDailyProfit };
-             let rTotalCum = 0;
-             for(const s of symbols) {
-                rollingCum[s] += (r[s].profit || 0);
-                out[s] = { profit: r[s].profit, sell: r[s].sell, cum: rollingCum[s], tierMax: r[s].tierMax };
-                rTotalCum += rollingCum[s];
-             }
-             out.totalCum = rTotalCum;
-             return out;
-          });
-
-        } else {
-          const yearDaily = allDaily.filter(r => r.year === y);
-
-          if (m === "ALL" || m === "ALL_PREV") {
-            viewMode = 'MONTHLY';
-            let filteredDaily = yearDaily;
-            if (m === "ALL_PREV") {
-               const latestM = [...new Set(yearDaily.map(r=>r.month))].sort().pop();
-               filteredDaily = yearDaily.filter(r => r.month !== latestM);
-            }
-
-            const monthsMap = new Map();
-            for(const r of filteredDaily) {
-              const mm = r.month;
-              if(!monthsMap.has(mm)) {
-                monthsMap.set(mm, { groupKey: mm, totalDailyProfit: 0 });
-                for(const s of symbols) monthsMap.get(mm)[s] = { profit: 0, sell: 0, tierMax: null };
-              }
-              const row = monthsMap.get(mm);
-              for(const s of symbols) {
-                row[s].profit += r[s].profit || 0;
-                row[s].sell += r[s].sell || 0;
-                if(r[s].tierMax != null) row[s].tierMax = Math.max(row[s].tierMax || 0, r[s].tierMax);
-              }
-              row.totalDailyProfit += r.totalDailyProfit || 0;
-            }
-
-            let aggData = Array.from(monthsMap.values()).sort((a,b)=>Number(a.groupKey)-Number(b.groupKey));
-            let rollingCum = Object.fromEntries(symbols.map(s => [s, 0]));
-            
-            viewData = aggData.map(r => {
-               const out = { dateLabel: r.groupKey + "월", totalDailyProfit: r.totalDailyProfit };
-               let rTotalCum = 0;
-               for(const s of symbols) {
-                  rollingCum[s] += (r[s].profit || 0);
-                  out[s] = { profit: r[s].profit, sell: r[s].sell, cum: rollingCum[s], tierMax: r[s].tierMax };
-                  rTotalCum += rollingCum[s];
-               }
-               out.totalCum = rTotalCum;
-               return out;
-            });
-          } else {
-            viewMode = 'DAILY';
-            const monthDaily = yearDaily.filter(r => r.month === m);
-            let rollingCum = Object.fromEntries(symbols.map(s => [s, 0]));
-            
-            viewData = monthDaily.map(r => {
-               const out = { dateLabel: r.mmdd, totalDailyProfit: r.totalDailyProfit, maxDate: r.yyyymmdd }; 
-               let rTotalCum = 0;
-               for(const s of symbols) {
-                  if (r[s].profit != null) rollingCum[s] += r[s].profit;
-                  out[s] = {
-                     profit: r[s].profit,
-                     sell: r[s].sell,
-                     cum: (r[s].profit != null || rollingCum[s] !== 0) ? rollingCum[s] : null,
-                     tierNow: r[s].tierNow,
-                     tierMax: r[s].tierMax
-                  };
-                  if (out[s].cum != null) rTotalCum += out[s].cum;
-               }
-               out.totalCum = rTotalCum === 0 && r.totalDailyProfit == null ? null : rTotalCum;
-               return out;
-            });
-          }
-        }
-
-        renderView(viewData, symbols, viewMode, allDaily);
-      }
-
-      yearSel.addEventListener("change", () => { updateMonthDropdown(); rerender(); });
-      monthSel.addEventListener("change", rerender);
-      symbolsSel.addEventListener("change", rerender);
-      rerender();
-    } catch (e) {
-      status.textContent = "연결 에러";
-      status.classList.add("err-pill");
-      console.error(e);
+      await upsertToGitHub(
+        "data/report.json",
+        JSON.stringify(report, null, 2),
+        `update report ${today}`
+      );
     }
-  }
 
-  main();
-</script>
-</body>
-</html>
+    // 텔레그램에는 빨리 200을 주는 게 중요
+    res.sendStatus(200);
+
+  } catch (e) {
+    console.error("[ERROR] /telegram:", e);
+    res.sendStatus(200);
+  }
+});
+
+// Render 포트 실행
+const port = PORT || 3000;
+app.listen(port, () => {
+  console.log("Server started on port", port);
+});
