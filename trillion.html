@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>장투리밸런싱 시스템 v3.1</title>
+    <title>장투리밸런싱 시스템 v3.2</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -162,6 +162,7 @@
         const qldVal = assets.QLD.qty * prices.QLD;
         const totalUsd = schdVal + qldVal;
         const totalInvested = assets.SCHD.cost + assets.QLD.cost;
+        const totalRt = totalInvested > 0 ? ((totalUsd - totalInvested) / totalInvested) * 100 : 0; // 총 수익률 계산
 
         const tbody = document.getElementById('asset-table-body');
         tbody.innerHTML = '';
@@ -197,6 +198,21 @@
                 </tr>
             `;
         });
+
+        // 🚀 누락되었던 [총계] 줄 완벽 복구
+        tbody.innerHTML += `
+            <tr class="bg-slate-800 font-bold border-t-2 border-slate-600">
+                <td class="text-left text-white">총계</td>
+                <td>-</td>
+                <td>-</td>
+                <td class="text-green-400">${fmt(totalUsd)}</td>
+                <td class="text-slate-400">-</td>
+                <td class="${totalRt >= 0 ? 'text-up' : 'text-down'}">${(totalRt >= 0 ? '+' : '')}${totalRt.toFixed(2)}%</td>
+                <td>100.0%</td>
+                <td class="text-slate-400">-</td>
+                <td class="bg-slate-800/50">-</td>
+            </tr>
+        `;
 
         document.getElementById('total-krw').innerText = '₩' + fmtKrw(totalUsd * usdToKrw);
 
