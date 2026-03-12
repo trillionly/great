@@ -51,6 +51,14 @@
       letter-spacing: -0.5px;
       white-space: nowrap; 
     }
+
+    /* 2개의 링크 버튼을 나란히 담는 컨테이너 */
+    .nav-buttons {
+      display: flex;
+      gap: 12px; /* 텍스트 사이 간격 */
+      align-items: center;
+      flex-shrink: 0; 
+    }
     
     .sub { 
       color: var(--text-muted); 
@@ -60,29 +68,18 @@
       line-height: 1.4;
     }
 
-    /* 앱 스타일 링크 버튼 */
-    .app-link-btn { 
-        border-radius: 20px; 
-        font-weight: 700; 
-        font-size: 0.85rem; 
-        border: 1.5px solid #1a237e; 
-        color: #1a237e; 
+    /* 🔥 배경/테두리를 완전히 없앤 미니멀 텍스트 링크 */
+    .nav-link { 
+        font-weight: 600; 
+        font-size: 14px; 
+        color: #64748b; /* 평소에는 차분한 회색 */
         text-decoration: none; 
-        padding: 6px 14px; 
-        transition: all 0.2s; 
-        background: white;
-        display: inline-flex; 
-        align-items: center; 
-        gap: 4px;
+        padding: 4px 2px; /* 모바일 터치를 위한 투명 여백 */
+        transition: color 0.2s ease; 
         white-space: nowrap; 
-        flex-shrink: 0; 
     }
-    .app-link-btn:hover { 
-        background-color: #1a237e; 
-        color: white; 
-    }
-    .shadow-sm {
-        box-shadow: 0 .125rem .25rem rgba(0,0,0,.075) !important;
+    .nav-link:hover, .nav-link:active { 
+        color: var(--primary); /* 터치하거나 마우스 올릴 때 짙은 네이비로 변경 */
     }
 
     /* 🔥 에러 알림 배너 */
@@ -185,9 +182,10 @@
   <div class="header-container">
     <div class="title-row">
       <h1>그리드매매 시스템</h1>
-      <a href="https://trillionly.github.io/great/trade.html?v=1" class="app-link-btn shadow-sm">
-        📉 떨사오팔 센터 ➔
-      </a>
+      <div class="nav-buttons">
+        <a href="https://trillionly.github.io/great/trade.html?v=1" class="nav-link">떨사오팔 센터</a>
+        <a href="https://trillionly.github.io/great/trillion.html" class="nav-link">장투리밸런싱 시스템</a>
+      </div>
     </div>
     <div class="sub">텔레그램 봇 연동 자동화 대시보드 (TQQQ/ETHU/TSLL)</div>
   </div>
@@ -392,7 +390,6 @@
           r.tierNow = tierNow;
           r.tierMax = tierMax;
 
-          // 🔥 무결성 검증 엔진 (보유수량 vs 테이블 총재고)
           const holdM = r.raw.match(/보유수량:\s*([-\d.,]+)주/);
           const holdQty = holdM ? num(holdM[1]) : null;
 
@@ -808,13 +805,8 @@
         return;
       }
 
-      // 🔥 불일치 에러 검출 로직
       const errorBlocks = blocks.filter(b => b.isValid === false);
-      
-      // 🔥 연대 책임 엔진: 에러가 발생한 날짜(yyyymmdd)를 색출합니다.
       const errorDates = new Set(errorBlocks.map(b => b.yyyymmdd));
-
-      // 🔥 에러가 발생한 날짜에 속한 데이터는 '정상인 종목'이더라도 모조리 연대책임으로 날려버립니다. (전체 입력 차단)
       const validBlocks = blocks.filter(b => !errorDates.has(b.yyyymmdd));
 
       if (errorBlocks.length > 0) {
