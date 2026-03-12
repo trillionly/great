@@ -3,135 +3,97 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>장투리밸런싱 시스템</title>
+    <title>장투리밸런싱 시스템 v3.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { background-color: #0f172a; color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         .card { background-color: #1e293b; border: 1px solid #334155; border-radius: 1rem; }
-        .input-field { background-color: #0f172a; border: 1px solid #334155; color: white; width: 100%; padding: 0.75rem; border-radius: 0.5rem; outline: none; transition: border-color 0.2s; }
-        .input-field:focus { border-color: #3b82f6; }
+        .input-field { background-color: #0f172a; border: 1px solid #334155; color: white; width: 100%; padding: 0.75rem; border-radius: 0.5rem; outline: none; }
         .table-container { overflow-x: auto; }
-        table { width: 100%; text-align: left; border-collapse: collapse; white-space: nowrap; }
-        /* ✅ 수정 완료: 폰트 크기 딱 1포인트 확대 (0.875rem -> 1rem) */
-        th, td { padding: 0.75rem 1rem; border-bottom: 1px solid #334155; font-size: 1rem; }
-        th { background-color: #0f172a; color: #94a3b8; font-weight: 600; }
+        table { width: 100%; text-align: center; border-collapse: collapse; white-space: nowrap; }
+        /* 폰트 1포인트 키움 */
+        th, td { padding: 0.75rem 0.5rem; border-bottom: 1px solid #334155; font-size: 1rem; }
+        th { background-color: #0f172a; color: #94a3b8; font-weight: 600; text-align: center; }
         .text-up { color: #ef4444; } 
-        .text-down { color: #3b82f6; } 
+        .text-down { color: #3b82f6; }
+        .btn-sm { padding: 4px 8px; font-size: 12px; border-radius: 4px; transition: opacity 0.2s; }
+        .btn-sm:hover { opacity: 0.8; }
     </style>
 </head>
 <body class="p-4 md:p-8">
     <div class="max-w-7xl mx-auto">
-        
-        <header class="flex flex-col md:flex-row justify-between items-center mb-8 pb-5 border-b border-slate-700">
-            <div class="flex items-center space-x-4 mb-4 md:mb-0">
-                <h1 class="text-2xl font-bold tracking-tight">📊 장투리밸런싱 시스템</h1>
-                <span id="fx-rate" class="text-sm font-bold text-yellow-500 bg-slate-800 px-3 py-1 rounded-full">환율 로딩중...</span>
-            </div>
-            <nav class="flex space-x-5 text-sm font-medium text-slate-400">
-                <a href="https://trillionly.github.io/great/index.html" class="hover:text-white transition-colors">그리드매매 시스템</a>
-                <a href="https://trillionly.github.io/great/trade.html" class="hover:text-white transition-colors">떨사오팔 시스템</a>
-            </nav>
+        <header class="flex justify-between items-center mb-6 pb-4 border-b border-slate-700">
+            <h1 class="text-2xl font-bold tracking-tight">📊 장투 사령부 v3.0</h1>
+            <div id="fx-rate" class="text-sm font-bold text-slate-400">💵 환율 로딩중...</div>
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
-            
-            <div class="lg:col-span-3 card p-6 shadow-lg table-container">
-                <h2 class="text-lg font-semibold mb-4 flex items-center justify-between">
-                    <div><span class="w-2 h-2 rounded-full bg-indigo-500 mr-2 inline-block"></span> 자산 현황 보드</div>
-                    <span id="price-status" class="text-xs text-slate-500">주가 연동 상태 대기중...</span>
-                </h2>
-                <table class="w-full text-right">
-                    <thead>
-                        <tr>
-                            <th class="text-left">종목</th><th>현재가</th><th>수량</th><th>총 금액</th><th>평단가</th><th>매입 금액</th><th>평가 손익</th><th>수익률</th><th>비중</th><th>적정수량(4:6)</th>
-                            <th>리밸런싱 가이드</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr class="hover:bg-slate-800 transition-colors">
-                            <td class="text-left font-bold text-yellow-400">SCHD</td>
-                            <td id="schd-price">로딩중</td><td id="schd-qty">0</td><td id="schd-total">$0</td><td id="schd-avg">$0</td><td id="schd-invested">$0</td><td id="schd-pl">$0</td><td id="schd-return">0%</td><td id="schd-ratio" class="font-bold">0%</td><td id="schd-target" class="text-slate-400">0</td>
-                            <td id="schd-rebalance">-</td>
-                        </tr>
-                        <tr class="hover:bg-slate-800 transition-colors">
-                            <td class="text-left font-bold text-blue-400">QLD</td>
-                            <td id="qld-price">로딩중</td><td id="qld-qty">0</td><td id="qld-total">$0</td><td id="qld-avg">$0</td><td id="qld-invested">$0</td><td id="qld-pl">$0</td><td id="qld-return">0%</td><td id="qld-ratio" class="font-bold">0%</td><td id="qld-target" class="text-slate-400">0</td>
-                            <td id="qld-rebalance">-</td>
-                        </tr>
-                        <tr class="bg-slate-800 font-bold border-t-2 border-slate-600">
-                            <td class="text-left">총계</td>
-                            <td>-</td><td>-</td><td id="total-asset" class="text-green-400">$0</td><td>-</td><td id="total-invested">$0</td><td id="total-pl">$0</td><td id="total-return">0%</td><td>100.0%</td><td>-</td><td>-</td>
-                        </tr>
-                    </tbody>
-                </table>
-                <div class="mt-5 p-4 bg-slate-800 rounded-lg flex justify-end items-center">
-                    <span class="text-slate-400 mr-3">원화(₩) 환산 총자산:</span>
-                    <span id="total-krw" class="text-2xl font-black text-green-400">₩0</span>
+            <div class="lg:col-span-3 card p-6 shadow-lg table-container flex flex-col justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold mb-4 flex items-center justify-between">
+                        <div class="flex items-center">
+                            <span class="w-2 h-2 rounded-full bg-indigo-500 mr-2 inline-block"></span> 자산 현황
+                            <span id="price-status" class="text-xs text-slate-500 ml-3 mt-1">대기중...</span>
+                        </div>
+                        <div class="text-sm font-medium text-slate-300 bg-slate-800 px-3 py-1 rounded-lg">
+                            총자산(₩): <span id="total-krw" class="text-green-400 font-bold ml-1">₩0</span>
+                        </div>
+                    </h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>종목</th><th>현재가</th><th>수량</th><th>평가금액</th><th>평단가</th><th>수익률</th><th>비중</th>
+                                <th class="leading-tight">적정수량<br><span class="text-xs font-normal text-slate-500">(4:6)</span></th>
+                                <th class="leading-tight">리밸런싱<br><span class="text-xs font-normal text-slate-500">가이드</span></th>
+                            </tr>
+                        </thead>
+                        <tbody id="asset-table-body">
+                            </tbody>
+                    </table>
                 </div>
             </div>
 
             <div class="lg:col-span-1 card p-6 shadow-lg">
-                <h2 class="text-lg font-semibold mb-5 flex items-center">
-                    <span class="w-2 h-2 rounded-full bg-blue-500 mr-2 inline-block"></span> 거래 입력 / 수정
+                <h2 id="form-title" class="text-lg font-semibold mb-5 flex items-center">
+                    <span class="w-2 h-2 rounded-full bg-blue-500 mr-2 inline-block"></span> 거래 기록
                 </h2>
                 <div class="space-y-4">
                     <input type="hidden" id="edit-id">
-                    
-                    <select id="ticker" class="input-field text-sm">
-                        <option value="QLD">QLD (나스닥 2배)</option>
-                        <option value="SCHD">SCHD (배당성장)</option>
-                    </select>
+                    <select id="ticker" class="input-field text-sm"><option value="QLD">QLD</option><option value="SCHD">SCHD</option></select>
                     <div class="grid grid-cols-2 gap-2">
-                        <select id="tradeType" class="input-field text-sm">
-                            <option value="매수">매수</option>
-                            <option value="매도">매도</option>
-                        </select>
+                        <select id="tradeType" class="input-field text-sm"><option value="매수">매수</option><option value="매도">매도</option></select>
                         <input type="number" id="quantity" class="input-field text-sm" placeholder="수량">
                     </div>
                     <input type="number" id="price" step="0.01" class="input-field text-sm" placeholder="단가 ($)">
-                    
-                    <button id="save-btn" onclick="saveData()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg text-sm shadow-md transition-colors">
-                        기록 저장
-                    </button>
-                    <button id="cancel-btn" onclick="cancelEdit()" class="w-full hidden bg-slate-600 hover:bg-slate-500 text-white font-bold py-2 rounded-lg text-sm transition-colors">
-                        수정 취소
-                    </button>
+                    <button onclick="saveData()" id="save-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg shadow-md transition-all">기록 저장</button>
+                    <button onclick="resetForm()" id="cancel-btn" class="w-full bg-slate-600 hidden text-white font-bold py-2 rounded-lg">수정 취소</button>
                 </div>
             </div>
         </div>
 
-        <div class="card p-6 shadow-lg table-container mb-6">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            <div class="card p-6 shadow-lg table-container">
+                <h2 class="text-lg font-semibold mb-4 flex items-center">
+                    <span class="w-2 h-2 rounded-full bg-red-500 mr-2 inline-block"></span> 매매 기록 (수정/삭제)
+                </h2>
+                <table class="text-sm">
+                    <thead><tr><th>날짜</th><th>종목</th><th>구분</th><th>수량</th><th>단가</th><th>관리</th></tr></thead>
+                    <tbody id="trade-history-body"></tbody>
+                </table>
+            </div>
+            <div class="card p-6 shadow-lg">
+                <h2 class="text-lg font-semibold mb-4 text-center">포트폴리오 비중</h2>
+                <div class="h-64 w-full flex justify-center"><canvas id="weightChart"></canvas></div>
+            </div>
+        </div>
+
+        <div class="card p-6 shadow-lg">
             <h2 class="text-lg font-semibold mb-4 flex items-center">
-                <span class="w-2 h-2 rounded-full bg-red-500 mr-2 inline-block"></span> 최근 매매 기록 (수정 및 삭제)
+                <span class="w-2 h-2 rounded-full bg-green-500 mr-2 inline-block"></span> 자산 성장 추이
             </h2>
-            <table class="w-full text-center">
-                <thead>
-                    <tr><th class="text-center">날짜</th><th class="text-center">종목</th><th class="text-center">구분</th><th class="text-center">수량</th><th class="text-center">단가</th><th class="text-center">관리</th></tr>
-                </thead>
-                <tbody id="history-tbody">
-                    </tbody>
-            </table>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div class="lg:col-span-2 card p-6 shadow-lg">
-                <h2 class="text-lg font-semibold mb-4 flex items-center">
-                    <span class="w-2 h-2 rounded-full bg-green-500 mr-2 inline-block"></span> 자산 성장 추이
-                </h2>
-                <div class="relative h-64 w-full">
-                    <canvas id="growthChart"></canvas>
-                </div>
-            </div>
-            <div class="lg:col-span-1 card p-6 shadow-lg">
-                <h2 class="text-lg font-semibold mb-4 flex items-center">
-                    <span class="w-2 h-2 rounded-full bg-yellow-500 mr-2 inline-block"></span> 포트폴리오 비중 (목표 SCHD 4 : QLD 6)
-                </h2>
-                <div class="relative h-64 w-full flex justify-center">
-                    <canvas id="weightChart"></canvas>
-                </div>
-            </div>
+            <div class="relative h-80 w-full"><canvas id="growthChart"></canvas></div>
         </div>
     </div>
 
@@ -139,249 +101,220 @@
     const SUPABASE_URL = 'https://qutualbddxsyrhwzaosf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1dHVhbGJkZHhzeXJod3phb3NmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1ODA1MTEsImV4cCI6MjA4NzE1NjUxMX0.iDcwZg9bGFnbl0DJfU0ks4DZtdVJ24Rh_e2ooDP-dts';
     const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
     const FINNHUB_API_KEY = 'd6om8dpr01qi5kh3g1cgd6om8dpr01qi5kh3g1d0'; 
 
     let weightChartInstance = null;
-    let currentExchangeRate = 1350; // 기본 환율
+    let growthChartInstance = null;
+    let usdToKrw = 1350; 
 
-    const fmt = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
-    const fmtKrw = (num) => new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(Math.round(num));
-    const fmtPct = (num) => (num > 0 ? '+' : '') + num.toFixed(2) + '%';
-    const colorClass = (num) => num > 0 ? 'text-up' : (num < 0 ? 'text-down' : '');
+    const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
+    const fmtKrw = (n) => new Intl.NumberFormat('ko-KR').format(Math.round(n));
 
-    // [초기 구동 엔진] - 환율 가져오기 및 모든 데이터 로드
-    async function initSystem() {
-        // 실시간 환율 연동 (무료 API)
+    // 날짜 포맷팅 함수: 2026. 3. 15 -> 26/3/15
+    const formatShortDate = (dateStr) => {
+        const match = dateStr.match(/(\d{4})[^\d]+(\d{1,2})[^\d]+(\d{1,2})/);
+        if(match) return `${match[1].slice(-2)}/${match[2]}/${match[3]}`;
+        return dateStr;
+    };
+
+    async function init() {
         try {
             const fxRes = await fetch('https://open.er-api.com/v6/latest/USD').then(r => r.json());
-            currentExchangeRate = fxRes.rates.KRW;
-            document.getElementById('fx-rate').innerText = `💵 실시간 환율: ₩${currentExchangeRate.toFixed(2)}`;
-        } catch(e) { console.log('환율 로드 실패'); }
-
+            usdToKrw = fxRes.rates.KRW;
+            document.getElementById('fx-rate').innerText = `💵 ₩${usdToKrw.toFixed(2)}`;
+        } catch(e) {}
         await runAutomation();
         await loadTradeHistory();
     }
 
-    // [1. 기록 저장 및 업데이트 (수정 모드 포함)]
-    async function saveData() {
-        const id = document.getElementById('edit-id').value; // 숨겨진 ID 확인
-        const ticker = document.getElementById('ticker').value;
-        const tradeType = document.getElementById('tradeType').value;
-        const quantity = parseInt(document.getElementById('quantity').value);
-        const price = parseFloat(document.getElementById('price').value);
-
-        if(!quantity || !price) return alert('수량과 단가를 입력해 주십시오.');
-
-        const payload = { ticker, trade_type: tradeType, price, quantity, total_amount: quantity * price };
-        
-        let result;
-        if(id) {
-            // ID가 있으면 업데이트(수정)
-            result = await db.from('long_term_trade').update(payload).eq('id', id);
-        } else {
-            // ID가 없으면 새 기록 추가
-            result = await db.from('long_term_trade').insert([payload]);
-        }
-
-        if (result.error) alert('❌ 처리 실패: ' + result.error.message);
-        else {
-            alert('✅ 데이터 처리가 완료되었습니다!');
-            location.reload(); 
-        }
-    }
-
-    // [2. 수정 모드 진입 및 취소 로직]
-    function editTrade(id, ticker, type, qty, price) {
-        document.getElementById('edit-id').value = id;
-        document.getElementById('ticker').value = ticker;
-        document.getElementById('tradeType').value = type;
-        document.getElementById('quantity').value = qty;
-        document.getElementById('price').value = price;
-        
-        const saveBtn = document.getElementById('save-btn');
-        saveBtn.innerText = '내용 수정하기';
-        saveBtn.classList.replace('bg-blue-600', 'bg-yellow-600');
-        saveBtn.classList.replace('hover:bg-blue-500', 'hover:bg-yellow-500');
-        document.getElementById('cancel-btn').classList.remove('hidden');
-        window.scrollTo({ top: 0, behavior: 'smooth' }); // 입력창으로 화면 올리기
-    }
-
-    function cancelEdit() {
-        document.getElementById('edit-id').value = '';
-        document.getElementById('quantity').value = '';
-        document.getElementById('price').value = '';
-        
-        const saveBtn = document.getElementById('save-btn');
-        saveBtn.innerText = '기록 저장';
-        saveBtn.classList.replace('bg-yellow-600', 'bg-blue-600');
-        saveBtn.classList.replace('hover:bg-yellow-500', 'hover:bg-blue-500');
-        document.getElementById('cancel-btn').classList.add('hidden');
-    }
-
-    // [3. 데이터 삭제 로직]
-    async function deleteTrade(id) {
-        if(!confirm('팩트: 이 거래 기록을 정말 삭제하시겠습니까?')) return;
-        const { error } = await db.from('long_term_trade').delete().eq('id', id);
-        if (error) alert('삭제 실패: ' + error.message);
-        else location.reload();
-    }
-
-    // [4. 최근 거래 내역 불러오기]
-    async function loadTradeHistory() {
-        const { data, error } = await db.from('long_term_trade').select('*').order('created_at', { ascending: false }).limit(10);
-        const tbody = document.getElementById('history-tbody');
-        tbody.innerHTML = '';
-        if (data) {
-            data.forEach(t => {
-                const dateShort = t.created_at.split('T')[0];
-                const color = t.trade_type === '매수' ? 'text-up font-bold' : 'text-down font-bold';
-                tbody.innerHTML += `
-                    <tr class="hover:bg-slate-800 transition-colors border-b border-slate-700">
-                        <td>${dateShort}</td>
-                        <td class="font-bold">${t.ticker}</td>
-                        <td class="${color}">${t.trade_type}</td>
-                        <td>${t.quantity.toLocaleString()}</td>
-                        <td>$${t.price}</td>
-                        <td>
-                            <button onclick="editTrade('${t.id}', '${t.ticker}', '${t.trade_type}', ${t.quantity}, ${t.price})" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-xs mr-2 transition-colors">수정</button>
-                            <button onclick="deleteTrade('${t.id}')" class="bg-red-600 hover:bg-red-500 text-white px-3 py-1 rounded text-xs transition-colors">삭제</button>
-                        </td>
-                    </tr>
-                `;
-            });
-        }
-    }
-
-    // [5. 지표 자동화 메인 함수 (리밸런싱 및 환율 연동 추가)]
     async function runAutomation() {
-        const { data: trades, error: dbError } = await db.from('long_term_trade').select('*');
+        const { data: trades } = await db.from('long_term_trade').select('*');
+        let assets = { SCHD: { qty:0, cost:0 }, QLD: { qty:0, cost:0 } };
         
-        let schd = { qty: 0, invested: 0 };
-        let qld = { qty: 0, invested: 0 };
+        trades?.forEach(t => {
+            let target = assets[t.ticker];
+            if(t.trade_type === '매수') { 
+                target.qty += t.quantity; target.cost += t.total_amount; 
+            } else { 
+                let avg = target.qty > 0 ? target.cost / target.qty : 0;
+                target.qty -= t.quantity; target.cost -= avg * t.quantity; 
+            }
+        });
 
-        if (trades) {
-            trades.forEach(t => {
-                let target = t.ticker === 'SCHD' ? schd : qld;
-                if (t.trade_type === '매수') {
-                    target.qty += t.quantity;
-                    target.invested += t.total_amount;
-                } else if (t.trade_type === '매도') {
-                    target.qty -= t.quantity;
-                    let avgPrice = target.invested / (target.qty + t.quantity);
-                    target.invested -= avgPrice * t.quantity;
-                }
-            });
-        }
+        let prices = { SCHD: 30.9, QLD: 67.91 };
+        try {
+            const [s, q] = await Promise.all([
+                fetch(`https://finnhub.io/api/v1/quote?symbol=SCHD&token=${FINNHUB_API_KEY}`).then(r=>r.json()),
+                fetch(`https://finnhub.io/api/v1/quote?symbol=QLD&token=${FINNHUB_API_KEY}`).then(r=>r.json())
+            ]);
+            if(s.c) prices.SCHD = s.c; if(q.c) prices.QLD = q.c;
+            document.getElementById('price-status').innerText = '🟢 실시간 연동됨';
+        } catch(e) { document.getElementById('price-status').innerText = '🟠 백업가 사용'; }
 
-        let schdPrice = 30.90; 
-        let qldPrice = 67.91;  
+        const schdVal = assets.SCHD.qty * prices.SCHD;
+        const qldVal = assets.QLD.qty * prices.QLD;
+        const totalUsd = schdVal + qldVal;
+        const totalInvested = assets.SCHD.cost + assets.QLD.cost;
 
-        if (FINNHUB_API_KEY !== 'YOUR_API_KEY_HERE') {
-            try {
-                const [schdRes, qldRes] = await Promise.all([
-                    fetch(`https://finnhub.io/api/v1/quote?symbol=SCHD&token=${FINNHUB_API_KEY}`).then(r=>r.json()),
-                    fetch(`https://finnhub.io/api/v1/quote?symbol=QLD&token=${FINNHUB_API_KEY}`).then(r=>r.json())
-                ]);
-                schdPrice = schdRes.c; qldPrice = qldRes.c;
-                document.getElementById('price-status').innerText = '🟢 실시간 주가 연동 중';
-                document.getElementById('price-status').classList.add('text-green-500');
-            } catch(e) { console.log('주가 로드 실패'); }
-        }
+        const tbody = document.getElementById('asset-table-body');
+        tbody.innerHTML = '';
+        
+        [
+            { id: 'SCHD', color: 'text-yellow-400', target: 0.4 },
+            { id: 'QLD', color: 'text-blue-400', target: 0.6 }
+        ].forEach(item => {
+            const val = item.id === 'SCHD' ? schdVal : qldVal;
+            const data = assets[item.id];
+            const price = prices[item.id];
+            const ratio = totalUsd > 0 ? (val / totalUsd) * 100 : 0;
+            const avg = data.qty > 0 ? data.cost / data.qty : 0;
+            const profitRate = avg > 0 ? ((price - avg) / avg) * 100 : 0;
 
-        const schdTotal = schd.qty * schdPrice;
-        const schdAvg = schd.qty > 0 ? schd.invested / schd.qty : 0;
-        const schdPl = schdTotal - schd.invested;
-        const schdRt = schd.invested > 0 ? (schdPl / schd.invested) * 100 : 0;
+            const targetVal = totalUsd * item.target;
+            const diffQty = Math.round((targetVal - val) / price);
+            
+            // "매수/매도" 단어 제거하고 직관적인 표기
+            const guide = diffQty > 0 ? `<span class="text-up font-bold">+${diffQty}주</span>` : 
+                          (diffQty < 0 ? `<span class="text-down font-bold">${diffQty}주</span>` : '<span class="text-slate-400">-</span>');
 
-        const qldTotal = qld.qty * qldPrice;
-        const qldAvg = qld.qty > 0 ? qld.invested / qld.qty : 0;
-        const qldPl = qldTotal - qld.invested;
-        const qldRt = qld.invested > 0 ? (qldPl / qld.invested) * 100 : 0;
+            tbody.innerHTML += `
+                <tr class="hover:bg-slate-800 border-b border-slate-700">
+                    <td class="font-bold text-left ${item.color}">${item.id}</td>
+                    <td>${fmt(price)}</td>
+                    <td>${data.qty.toLocaleString()}</td>
+                    <td>${fmt(val)}</td>
+                    <td class="text-slate-400">${fmt(avg)}</td>
+                    <td class="${profitRate >= 0 ? 'text-up' : 'text-down'} font-bold">${(profitRate >= 0 ? '+' : '')}${profitRate.toFixed(2)}%</td>
+                    <td class="font-bold">${ratio.toFixed(1)}%</td>
+                    <td class="text-slate-400">${diffQty === 0 ? '-' : Math.round(targetVal/price).toLocaleString()}</td>
+                    <td class="bg-slate-800/50">${guide}</td>
+                </tr>
+            `;
+        });
 
-        const totalAsset = schdTotal + qldTotal;
-        const totalInvested = schd.invested + qld.invested;
-        const totalPl = totalAsset - totalInvested;
-        const totalRt = totalInvested > 0 ? (totalPl / totalInvested) * 100 : 0;
+        document.getElementById('total-krw').innerText = '₩' + fmtKrw(totalUsd * usdToKrw);
 
-        const schdRatio = totalAsset > 0 ? (schdTotal / totalAsset) * 100 : 0;
-        const qldRatio = totalAsset > 0 ? (qldTotal / totalAsset) * 100 : 0;
-
-        const schdTargetQty = schdPrice > 0 ? Math.round((totalAsset * 0.4) / schdPrice) : 0;
-        const qldTargetQty = qldPrice > 0 ? Math.round((totalAsset * 0.6) / qldPrice) : 0;
-
-        // ✅ 리밸런싱 가이드 계산 로직 (적정수량 - 현재수량)
-        const schdDiff = schdTargetQty - schd.qty;
-        const qldDiff = qldTargetQty - qld.qty;
-
-        document.getElementById('schd-rebalance').innerHTML = schdDiff > 0 ? `<span class="text-up font-bold">+${schdDiff}주 매수</span>` : (schdDiff < 0 ? `<span class="text-down font-bold">${schdDiff}주 매도</span>` : '<span class="text-slate-400">유지</span>');
-        document.getElementById('qld-rebalance').innerHTML = qldDiff > 0 ? `<span class="text-up font-bold">+${qldDiff}주 매수</span>` : (qldDiff < 0 ? `<span class="text-down font-bold">${qldDiff}주 매도</span>` : '<span class="text-slate-400">유지</span>');
-
-        document.getElementById('schd-price').innerText = fmt(schdPrice);
-        document.getElementById('schd-qty').innerText = schd.qty.toLocaleString();
-        document.getElementById('schd-total').innerText = fmt(schdTotal);
-        document.getElementById('schd-avg').innerText = fmt(schdAvg);
-        document.getElementById('schd-invested').innerText = fmt(schd.invested);
-        document.getElementById('schd-pl').innerHTML = `<span class="${colorClass(schdPl)}">${fmt(schdPl)}</span>`;
-        document.getElementById('schd-return').innerHTML = `<span class="${colorClass(schdRt)}">${fmtPct(schdRt)}</span>`;
-        document.getElementById('schd-ratio').innerText = schdRatio.toFixed(1) + '%';
-        document.getElementById('schd-target').innerText = schdTargetQty.toLocaleString();
-
-        document.getElementById('qld-price').innerText = fmt(qldPrice);
-        document.getElementById('qld-qty').innerText = qld.qty.toLocaleString();
-        document.getElementById('qld-total').innerText = fmt(qldTotal);
-        document.getElementById('qld-avg').innerText = fmt(qldAvg);
-        document.getElementById('qld-invested').innerText = fmt(qld.invested);
-        document.getElementById('qld-pl').innerHTML = `<span class="${colorClass(qldPl)}">${fmt(qldPl)}</span>`;
-        document.getElementById('qld-return').innerHTML = `<span class="${colorClass(qldRt)}">${fmtPct(qldRt)}</span>`;
-        document.getElementById('qld-ratio').innerText = qldRatio.toFixed(1) + '%';
-        document.getElementById('qld-target').innerText = qldTargetQty.toLocaleString();
-
-        document.getElementById('total-asset').innerText = fmt(totalAsset);
-        document.getElementById('total-invested').innerText = fmt(totalInvested);
-        document.getElementById('total-pl').innerHTML = `<span class="${colorClass(totalPl)}">${fmt(totalPl)}</span>`;
-        document.getElementById('total-return').innerHTML = `<span class="${colorClass(totalRt)}">${fmtPct(totalRt)}</span>`;
-
-        // ✅ 원화 환산 자산 표기
-        document.getElementById('total-krw').innerText = fmtKrw(totalAsset * currentExchangeRate);
-
+        // 색상 동기화: SCHD(노랑), QLD(파랑)
+        const schdRatio = totalUsd > 0 ? (schdVal / totalUsd) * 100 : 0;
+        const qldRatio = totalUsd > 0 ? (qldVal / totalUsd) * 100 : 0;
+        
         const ctxWeight = document.getElementById('weightChart').getContext('2d');
         if(weightChartInstance) weightChartInstance.destroy();
         weightChartInstance = new Chart(ctxWeight, {
             type: 'doughnut',
             data: {
                 labels: [`SCHD (${schdRatio.toFixed(1)}%)`, `QLD (${qldRatio.toFixed(1)}%)`],
-                datasets: [{ data: [schdRatio, qldRatio], backgroundColor: ['#eab308', '#ef4444'], borderColor: '#1e293b', borderWidth: 2 }]
+                datasets: [{ data: [schdRatio, qldRatio], backgroundColor: ['#facc15', '#60a5fa'], borderColor: '#1e293b', borderWidth: 3 }]
             },
-            options: { responsive: true, maintainAspectRatio: false, cutout: '65%', plugins: { legend: { position: 'bottom', labels: { color: '#cbd5e1' } } } }
+            options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom', labels: { color: '#cbd5e1' } } } }
         });
 
-        drawGrowthChart();
+        // 💡 일단위 차트 자동 업데이트 로직
+        await drawGrowthChart(totalUsd, totalInvested);
     }
 
-    async function drawGrowthChart() {
-        const { data, error } = await db.from('daily_snapshot').select('*');
-        if (error || !data || data.length === 0) return;
-        data.sort((a, b) => new Date(a.record_date) - new Date(b.record_date));
+    async function drawGrowthChart(currentTotal, currentPrincipal) {
+        const { data } = await db.from('daily_snapshot').select('*');
+        let chartData = data || [];
         
-        const labels = data.map(row => row.record_date);
-        const totalAssets = data.map(row => row.total_asset);
-        const principals = data.map(row => row.principal);
+        // 오늘 날짜 생성
+        const d = new Date();
+        const todayStr = `${d.getFullYear()}. ${d.getMonth()+1}. ${d.getDate()}`;
+        
+        // 오늘 기록이 DB에 없으면 백그라운드에서 조용히 추가 (자동화)
+        if(currentTotal > 0 && !chartData.find(r => r.record_date === todayStr)) {
+            await db.from('daily_snapshot').insert([{ record_date: todayStr, total_asset: currentTotal, principal: currentPrincipal }]);
+            chartData.push({ record_date: todayStr, total_asset: currentTotal, principal: currentPrincipal });
+        }
 
-        new Chart(document.getElementById('growthChart').getContext('2d'), {
+        chartData.sort((a, b) => new Date(a.record_date.replace(/\.\s/g, '-')) - new Date(b.record_date.replace(/\.\s/g, '-')));
+        
+        // 날짜 축약 포맷 적용 (26/3/15)
+        const labels = chartData.map(row => formatShortDate(row.record_date));
+        const totalAssets = chartData.map(row => row.total_asset);
+        const principals = chartData.map(row => row.principal);
+
+        if(growthChartInstance) growthChartInstance.destroy();
+        growthChartInstance = new Chart(document.getElementById('growthChart').getContext('2d'), {
             type: 'line',
             data: {
                 labels: labels,
                 datasets: [
-                    { label: '총 자산 ($)', data: totalAssets, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderWidth: 2, fill: true, tension: 0.1 },
-                    { label: '투자 원금 ($)', data: principals, borderColor: '#94a3b8', borderDash: [5, 5], borderWidth: 2, fill: false, tension: 0.1 }
+                    { label: '총 자산', data: totalAssets, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderWidth: 2, fill: true, tension: 0.1 },
+                    { label: '투자 원금', data: principals, borderColor: '#94a3b8', borderDash: [5, 5], borderWidth: 2, fill: false, tension: 0.1 }
                 ]
             },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { labels: { color: '#cbd5e1' } } }, scales: { x: { ticks: { color: '#94a3b8', maxTicksLimit: 10 }, grid: { display: false } }, y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } } } }
+            options: { 
+                responsive: true, maintainAspectRatio: false, 
+                plugins: { 
+                    legend: { labels: { color: '#cbd5e1' } },
+                    // 툴팁 포맷: $128.5K
+                    tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: $${(ctx.raw/1000).toFixed(1)}K` } }
+                }, 
+                scales: { 
+                    x: { ticks: { color: '#94a3b8', maxTicksLimit: 12 }, grid: { display: false } }, 
+                    // Y축 포맷: $128K 잘라서 표기
+                    y: { ticks: { color: '#94a3b8', callback: (val) => '$' + (val/1000).toFixed(0) + 'K' }, grid: { color: '#334155' } } 
+                } 
+            }
         });
     }
 
-    // 엔진 시작 포인트 교체
-    window.onload = initSystem;
+    async function loadTradeHistory() {
+        const { data } = await db.from('long_term_trade').select('*').order('created_at', { ascending: false }).limit(6);
+        const tbody = document.getElementById('trade-history-body');
+        tbody.innerHTML = '';
+        data?.forEach(t => {
+            const dateShort = formatShortDate(t.created_at.split('T')[0]);
+            const color = t.trade_type === '매수' ? 'text-up font-bold' : 'text-down font-bold';
+            tbody.innerHTML += `
+                <tr class="hover:bg-slate-800 border-b border-slate-700">
+                    <td>${dateShort}</td><td class="font-bold">${t.ticker}</td><td class="${color}">${t.trade_type}</td>
+                    <td>${t.quantity}</td><td>$${t.price}</td>
+                    <td>
+                        <button onclick="editTrade('${t.id}', '${t.ticker}', '${t.trade_type}', ${t.quantity}, ${t.price})" class="bg-blue-600 hover:bg-blue-500 text-white btn-sm mr-1">수정</button>
+                        <button onclick="deleteTrade('${t.id}')" class="bg-red-600 hover:bg-red-500 text-white btn-sm">삭제</button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    async function saveData() {
+        const id = document.getElementById('edit-id').value;
+        const payload = {
+            ticker: document.getElementById('ticker').value,
+            trade_type: document.getElementById('tradeType').value,
+            quantity: parseInt(document.getElementById('quantity').value),
+            price: parseFloat(document.getElementById('price').value),
+            total_amount: parseInt(document.getElementById('quantity').value) * parseFloat(document.getElementById('price').value)
+        };
+        if(!payload.quantity || !payload.price) return alert("수량과 단가를 입력하세요.");
+        
+        let res = id ? await db.from('long_term_trade').update(payload).eq('id', id) : await db.from('long_term_trade').insert([payload]);
+        if(res.error) alert("에러: " + res.error.message); else location.reload();
+    }
+
+    async function deleteTrade(id) {
+        if(confirm("정말 삭제하시겠습니까?")) { await db.from('long_term_trade').delete().eq('id', id); location.reload(); }
+    }
+
+    function editTrade(id, ticker, type, qty, price) {
+        document.getElementById('edit-id').value = id;
+        document.getElementById('ticker').value = ticker;
+        document.getElementById('tradeType').value = type;
+        document.getElementById('quantity').value = qty;
+        document.getElementById('price').value = price;
+        document.getElementById('save-btn').innerText = "내용 수정하기";
+        document.getElementById('save-btn').classList.replace('bg-blue-600', 'bg-yellow-600');
+        document.getElementById('cancel-btn').classList.remove('hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function resetForm() { location.reload(); }
+    
+    window.onload = init;
     </script>
 </body>
 </html>
