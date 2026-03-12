@@ -13,7 +13,6 @@
         .card { border-radius: 12px; margin-bottom: 20px; border: 1px solid #e1e4e8; box-shadow: 0 4px 6px rgba(0,0,0,0.02); overflow: hidden; }
         .card-header { background-color: #ffffff; border-bottom: 2px solid #1a237e; font-weight: 700; font-size: 1rem; color: #1a237e; padding: 14px 16px; }
         
-        /* 테이블 스타일 */
         .table-responsive { overflow-x: auto; }
         .table-excel { border-collapse: separate; border-spacing: 0; width: 100%; white-space: nowrap; background: #ffffff; }
         .table-excel th, .table-excel td { border-bottom: 1px solid #dee2e6; border-right: 1px solid #dee2e6; padding: 10px 8px; text-align: center; vertical-align: middle; }
@@ -24,8 +23,11 @@
         
         .sticky-col { position: sticky; left: 0; background-color: #ffffff; z-index: 2; border-right: 2px solid #ced4da !important; font-weight: 700; }
         .table-excel th.sticky-col { background-color: #f8f9fa; z-index: 3; }
-        
+        .table-excel tbody tr:nth-child(even) .sticky-col { background-color: #fafbfc; }
+        .table-excel tbody tr:hover .sticky-col { background-color: #eef2f5; }
+
         .scroll-box { max-height: 250px; overflow-y: auto; }
+        .scroll-box thead th { position: sticky; top: 0; z-index: 2; }
         .chart-scroll-box { overflow-x: auto; overflow-y: hidden; }
 
         .text-profit { color: #1565c0 !important; font-weight: 700; } 
@@ -34,14 +36,13 @@
         
         .form-control, .form-select { border-radius: 6px; border: 1px solid #ced4da; }
         .btn-primary { background-color: #1a237e; border-color: #1a237e; }
-        .btn-action { padding: 1px 5px !important; font-size: 0.65rem !important; margin: 0 1px; }
-
-        /* 세련된 텍스트 메뉴 스타일 */
+        .btn-primary:hover { background-color: #121858; border-color: #121858; }
+        
         .nav-links { display: flex; gap: 15px; }
         .nav-links a { font-weight: 700; font-size: 0.85rem; color: #666; text-decoration: none; transition: color 0.2s; }
         .nav-links a:hover { color: #1a237e; text-decoration: underline; }
         
-        /* 변동률 뱃지 스타일 */
+        .btn-action { padding: 1px 5px !important; font-size: 0.65rem !important; margin: 0 1px; }
         #priceChangeBadge { font-size: 0.75rem; vertical-align: middle; margin-left: 5px; }
     </style>
 </head>
@@ -50,8 +51,8 @@
         <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
             <h4 class="fw-bold m-0" style="color: #1a237e; letter-spacing: -0.5px;">📈 떨사오팔 센터</h4>
             <div class="nav-links">
-                <a href="https://trillionly.github.io/great/?t=1">그리드매매 시스템</a>
-                <a href="https://trillionly.github.io/great/trillion.html">장투리밸런싱 시스템</a>
+                <a href="https://trillionly.github.io/great/?t=1">그리드매매 시스템 ➔</a>
+                <a href="https://trillionly.github.io/great/trillion.html">장투리밸런싱 시스템 ➔</a>
             </div>
         </div>
         
@@ -95,7 +96,7 @@
             <div class="col-md-6">
                 <div class="card h-100 mb-0">
                     <div class="card-header d-flex justify-content-between">
-                        <span>Finnhub API 실시간 시세</span>
+                        <span>실시간 LOC 시세 <span id="dataSource" class="badge bg-secondary ms-1" style="font-size:0.6rem;">대기중</span></span>
                         <span id="priceChangeBadge"></span>
                     </div>
                     <div class="card-body p-3">
@@ -108,7 +109,7 @@
                                 </div>
                             </div>
                             <div class="col-4 border-end px-2 text-center">
-                                <label class="form-label text-muted mb-1" style="font-size: 0.75rem;">현재(LOC) 단가($)</label>
+                                <label class="form-label text-muted mb-1" style="font-size: 0.75rem;">현재가($)</label>
                                 <input type="number" id="currentPrice" class="form-control form-control-sm text-center fw-bold" step="0.01" oninput="calcTodayBuyPrice()">
                             </div>
                             <div class="col-4 px-2 text-center">
@@ -200,7 +201,7 @@
                     <table class="table-excel mb-0">
                         <thead>
                             <tr>
-                                <th class="sticky-col" style="z-index: 4;">날짜</th><th>호기</th><th>구분</th><th>수량</th><th>단가/금액</th><th>총액</th><th>수익금</th><th>수익률</th><th>비고</th><th style="width: 70px;">관리</th>
+                                <th class="sticky-col" style="z-index: 4;">날짜</th><th>호기</th><th>구분</th><th>수량</th><th>단가</th><th>총액</th><th>수익금</th><th>수익률</th><th>비고</th><th style="width: 70px;">관리</th>
                             </tr>
                         </thead>
                         <tbody id="tradeLogBody"></tbody>
@@ -220,68 +221,100 @@
         const SETTINGS_TABLE = 'app_settings';
 
         let sysHogis = 6, sysSeed = 11000, sysTarget = 0.7, sysDday = 45;
-        let isLocked = false;
-        let globalData = [];
-        let globalStats = {}; 
-        let myChart = null; 
+        let isLocked = false, globalData = [], globalStats = {}, myChart = null; 
 
         document.getElementById('dateInput').valueAsDate = new Date();
 
-        // 1. 시세 조회 및 전일 대비 변동률 로직 추가
+        // [핵심] 이중화(Hybrid) 시세 조회 엔진
         async function fetchTicker() {
             const ticker = document.getElementById('tickerInput').value.toUpperCase();
             if(!ticker) return;
             
             const btn = document.getElementById('fetchBtn');
             const badge = document.getElementById('priceChangeBadge');
+            const sourceBadge = document.getElementById('dataSource');
+            
             btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>'; 
             btn.disabled = true;
+            sourceBadge.innerText = '야후 연결중...';
+            sourceBadge.className = 'badge bg-warning text-dark ms-1';
 
+            let price = null, prevClose = null;
+            
+            // 1. 야후 파이낸스 고속 프록시 연결 (2.5초 타임아웃)
             try {
-                const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${FINNHUB_KEY}`);
-                const data = await response.json();
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 2500); // 2.5초 한계점
                 
-                if (data && data.c) {
-                    const price = data.c;
-                    const prevClose = data.pc;
-                    const change = (price - prevClose).toFixed(2);
-                    const percent = ((change / prevClose) * 100).toFixed(2);
-                    
-                    // 등락률에 따른 색상 및 화살표 처리 (한국 사용자 취향: 상승 빨강, 하락 파랑)
-                    const colorClass = change > 0 ? 'text-loss' : (change < 0 ? 'text-profit' : 'text-muted');
-                    const sign = change > 0 ? '▲' : (change < 0 ? '▼' : '');
-                    
-                    document.getElementById('currentPrice').value = price.toFixed(2);
-                    badge.innerHTML = `<span class="${colorClass}">${sign} ${Math.abs(change)} (${percent}%)</span>`;
-                    
-                    if(document.getElementById('typeInput').value !== '시드추가') {
-                        document.getElementById('priceInput').value = price.toFixed(2); 
-                    }
-                    calcTodayBuyPrice();
-                } else {
-                    console.error("API 응답 오류:", data);
-                    alert("티커를 찾을 수 없거나 API 제한에 도달했습니다.");
+                const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}`;
+                // 기존 /get 방식보다 빠른 /raw 방식 적용
+                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`;
+                
+                const res = await fetch(proxyUrl, { signal: controller.signal });
+                clearTimeout(timeoutId);
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    const result = data.chart.result[0];
+                    price = result.meta.regularMarketPrice;
+                    prevClose = result.meta.chartPreviousClose;
+                    sourceBadge.innerText = 'Yahoo LOC';
+                    sourceBadge.className = 'badge bg-success ms-1';
                 }
-            } catch (error) {
-                console.error("시세 조회 중 오류 발생:", error);
-            } finally {
-                btn.innerHTML = "조회"; 
-                btn.disabled = false;
+            } catch(e) {
+                console.warn("야후 프록시 지연 발생. Finnhub 백업 가동.");
             }
+
+            // 2. 야후 실패 시 즉각 Finnhub 백업 호출 (속도 보장)
+            if (!price) {
+                sourceBadge.innerText = 'Finnhub 가동중';
+                try {
+                    const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${FINNHUB_KEY}`);
+                    const data = await response.json();
+                    if (data && data.c) {
+                        price = data.c;
+                        prevClose = data.pc;
+                        sourceBadge.innerText = 'Finnhub 백업';
+                        sourceBadge.className = 'badge bg-info text-dark ms-1';
+                    }
+                } catch (error) {
+                    console.error("백업 API 마저 실패", error);
+                    sourceBadge.innerText = '연결 실패';
+                    sourceBadge.className = 'badge bg-danger ms-1';
+                }
+            }
+
+            // UI 업데이트 및 변동률 계산
+            if (price && prevClose) {
+                const change = (price - prevClose).toFixed(2);
+                const percent = ((change / prevClose) * 100).toFixed(2);
+                
+                const colorClass = change > 0 ? 'text-loss' : (change < 0 ? 'text-profit' : 'text-muted');
+                const sign = change > 0 ? '▲' : (change < 0 ? '▼' : '');
+                
+                document.getElementById('currentPrice').value = price.toFixed(2);
+                badge.innerHTML = `<span class="${colorClass} fw-bold">${sign} ${Math.abs(change)} (${percent}%)</span>`;
+                
+                if(document.getElementById('typeInput').value !== '시드추가') {
+                    document.getElementById('priceInput').value = price.toFixed(2); 
+                }
+                calcTodayBuyPrice();
+            } else {
+                alert("현재 시세를 가져오지 못했습니다. 잠시 후 다시 시도해주세요.");
+            }
+            
+            btn.innerHTML = "조회"; 
+            btn.disabled = false;
         }
 
         function calcTodayBuyPrice() {
             const current = parseFloat(document.getElementById('currentPrice').value);
-            if(current && current > 0) {
-                document.getElementById('todayBuyPrice').innerText = (current * 0.999).toFixed(2);
-            } else {
-                document.getElementById('todayBuyPrice').innerText = '-';
-            }
+            document.getElementById('todayBuyPrice').innerText = current ? (current * 0.999).toFixed(2) : '-';
             renderDashboard(); 
         }
 
         async function loadSettings() {
-            const { data, error } = await client.from(SETTINGS_TABLE).select('*').eq('id', 1).single();
+            const { data } = await client.from(SETTINGS_TABLE).select('*').eq('id', 1).single();
             if (data && data.is_locked) {
                 isLocked = true;
                 sysHogis = data.sys_hogis; sysSeed = data.sys_seed; sysTarget = data.sys_target; sysDday = data.sys_dday;
@@ -325,8 +358,7 @@
         }
 
         function updateHogiSelect() {
-            const select = document.getElementById('hogiInput');
-            select.innerHTML = '';
+            const select = document.getElementById('hogiInput'); select.innerHTML = '';
             for(let i=1; i<=sysHogis; i++) { select.innerHTML += `<option value="${i}호기">${i}호기</option>`; }
             autoFillTrade();
         }
@@ -336,15 +368,16 @@
         };
 
         async function loadData() {
-            const { data, error } = await client.from(TABLE_NAME).select('*').order('date', { ascending: false }).order('created_at', { ascending: false });
-            if (error) { alert("데이터 로드 실패!"); return; }
+            const { data } = await client.from(TABLE_NAME).select('*').order('date', { ascending: false }).order('created_at', { ascending: false });
             let chronoData = [...data].reverse();
             let stats = {};
             for(let i=1; i<=sysHogis; i++) stats[`${i}호기`] = { seed: sysSeed, qty: 0, avgPrice: 0, profit: 0, win: 0, loss: 0, firstDate: null };
+
             chronoData.forEach(row => {
                 let h = row.hogi; if(!stats[h]) return;
                 let q = parseFloat(row.quantity); let p = parseFloat(row.price);
                 row.realizedProfit = 0; row.profitRate = 0;
+
                 if(row.trade_type === '매수') {
                     if(stats[h].qty === 0) stats[h].firstDate = row.date;
                     let totalCost = (stats[h].qty * stats[h].avgPrice) + (q * p);
@@ -356,24 +389,28 @@
                     stats[h].profit += realized; stats[h].qty -= q;
                     if(stats[h].qty <= 0) { stats[h].qty = 0; stats[h].avgPrice = 0; stats[h].firstDate = null; }
                     if(realized > 0) stats[h].win++; else if(realized < 0) stats[h].loss++;
-                } else if(row.trade_type === '시드추가') { stats[h].seed += (q * p); }
+                } else if(row.trade_type === '시드추가') {
+                    stats[h].seed += (q * p);
+                }
             });
+
             globalData = chronoData.reverse(); globalStats = stats; 
             renderDashboard(); renderMonthlySummaryAndChart(); renderTradeLog(); autoFillTrade(); 
         }
 
         function renderDashboard() {
-            const dashBody = document.getElementById('dashboardBody');
-            dashBody.innerHTML = '';
+            const dashBody = document.getElementById('dashboardBody'); dashBody.innerHTML = '';
             let sumSeed = 0, sumCompound = 0, sumQty = 0, sumProfit = 0, sumWin = 0, sumLoss = 0;
             let today = new Date(); today.setHours(0,0,0,0);
             let curPrice = parseFloat(document.getElementById('currentPrice').value) || 0;
+
             for(let i=1; i<=sysHogis; i++) {
                 let h = `${i}호기`; let s = globalStats[h];
                 let compound = s.seed + s.profit; let rate = (s.profit / s.seed) * 100;
                 sumSeed += s.seed; sumCompound += compound; sumQty += s.qty; sumProfit += s.profit; sumWin += s.win; sumLoss += s.loss;
                 let targetPrice = s.avgPrice > 0 ? s.avgPrice * (1 + (sysTarget / 100)) : 0;
                 let orderable = curPrice > 0 ? (compound / curPrice).toFixed(2) : '-';
+
                 let dDayStr = '-';
                 if(s.firstDate) {
                     let firstD = new Date(s.firstDate); firstD.setHours(0,0,0,0);
@@ -384,6 +421,7 @@
                     while(tempD < endD) { tempD.setDate(tempD.getDate() + 1); if(tempD.getDay() !== 0 && tempD.getDay() !== 6) diffDays++; }
                     let sign = isPast ? '+' : '-'; dDayStr = `${targetD.getMonth()+1}/${targetD.getDate()}(${sign}${diffDays}일)`;
                 }
+
                 dashBody.innerHTML += `<tr><td class="sticky-col">${h}</td><td>${s.seed.toLocaleString(undefined,{minimumFractionDigits:2})}</td><td>${compound.toLocaleString(undefined,{minimumFractionDigits:2})}</td><td>${s.qty}</td><td class="${s.profit > 0 ? 'text-profit' : (s.profit < 0 ? 'text-loss' : '')}">${s.profit.toLocaleString(undefined,{minimumFractionDigits:2})}</td><td>${rate.toFixed(1)}%</td><td>${s.win}</td><td>${s.loss}</td><td>${s.avgPrice > 0 ? s.avgPrice.toFixed(2) : '-'}</td><td class="text-profit">${targetPrice > 0 ? targetPrice.toFixed(2) : '-'}</td><td class="fw-bold text-success">${orderable}</td><td class="text-muted fw-bold">${dDayStr}</td></tr>`;
             }
             let totalRate = sumSeed > 0 ? (sumProfit / sumSeed) * 100 : 0;
@@ -392,14 +430,14 @@
 
         function renderMonthlySummaryAndChart() {
             let monthly = {}; let baseTotalSeed = sysHogis * sysSeed; let currentPrincipal = baseTotalSeed; let currentTotalProfit = 0;
-            let chronoData = [...globalData].reverse();
-            chronoData.forEach(row => {
+            [...globalData].reverse().forEach(row => {
                 let month = row.date.substring(0, 7); 
                 if(!monthly[month]) { monthly[month] = { profit: 0, principal: currentPrincipal, evaluated: currentPrincipal + currentTotalProfit }; }
                 if(row.trade_type === '매도' && row.realizedProfit) { monthly[month].profit += row.realizedProfit; currentTotalProfit += row.realizedProfit; } 
                 else if(row.trade_type === '시드추가') { currentPrincipal += (row.quantity * row.price); }
                 monthly[month].principal = currentPrincipal; monthly[month].evaluated = currentPrincipal + currentTotalProfit;
             });
+
             let sortedMonths = Object.keys(monthly).sort().reverse();
             let tbody = document.getElementById('monthlySummaryBody'); tbody.innerHTML = '';
             sortedMonths.forEach(m => {
@@ -407,14 +445,17 @@
                 let monthlyRate = mObj.principal > 0 ? (mObj.profit / mObj.principal) * 100 : 0;
                 tbody.innerHTML += `<tr><td class="fw-bold">${displayMonth}</td><td>${mObj.principal.toLocaleString(undefined, {minimumFractionDigits:2})}</td><td class="${mObj.profit > 0 ? 'text-profit' : (mObj.profit < 0 ? 'text-loss' : '')} fw-bold">${mObj.profit.toLocaleString(undefined, {minimumFractionDigits:2})}</td><td class="fw-bold text-secondary">${monthlyRate.toFixed(1)}%</td></tr>`;
             });
-            if(sortedMonths.length === 0) { tbody.innerHTML = `<tr><td colspan="4" class="text-muted">기록 없음</td></tr>`; }
-            let chartLabels = []; let chartPrincipal = []; let chartEvaluated = []; let chartMonthlyProfit = []; 
+            if(sortedMonths.length === 0) tbody.innerHTML = `<tr><td colspan="4" class="text-muted">기록 없음</td></tr>`;
+
+            let chartLabels = [], chartPrincipal = [], chartEvaluated = [], chartMonthlyProfit = []; 
             Object.keys(monthly).sort().forEach(m => {
                 chartLabels.push(`'${m.substring(2,4)}.${parseInt(m.substring(5,7))}`);
                 chartPrincipal.push(monthly[m].principal); chartEvaluated.push(monthly[m].evaluated); chartMonthlyProfit.push(monthly[m].profit);
             });
+
             const chartWrapper = document.getElementById('chartWrapper');
-            if(chartLabels.length > 6) { chartWrapper.style.minWidth = `${chartLabels.length * 60}px`; } else { chartWrapper.style.minWidth = '100%'; }
+            chartWrapper.style.minWidth = chartLabels.length > 6 ? `${chartLabels.length * 60}px` : '100%';
+
             const ctx = document.getElementById('monthlyChart').getContext('2d');
             if(myChart) myChart.destroy(); 
             myChart = new Chart(ctx, {
@@ -453,13 +494,14 @@
             globalData.forEach(row => {
                 const amount = (row.quantity * row.price).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
                 const typeClass = row.trade_type === '매수' ? 'text-loss' : row.trade_type === '매도' ? 'text-profit' : 'text-success';
-                let profitStr = '-'; let rateStr = '-';
+                let profitStr = '-', rateStr = '-';
                 if (row.trade_type === '매도' && row.realizedProfit !== undefined) {
-                    profitStr = `<span class="text-profit">${row.realizedProfit>=0?'+':''}${row.realizedProfit.toLocaleString(undefined, {minimumFractionDigits:2})}</span>`;
-                    rateStr = `<span class="text-profit">${row.profitRate>=0?'+':''}${row.profitRate.toFixed(2)}%</span>`;
+                    let sign = row.realizedProfit > 0 ? '+' : '';
+                    profitStr = `<span class="text-profit">${sign}${row.realizedProfit.toLocaleString(undefined, {minimumFractionDigits:2})}</span>`;
+                    rateStr = `<span class="text-profit">${sign}${row.profitRate.toFixed(2)}%</span>`;
                 }
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td class="sticky-col">${row.date.substring(5)}</td><td>${row.hogi}</td><td class="${typeClass}">${row.trade_type}</td><td>${row.quantity}</td><td>${row.price.toLocaleString(undefined, {minimumFractionDigits:2})}</td><td>${amount}</td><td>${profitStr}</td><td>${rateStr}</td><td class="small text-muted">${row.memo || ''}</td><td style="padding: 4px;"><button onclick="editData(${row.id})" class="btn btn-outline-secondary btn-action">수정</button><button onclick="deleteData(${row.id})" class="btn btn-outline-danger btn-action">삭제</button></td></tr>`;
+                tr.innerHTML = `<td class="sticky-col">${row.date.substring(5)}</td><td>${row.hogi}</td><td class="${typeClass}">${row.trade_type}</td><td>${row.quantity}</td><td>${row.price.toLocaleString(undefined, {minimumFractionDigits:2})}</td><td>${amount}</td><td>${profitStr}</td><td>${rateStr}</td><td class="small text-muted">${row.memo || ''}</td><td style="padding: 4px;"><button onclick="editData(${row.id})" class="btn btn-outline-secondary btn-action">수정</button><button onclick="deleteData(${row.id})" class="btn btn-outline-danger btn-action">삭제</button></td>`;
                 tbody.appendChild(tr);
             });
         }
@@ -483,10 +525,8 @@
             const id = document.getElementById('recordId').value; const date = document.getElementById('dateInput').value; const hogi = document.getElementById('hogiInput').value; const trade_type = document.getElementById('typeInput').value; const quantity = parseFloat(document.getElementById('qtyInput').value); const price = parseFloat(document.getElementById('priceInput').value); const memo = document.getElementById('memoInput').value;
             if(!quantity || !price) { alert("수량과 단가를 입력하세요."); return; }
             const payload = { date, hogi, trade_type, quantity, price, memo };
-            let error;
-            if(id) { const res = await client.from(TABLE_NAME).update(payload).eq('id', id); error = res.error; } 
-            else { const res = await client.from(TABLE_NAME).insert([payload]); error = res.error; }
-            if(error) alert("처리 실패: " + error.message); else { resetForm(); loadData(); }
+            if(id) { await client.from(TABLE_NAME).update(payload).eq('id', id); } else { await client.from(TABLE_NAME).insert([payload]); }
+            resetForm(); loadData();
         }
 
         function editData(id) {
@@ -495,11 +535,11 @@
             document.getElementById('formTitle').innerText = "매매 기록 수정 중..."; document.getElementById('saveBtn').innerText = "수정 완료"; document.getElementById('cancelBtn').classList.remove('d-none'); window.scrollTo({ top: 400, behavior: 'smooth' });
         }
 
-        async function deleteData(id) { if(confirm("정말 이 기록을 삭제하시겠습니까?")) { const { error } = await client.from(TABLE_NAME).delete().eq('id', id); if(error) alert("삭제 실패: " + error.message); else loadData(); } }
+        async function deleteData(id) { if(confirm("정말 이 기록을 삭제하시겠습니까?")) { await client.from(TABLE_NAME).delete().eq('id', id); loadData(); } }
 
         function resetForm() {
             document.getElementById('recordId').value = ''; document.getElementById('qtyInput').value = ''; document.getElementById('priceInput').value = ''; document.getElementById('memoInput').value = ''; document.getElementById('formTitle').innerText = "매매 기록 입력"; document.getElementById('saveBtn').innerText = "저장하기"; document.getElementById('cancelBtn').classList.add('d-none');
-            if(document.getElementById('typeInput').value === '시드추가') { document.getElementById('typeInput').value = '매수'; }
+            if(document.getElementById('typeInput').value === '시드추가') document.getElementById('typeInput').value = '매수';
             autoFillTrade(); 
         }
     </script>
