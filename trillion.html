@@ -25,7 +25,7 @@
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #475569; }
         
-        /* ✅ 빙글빙글 로딩 애니메이션 CSS 추가 */
+        /* ✅ 빙글빙글 로딩 스피너 디자인 */
         .loader {
             border: 2px solid #334155;
             border-top: 2px solid #3b82f6;
@@ -147,17 +147,18 @@
         return dateStr;
     };
 
-    // ✅ 과거 주가를 긁어오는 핵심 API 호출 함수 (휴장일 대비 10일치 탐색)
+    // ✅ 스캔 범위를 30일로 300% 대폭 확장하여 데이터 누락 원천 차단
     async function fetchPastPrice(symbol, targetTimestamp) {
         try {
-            const from = targetTimestamp - (10 * 86400); 
+            const from = targetTimestamp - (30 * 86400); 
             const to = targetTimestamp;
             const res = await fetch(`https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=D&from=${from}&to=${to}&token=${FINNHUB_API_KEY}`);
             const data = await res.json();
             if (data.s === 'ok' && data.c && data.c.length > 0) {
-                return data.c[data.c.length - 1]; // 가장 최신(타겟에 가까운) 종가
+                return data.c[data.c.length - 1]; // 가장 최신(타겟 날짜) 종가
             }
-        } catch(e) { console.log(symbol + ' 과거 데이터 로딩 실패'); }
+            console.warn(`[API 경고] ${symbol} 과거 데이터 없음:`, data);
+        } catch(e) { console.error(symbol + ' API 에러'); }
         return null;
     }
 
@@ -172,8 +173,9 @@
     }
 
     async function runAutomation() {
-        // ✅ 빙글빙글 로딩 스피너 활성화
-        document.getElementById('price-status').innerHTML = '<span class="loader"></span>데이터 긁어오는 중...';
+        // ✅ 0.8초 강제 대기를 통해 사람 눈으로 로딩을 명확히 인지하게 함
+        document.getElementById('price-status').innerHTML = '<span class="loader"></span>과거 주가 역추적 중...';
+        await new Promise(resolve => setTimeout(resolve, 800));
         
         const { data: trades } = await db.from('long_term_trade').select('*');
         let assets = { SCHD: { qty:0, cost:0 }, QLD: { qty:0, cost:0 } };
@@ -194,11 +196,10 @@
 
         const dNow = new Date();
         const nowSec = Math.floor(dNow.getTime() / 1000);
-        const sec1Mo = nowSec - (30 * 86400); // 30일 전
-        const sec1Yr = nowSec - (365 * 86400); // 365일 전
+        const sec1Mo = nowSec - (30 * 86400); 
+        const sec1Yr = nowSec - (365 * 86400); 
 
         try {
-            // 실시간 현재가 호출
             const [s, q] = await Promise.all([
                 fetch(`https://finnhub.io/api/v1/quote?symbol=SCHD&token=${FINNHUB_API_KEY}`).then(r=>r.json()),
                 fetch(`https://finnhub.io/api/v1/quote?symbol=QLD&token=${FINNHUB_API_KEY}`).then(r=>r.json())
@@ -206,7 +207,7 @@
             if(s.c) { prices.SCHD = s.c; dailyChange.SCHD = s.dp; }
             if(q.c) { prices.QLD = q.c; dailyChange.QLD = q.dp; }
 
-            // ✅ 개별 종목의 1달 전, 1년 전 과거 주가 동시 호출
+            // 종목별 과거 주가 4개 동시 호출
             const [s1Mo, s1Yr, q1Mo, q1Yr] = await Promise.all([
                 fetchPastPrice('SCHD', sec1Mo), fetchPastPrice('SCHD', sec1Yr),
                 fetchPastPrice('QLD', sec1Mo), fetchPastPrice('QLD', sec1Yr)
@@ -215,9 +216,9 @@
             pastPrices.SCHD.mo = s1Mo; pastPrices.SCHD.yr = s1Yr;
             pastPrices.QLD.mo = q1Mo; pastPrices.QLD.yr = q1Yr;
 
-            document.getElementById('price-status').innerText = '🟢 전체 연동 완료';
+            document.getElementById('price-status').innerHTML = '🟢 전체 연동 완료';
             document.getElementById('price-status').classList.add('text-green-500');
-        } catch(e) { document.getElementById('price-status').innerText = '🟠 연동 지연 (백업가 사용)'; }
+        } catch(e) { document.getElementById('price-status').innerHTML = '🟠 연동 지연 (백업가 사용)'; }
 
         const schdVal = assets.SCHD.qty * prices.SCHD;
         const qldVal = assets.QLD.qty * prices.QLD;
@@ -227,7 +228,6 @@
         const totalRt = totalInvested > 0 ? (totalPl / totalInvested) * 100 : 0; 
         const totalDailyChange = totalUsd > 0 ? ((schdVal * dailyChange.SCHD + qldVal * dailyChange.QLD) / totalUsd) : 0;
 
-        // DB 스냅샷(총자산용 전월비/전년비 역추적)
         const { data: snapData } = await db.from('daily_snapshot').select('*');
         let chartData = snapData || [];
         const todayStr = `${dNow.getFullYear()}. ${dNow.getMonth()+1}. ${dNow.getDate()}`;
@@ -267,7 +267,6 @@
             const price = prices[item.id];
             const d_change = dailyChange[item.id] || 0;
             
-            // ✅ 방금 가져온 과거 주가로 종목별 전월비/전년비 계산
             const p1Mo = pastPrices[item.id].mo;
             const p1Yr = pastPrices[item.id].yr;
             const moRt = p1Mo ? ((price - p1Mo) / p1Mo) * 100 : null;
@@ -284,6 +283,10 @@
             const guide = diffQty > 0 ? `<span class="text-up font-bold">+${diffQty}주</span>` : 
                           (diffQty < 0 ? `<span class="text-down font-bold">${diffQty}주</span>` : '<span class="text-slate-400">-</span>');
 
+            // ✅ 혹시라도 데이터를 못 가져오면 "API막힘"으로 원인을 명확히 출력
+            const moRtText = moRt !== null ? `<span class="${moRt >= 0 ? 'text-up' : 'text-down'} font-bold">${moRt >= 0 ? '+' : ''}${moRt.toFixed(2)}%</span>` : '<span class="text-slate-500 text-xs">API막힘</span>';
+            const yrRtText = yrRt !== null ? `<span class="${yrRt >= 0 ? 'text-up' : 'text-down'} font-bold">${yrRt >= 0 ? '+' : ''}${yrRt.toFixed(2)}%</span>` : '<span class="text-slate-500 text-xs">API막힘</span>';
+
             tbody.innerHTML += `
                 <tr class="hover:bg-slate-800 border-b border-slate-700">
                     <td class="font-bold text-left ${item.color}">${item.id}</td>
@@ -297,8 +300,8 @@
                     <td class="font-bold">${ratio.toFixed(1)}%</td>
                     
                     <td class="${d_change >= 0 ? 'text-up' : 'text-down'} font-bold">${d_change >= 0 ? '+' : ''}${d_change.toFixed(2)}%</td>
-                    <td class="${moRt !== null ? (moRt >= 0 ? 'text-up' : 'text-down') : 'text-slate-400'} font-bold">${moRt !== null ? (moRt >= 0 ? '+' : '') + moRt.toFixed(2) + '%' : '-'}</td>
-                    <td class="${yrRt !== null ? (yrRt >= 0 ? 'text-up' : 'text-down') : 'text-slate-400'} font-bold">${yrRt !== null ? (yrRt >= 0 ? '+' : '') + yrRt.toFixed(2) + '%' : '-'}</td>
+                    <td>${moRtText}</td>
+                    <td>${yrRtText}</td>
 
                     <td class="text-slate-400">${diffQty === 0 ? '-' : Math.round(targetVal/price).toLocaleString()}</td>
                     <td class="bg-slate-800/50">${guide}</td>
@@ -377,12 +380,10 @@
         const { data } = await db.from('long_term_trade').select('*').order('created_at', { ascending: false }).limit(30);
         const tbody = document.getElementById('trade-history-body');
         tbody.innerHTML = '';
-        
         if (data) {
             data.forEach(t => {
                 const dateShort = formatShortDate(t.created_at.split('T')[0]);
                 const typeColor = t.trade_type === '매수' ? 'text-up font-bold' : 'text-down font-bold';
-                
                 tbody.innerHTML += `
                     <tr class="hover:bg-slate-800 border-b border-slate-700">
                         <td class="py-2">${dateShort}</td><td class="font-bold py-2">${t.ticker}</td><td class="${typeColor} py-2">${t.trade_type}</td>
