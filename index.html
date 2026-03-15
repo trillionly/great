@@ -55,7 +55,7 @@
     /* 2개의 링크 버튼을 나란히 담는 컨테이너 */
     .nav-buttons {
       display: flex;
-      gap: 12px; /* 텍스트 사이 간격 */
+      gap: 12px;
       align-items: center;
       flex-shrink: 0; 
     }
@@ -68,21 +68,21 @@
       line-height: 1.4;
     }
 
-    /* 🔥 배경/테두리를 완전히 없앤 미니멀 텍스트 링크 */
+    /* 미니멀 텍스트 링크 */
     .nav-link { 
         font-weight: 600; 
         font-size: 14px; 
-        color: #64748b; /* 평소에는 차분한 회색 */
+        color: #64748b; 
         text-decoration: none; 
-        padding: 4px 2px; /* 모바일 터치를 위한 투명 여백 */
+        padding: 4px 2px; 
         transition: color 0.2s ease; 
         white-space: nowrap; 
     }
     .nav-link:hover, .nav-link:active { 
-        color: var(--primary); /* 터치하거나 마우스 올릴 때 짙은 네이비로 변경 */
+        color: var(--primary); 
     }
 
-    /* 🔥 에러 알림 배너 */
+    /* 에러 알림 배너 */
     #errorBanner {
       background-color: #fef2f2;
       border: 1px solid #f87171;
@@ -100,7 +100,7 @@
     .pill { display:inline-block; padding:3px 12px; border-radius:4px; background:#e0e7ff; color: #3730a3; font-size:12px; font-weight: 600;}
     .err-pill { background:#fee2e2 !important; color:#991b1b !important; }
 
-    /* 카드형 레이아웃 통일 */
+    /* 카드형 레이아웃 통일 (position: relative 추가하여 내부 요소 절대위치 지정 가능하게 함) */
     .card { 
       background: var(--surface); 
       border: 1px solid var(--border); 
@@ -108,6 +108,7 @@
       padding: 14px 16px; 
       box-shadow: 0 1px 3px rgba(0,0,0,0.04); 
       display: flex; flex-direction: column; height: 100%; box-sizing: border-box; min-width: 0;
+      position: relative; /* 중요: 우측 상단 미니 차트 고정을 위한 기준점 */
     }
     
     .summary-grid {
@@ -175,6 +176,28 @@
 
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
     .wide { min-width: 100%; margin-top: 15px; }
+
+    /* 🔥 스파크라인 컨테이너 스타일 (우측 상단 빈 공간에 딱 맞게 배치) */
+    .sparkline-container {
+      position: absolute;
+      top: 12px;
+      right: 14px;
+      width: 90px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+    }
+    .sparkline-canvas-wrap {
+      width: 100%;
+      height: 26px;
+    }
+    .sparkline-title {
+      font-size: 10px;
+      color: #94a3b8;
+      margin-top: 4px;
+      letter-spacing: -0.5px;
+      white-space: nowrap;
+    }
   </style>
 </head>
 <body>
@@ -213,18 +236,41 @@
       <div class="v" id="monthProfitTQQQ">-</div>
       <div class="small muted" id="monthRoiTQQQ" style="margin-bottom: 6px;">-</div>
       <div id="progTQQQ" style="width:100%; margin-top:auto;"></div>
+      
+      <div class="sparkline-container">
+        <div class="sparkline-canvas-wrap">
+          <canvas id="sparkTQQQ"></canvas>
+        </div>
+        <div class="sparkline-title">최근 6개월 주가추이</div>
+      </div>
     </div>
+
     <div class="card">
       <div class="k">ETHU 누적 수익</div>
       <div class="v" id="monthProfitETHU">-</div>
       <div class="small muted" id="monthRoiETHU" style="margin-bottom: 6px;">-</div>
       <div id="progETHU" style="width:100%; margin-top:auto;"></div>
+
+      <div class="sparkline-container">
+        <div class="sparkline-canvas-wrap">
+          <canvas id="sparkETHU"></canvas>
+        </div>
+        <div class="sparkline-title">최근 6개월 주가추이</div>
+      </div>
     </div>
+
     <div class="card">
       <div class="k">TSLL 누적 수익</div>
       <div class="v" id="monthProfitTSLL">-</div>
       <div class="small muted" id="monthRoiTSLL" style="margin-bottom: 6px;">-</div>
       <div id="progTSLL" style="width:100%; margin-top:auto;"></div>
+
+      <div class="sparkline-container">
+        <div class="sparkline-canvas-wrap">
+          <canvas id="sparkTSLL"></canvas>
+        </div>
+        <div class="sparkline-title">최근 6개월 주가추이</div>
+      </div>
     </div>
   </div>
 
@@ -288,6 +334,44 @@
     if (!nums.length) return null;
     return nums.reduce((a,b)=>a+b,0);
   };
+
+  /* 🔥 미니 스파크라인 그리는 함수 (축 끄고 선만 부드럽게) */
+  function drawSparkline(canvasId, dataPoints, colorCode) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    if (window["chart_" + canvasId]) {
+      window["chart_" + canvasId].destroy();
+    }
+
+    window["chart_" + canvasId] = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: dataPoints.map((_, i) => i), // 의미 없는 라벨 (숨김용)
+        datasets: [{
+          data: dataPoints,
+          borderColor: colorCode,
+          borderWidth: 1.5,
+          pointRadius: 0, // 선만 깔끔하게 나오도록 점 없앰
+          pointHoverRadius: 0,
+          tension: 0.3 // 부드러운 곡선 적용
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { enabled: false } // 마우스 오버 툴팁 제거
+        },
+        scales: {
+          x: { display: false }, // X축 눈금/그리드 완전 제거
+          y: { display: false }  // Y축 눈금/그리드 완전 제거
+        },
+        layout: {
+          padding: 0
+        }
+      }
+    });
+  }
 
   function parseGridTier(fullText) {
     if (!fullText) return { tierNow: null, tierMax: null };
@@ -961,6 +1045,14 @@
         }
 
         renderView(viewData, symbols, viewMode, allDaily);
+
+        // 🔥 스파크라인 차트에 가짜 데이터(더미 데이터)를 그려주는 호출 부 (추후 진짜 데이터 연동을 위해 남겨둠)
+        setTimeout(() => {
+          drawSparkline('sparkTQQQ', [45, 48, 42, 55, 52, 60], '#1e3a8a'); // 상승하는 척하는 TQQQ 가짜 데이터
+          drawSparkline('sparkETHU', [30, 25, 28, 22, 20, 18], '#0284c7'); // 횡보/하락하는 척하는 ETHU 가짜 데이터
+          drawSparkline('sparkTSLL', [15, 18, 14, 20, 25, 22], '#64748b'); // 변동성 있는 척하는 TSLL 가짜 데이터
+        }, 100);
+
       }
 
       yearSel.addEventListener("change", () => { updateMonthDropdown(); rerender(); });
