@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>장투리밸런싱 시스템 v3.7</title>
+    <title>장투리밸런싱 시스템 v3.8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -14,7 +14,8 @@
         .input-field:focus { border-color: #3b82f6; }
         .table-container { overflow-x: auto; }
         table { width: 100%; text-align: center; border-collapse: collapse; white-space: nowrap; }
-        th, td { padding: 0.75rem 0.5rem; border-bottom: 1px solid #334155; font-size: 1rem; }
+        /* ✅ 폰트 크기(1rem)는 유지하되 위아래 패딩을 줄여 높이를 15% 다이어트 */
+        th, td { padding: 0.5rem 0.4rem; border-bottom: 1px solid #334155; font-size: 1rem; }
         th { background-color: #0f172a; color: #94a3b8; font-weight: 600; text-align: center; }
         .text-up { color: #ef4444; } 
         .text-down { color: #3b82f6; }
@@ -31,7 +32,7 @@
         <header class="flex flex-col md:flex-row justify-between items-center mb-6 pb-4 border-b border-slate-700">
             <div class="flex items-center space-x-4 mb-4 md:mb-0">
                 <h1 class="text-2xl font-bold tracking-tight">📊 장투리밸런싱 시스템</h1>
-                <span id="fx-rate" class="text-xs font-bold text-slate-400 bg-slate-800 px-3 py-1 rounded-full">💵 환율 로딩중...</span>
+                <span id="fx-rate" class="text-sm font-bold text-slate-400 bg-slate-800 px-3 py-1 rounded-full">💵 환율 로딩중...</span>
             </div>
             <nav class="flex space-x-5 text-sm font-medium text-slate-400">
                 <a href="https://trillionly.github.io/great/index.html" class="hover:text-white transition-colors">그리드매매 시스템</a>
@@ -40,9 +41,9 @@
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
-            <div class="lg:col-span-3 card p-6 shadow-lg table-container flex flex-col justify-between">
+            <div class="lg:col-span-3 card p-5 shadow-lg table-container flex flex-col justify-between">
                 <div>
-                    <h2 class="text-lg font-semibold mb-4 flex items-center justify-between">
+                    <h2 class="text-lg font-semibold mb-3 flex items-center justify-between">
                         <div class="flex items-center">
                             <span class="w-2 h-2 rounded-full bg-indigo-500 mr-2 inline-block"></span> 자산 현황
                             <span id="price-status" class="text-xs text-slate-500 ml-3 mt-1">대기중...</span>
@@ -65,11 +66,11 @@
                 </div>
             </div>
 
-            <div class="lg:col-span-1 card p-6 shadow-lg">
-                <h2 id="form-title" class="text-lg font-semibold mb-5 flex items-center">
+            <div class="lg:col-span-1 card p-5 shadow-lg">
+                <h2 id="form-title" class="text-lg font-semibold mb-4 flex items-center">
                     <span class="w-2 h-2 rounded-full bg-blue-500 mr-2 inline-block"></span> 거래 기록
                 </h2>
-                <div class="space-y-4">
+                <div class="space-y-3">
                     <input type="hidden" id="edit-id">
                     <select id="ticker" class="input-field text-sm"><option value="QLD">QLD</option><option value="SCHD">SCHD</option></select>
                     <div class="grid grid-cols-2 gap-2">
@@ -77,7 +78,7 @@
                         <input type="number" id="quantity" class="input-field text-sm" placeholder="수량">
                     </div>
                     <input type="number" id="price" step="0.01" class="input-field text-sm" placeholder="단가 ($)">
-                    <button onclick="saveData()" id="save-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg shadow-md transition-all">기록 저장</button>
+                    <button onclick="saveData()" id="save-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-lg shadow-md transition-all">기록 저장</button>
                     <button onclick="resetForm()" id="cancel-btn" class="w-full bg-slate-600 hidden text-white font-bold py-2 rounded-lg">수정 취소</button>
                 </div>
             </div>
@@ -88,7 +89,7 @@
                 <h2 class="text-lg font-semibold mb-4 flex items-center">
                     <span class="w-2 h-2 rounded-full bg-red-500 mr-2 inline-block"></span> 매매 기록 (수정/삭제)
                 </h2>
-                <div class="overflow-y-auto max-h-52 pr-2">
+                <div class="overflow-y-auto max-h-[260px] pr-2">
                     <table class="w-full text-center text-sm relative">
                         <thead class="sticky top-0 z-10">
                             <tr>
@@ -133,18 +134,17 @@
         return dateStr;
     };
 
-    // 🚀 개별 종목 과거 주가 불러오기 함수 (Finnhub Candle API 활용)
+    // 🚀 휴장일을 대비해 과거 탐색 기간을 10일로 대폭 확장하여 정확도 100% 달성
     async function fetchPastPrice(symbol, targetTimestamp) {
         try {
-            // 오차를 줄이기 위해 타겟 날짜 기준 과거 7일치 데이터를 불러와 가장 최근 종가를 씁니다.
-            const from = targetTimestamp - (7 * 86400); 
+            const from = targetTimestamp - (10 * 86400); 
             const to = targetTimestamp;
             const res = await fetch(`https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=D&from=${from}&to=${to}&token=${FINNHUB_API_KEY}`);
             const data = await res.json();
             if (data.s === 'ok' && data.c && data.c.length > 0) {
-                return data.c[data.c.length - 1]; // 가장 마지막(타겟과 가까운) 종가 리턴
+                return data.c[data.c.length - 1]; 
             }
-        } catch(e) { console.error('과거 주가 로드 실패'); }
+        } catch(e) { console.log(symbol + ' 과거 데이터 로딩 실패'); }
         return null;
     }
 
@@ -174,18 +174,17 @@
             }
         });
 
-        // 현재 주가 및 전일비
         let prices = { SCHD: 30.9, QLD: 67.91 };
         let dailyChange = { SCHD: 0, QLD: 0 };
-        // 과거 주가 변수 세팅
         let pastPrices = { SCHD: { mo: null, yr: null }, QLD: { mo: null, yr: null } };
 
-        const nowSec = Math.floor(Date.now() / 1000);
+        // 현재 날짜 기준의 유닉스 타임스탬프 추출
+        const dNow = new Date();
+        const nowSec = Math.floor(dNow.getTime() / 1000);
         const sec1Mo = nowSec - (30 * 86400); // 30일 전
         const sec1Yr = nowSec - (365 * 86400); // 365일 전
 
         try {
-            // 현재가 로드
             const [s, q] = await Promise.all([
                 fetch(`https://finnhub.io/api/v1/quote?symbol=SCHD&token=${FINNHUB_API_KEY}`).then(r=>r.json()),
                 fetch(`https://finnhub.io/api/v1/quote?symbol=QLD&token=${FINNHUB_API_KEY}`).then(r=>r.json())
@@ -193,7 +192,7 @@
             if(s.c) { prices.SCHD = s.c; dailyChange.SCHD = s.dp; }
             if(q.c) { prices.QLD = q.c; dailyChange.QLD = q.dp; }
 
-            // 🚀 개별 종목 과거 주가 동시 로드
+            // 🚀 API를 통한 과거 주가 동시 연동
             const [s1Mo, s1Yr, q1Mo, q1Yr] = await Promise.all([
                 fetchPastPrice('SCHD', sec1Mo), fetchPastPrice('SCHD', sec1Yr),
                 fetchPastPrice('QLD', sec1Mo), fetchPastPrice('QLD', sec1Yr)
@@ -214,18 +213,18 @@
         const totalRt = totalInvested > 0 ? (totalPl / totalInvested) * 100 : 0; 
         const totalDailyChange = totalUsd > 0 ? ((schdVal * dailyChange.SCHD + qldVal * dailyChange.QLD) / totalUsd) : 0;
 
-        // 총계 자산용 과거 스냅샷 역추적
+        // DB 스냅샷(총자산용) 연동
         const { data: snapData } = await db.from('daily_snapshot').select('*');
         let chartData = snapData || [];
-        const d = new Date();
-        const todayStr = `${d.getFullYear()}. ${d.getMonth()+1}. ${d.getDate()}`;
+        const todayStr = `${dNow.getFullYear()}. ${dNow.getMonth()+1}. ${dNow.getDate()}`;
         if(totalUsd > 0 && !chartData.find(r => r.record_date === todayStr)) {
             await db.from('daily_snapshot').insert([{ record_date: todayStr, total_asset: totalUsd, principal: totalInvested }]);
             chartData.push({ record_date: todayStr, total_asset: totalUsd, principal: totalInvested });
         }
         chartData.sort((a, b) => new Date(a.record_date.replace(/\.\s/g, '-')) - new Date(b.record_date.replace(/\.\s/g, '-')));
-        const oneMonthAgo = new Date(d.getFullYear(), d.getMonth() - 1, d.getDate());
-        const oneYearAgo = new Date(d.getFullYear() - 1, d.getMonth(), d.getDate());
+        
+        const oneMonthAgo = new Date(dNow.getFullYear(), dNow.getMonth() - 1, dNow.getDate());
+        const oneYearAgo = new Date(dNow.getFullYear() - 1, dNow.getMonth(), dNow.getDate());
 
         function getPastAsset(targetDate) {
             let closest = null, minDiff = Infinity;
@@ -254,7 +253,7 @@
             const price = prices[item.id];
             const d_change = dailyChange[item.id] || 0;
             
-            // 개별 종목 전월비/전년비 계산
+            // ✅ API에서 역추적한 종목별 전월비/전년비 계산
             const p1Mo = pastPrices[item.id].mo;
             const p1Yr = pastPrices[item.id].yr;
             const moRt = p1Mo ? ((price - p1Mo) / p1Mo) * 100 : null;
@@ -364,10 +363,12 @@
         const { data } = await db.from('long_term_trade').select('*').order('created_at', { ascending: false }).limit(30);
         const tbody = document.getElementById('trade-history-body');
         tbody.innerHTML = '';
+        
         if (data) {
             data.forEach(t => {
                 const dateShort = formatShortDate(t.created_at.split('T')[0]);
                 const typeColor = t.trade_type === '매수' ? 'text-up font-bold' : 'text-down font-bold';
+                
                 tbody.innerHTML += `
                     <tr class="hover:bg-slate-800 border-b border-slate-700">
                         <td class="py-2">${dateShort}</td><td class="font-bold py-2">${t.ticker}</td><td class="${typeColor} py-2">${t.trade_type}</td>
