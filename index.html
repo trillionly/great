@@ -100,7 +100,7 @@
     .pill { display:inline-block; padding:3px 12px; border-radius:4px; background:#e0e7ff; color: #3730a3; font-size:12px; font-weight: 600;}
     .err-pill { background:#fee2e2 !important; color:#991b1b !important; }
 
-    /* 카드형 레이아웃 통일 (position: relative 추가하여 내부 요소 절대위치 지정 가능하게 함) */
+    /* 카드형 레이아웃 통일 */
     .card { 
       background: var(--surface); 
       border: 1px solid var(--border); 
@@ -177,19 +177,19 @@
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
     .wide { min-width: 100%; margin-top: 15px; }
 
-    /* 🔥 스파크라인 컨테이너 스타일 (우측 상단 빈 공간에 딱 맞게 배치) */
+    /* 🔥 스파크라인 컨테이너 (정확히 20% 크기 증가) */
     .sparkline-container {
       position: absolute;
       top: 12px;
       right: 14px;
-      width: 90px;
+      width: 108px; /* 기존 90px -> 108px */
       display: flex;
       flex-direction: column;
       align-items: flex-end;
     }
     .sparkline-canvas-wrap {
       width: 100%;
-      height: 26px;
+      height: 31px; /* 기존 26px -> 31px */
     }
     .sparkline-title {
       font-size: 10px;
@@ -849,6 +849,40 @@
     }
   }
 
+  // 🔥 Finnhub API에서 진짜 6개월치 주가 데이터를 가져와서 그리는 로직
+  async function fetchAndDrawRealSparklines() {
+    const API_KEY = 'd6om8dpr01qi5kh3g1cgd6om8dpr01qi5kh3g1d0';
+    const endTimestamp = Math.floor(Date.now() / 1000);
+    const startTimestamp = endTimestamp - (180 * 24 * 60 * 60); // 180일(약 6개월) 전
+
+    const chartConfigs = [
+      { symbol: 'TQQQ', canvasId: 'sparkTQQQ', color: '#1e3a8a' },
+      { symbol: 'ETHU', canvasId: 'sparkETHU', color: '#0284c7' },
+      { symbol: 'TSLL', canvasId: 'sparkTSLL', color: '#64748b' }
+    ];
+
+    for (const config of chartConfigs) {
+      try {
+        const url = `https://finnhub.io/api/v1/stock/candle?symbol=${config.symbol}&resolution=D&from=${startTimestamp}&to=${endTimestamp}&token=${API_KEY}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        // 데이터가 정상적으로 들어왔고 종가(c) 배열이 있으면 진짜 차트를 그림
+        if (data.s === 'ok' && data.c && data.c.length > 0) {
+          drawSparkline(config.canvasId, data.c, config.color);
+        } else {
+          // 간혹 신규 ETF라서 API 데이터가 없거나 에러 시 화면 깨짐 방지용(더미)
+          console.warn(`[Finnhub] ${config.symbol} 데이터를 불러올 수 없습니다.`);
+          drawSparkline(config.canvasId, [1, 2, 1.5, 2.5, 2, 3], config.color);
+        }
+      } catch (error) {
+        console.error(`[Finnhub] ${config.symbol} 통신 에러:`, error);
+        // 에러 시 화면 깨짐 방지
+        drawSparkline(config.canvasId, [1, 2, 1.5, 2.5, 2, 3], config.color);
+      }
+    }
+  }
+
   async function main() {
     const status = document.getElementById("status");
     const count = document.getElementById("count");
@@ -858,6 +892,9 @@
     const symbolsSel = document.getElementById("symbolsSel");
     const debug = document.getElementById("debug");
     const errorBanner = document.getElementById("errorBanner"); 
+
+    // 🔥 메인 렌더링이 시작될 때 Finnhub API를 찔러서 실제 6개월 주가 차트를 그립니다.
+    fetchAndDrawRealSparklines();
 
     try {
       let reportRows = [];
@@ -1045,14 +1082,6 @@
         }
 
         renderView(viewData, symbols, viewMode, allDaily);
-
-        // 🔥 스파크라인 차트에 가짜 데이터(더미 데이터)를 그려주는 호출 부 (추후 진짜 데이터 연동을 위해 남겨둠)
-        setTimeout(() => {
-          drawSparkline('sparkTQQQ', [45, 48, 42, 55, 52, 60], '#1e3a8a'); // 상승하는 척하는 TQQQ 가짜 데이터
-          drawSparkline('sparkETHU', [30, 25, 28, 22, 20, 18], '#0284c7'); // 횡보/하락하는 척하는 ETHU 가짜 데이터
-          drawSparkline('sparkTSLL', [15, 18, 14, 20, 25, 22], '#64748b'); // 변동성 있는 척하는 TSLL 가짜 데이터
-        }, 100);
-
       }
 
       yearSel.addEventListener("change", () => { updateMonthDropdown(); rerender(); });
