@@ -100,7 +100,7 @@
     .pill { display:inline-block; padding:3px 12px; border-radius:4px; background:#e0e7ff; color: #3730a3; font-size:12px; font-weight: 600;}
     .err-pill { background:#fee2e2 !important; color:#991b1b !important; }
 
-    /* 카드형 레이아웃 통일 */
+    /* 카드형 레이아웃 통일 (position: relative 추가) */
     .card { 
       background: var(--surface); 
       border: 1px solid var(--border); 
@@ -108,7 +108,7 @@
       padding: 14px 16px; 
       box-shadow: 0 1px 3px rgba(0,0,0,0.04); 
       display: flex; flex-direction: column; height: 100%; box-sizing: border-box; min-width: 0;
-      position: relative; /* 중요: 우측 상단 미니 차트 고정을 위한 기준점 */
+      position: relative; 
     }
     
     .summary-grid {
@@ -182,14 +182,17 @@
       position: absolute;
       top: 12px;
       right: 14px;
-      width: 108px; /* 기존 90px -> 108px */
+      width: 108px; 
       display: flex;
       flex-direction: column;
       align-items: flex-end;
     }
     .sparkline-canvas-wrap {
       width: 100%;
-      height: 31px; /* 기존 26px -> 31px */
+      height: 31px; 
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
     }
     .sparkline-title {
       font-size: 10px;
@@ -197,6 +200,27 @@
       margin-top: 4px;
       letter-spacing: -0.5px;
       white-space: nowrap;
+    }
+
+    /* 🔥 빙글빙글 로딩 스피너 애니메이션 */
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(30, 58, 138, 0.1);
+      border-left-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { 
+      0% { transform: rotate(0deg); } 
+      100% { transform: rotate(360deg); } 
+    }
+    
+    /* 조회 실패 텍스트 */
+    .fetch-error-text {
+      font-size: 11px;
+      color: #ef4444;
+      font-weight: 600;
     }
   </style>
 </head>
@@ -239,7 +263,9 @@
       
       <div class="sparkline-container">
         <div class="sparkline-canvas-wrap">
-          <canvas id="sparkTQQQ"></canvas>
+          <div id="loader_TQQQ" class="spinner"></div>
+          <div id="error_TQQQ" class="fetch-error-text" style="display:none;">조회 실패</div>
+          <canvas id="sparkTQQQ" style="display:none;"></canvas>
         </div>
         <div class="sparkline-title">최근 6개월 주가추이</div>
       </div>
@@ -253,7 +279,9 @@
 
       <div class="sparkline-container">
         <div class="sparkline-canvas-wrap">
-          <canvas id="sparkETHU"></canvas>
+          <div id="loader_ETHU" class="spinner"></div>
+          <div id="error_ETHU" class="fetch-error-text" style="display:none;">조회 실패</div>
+          <canvas id="sparkETHU" style="display:none;"></canvas>
         </div>
         <div class="sparkline-title">최근 6개월 주가추이</div>
       </div>
@@ -267,7 +295,9 @@
 
       <div class="sparkline-container">
         <div class="sparkline-canvas-wrap">
-          <canvas id="sparkTSLL"></canvas>
+          <div id="loader_TSLL" class="spinner"></div>
+          <div id="error_TSLL" class="fetch-error-text" style="display:none;">조회 실패</div>
+          <canvas id="sparkTSLL" style="display:none;"></canvas>
         </div>
         <div class="sparkline-title">최근 6개월 주가추이</div>
       </div>
@@ -335,7 +365,7 @@
     return nums.reduce((a,b)=>a+b,0);
   };
 
-  /* 🔥 미니 스파크라인 그리는 함수 (축 끄고 선만 부드럽게) */
+  /* 🔥 미니 스파크라인 그리는 함수 */
   function drawSparkline(canvasId, dataPoints, colorCode) {
     const ctx = document.getElementById(canvasId).getContext('2d');
     if (window["chart_" + canvasId]) {
@@ -345,14 +375,14 @@
     window["chart_" + canvasId] = new Chart(ctx, {
       type: 'line',
       data: {
-        labels: dataPoints.map((_, i) => i), // 의미 없는 라벨 (숨김용)
+        labels: dataPoints.map((_, i) => i),
         datasets: [{
           data: dataPoints,
           borderColor: colorCode,
           borderWidth: 1.5,
-          pointRadius: 0, // 선만 깔끔하게 나오도록 점 없앰
+          pointRadius: 0, 
           pointHoverRadius: 0,
-          tension: 0.3 // 부드러운 곡선 적용
+          tension: 0.3 
         }]
       },
       options: {
@@ -360,11 +390,11 @@
         maintainAspectRatio: false,
         plugins: {
           legend: { display: false },
-          tooltip: { enabled: false } // 마우스 오버 툴팁 제거
+          tooltip: { enabled: false } 
         },
         scales: {
-          x: { display: false }, // X축 눈금/그리드 완전 제거
-          y: { display: false }  // Y축 눈금/그리드 완전 제거
+          x: { display: false }, 
+          y: { display: false }  
         },
         layout: {
           padding: 0
@@ -849,36 +879,41 @@
     }
   }
 
-  // 🔥 Finnhub API에서 진짜 6개월치 주가 데이터를 가져와서 그리는 로직
+  // 🔥 Yahoo Finance API를 무료 프록시로 우회해서 찐 주가 가져오기!
   async function fetchAndDrawRealSparklines() {
-    const API_KEY = 'd6om8dpr01qi5kh3g1cgd6om8dpr01qi5kh3g1d0';
-    const endTimestamp = Math.floor(Date.now() / 1000);
-    const startTimestamp = endTimestamp - (180 * 24 * 60 * 60); // 180일(약 6개월) 전
-
     const chartConfigs = [
-      { symbol: 'TQQQ', canvasId: 'sparkTQQQ', color: '#1e3a8a' },
-      { symbol: 'ETHU', canvasId: 'sparkETHU', color: '#0284c7' },
-      { symbol: 'TSLL', canvasId: 'sparkTSLL', color: '#64748b' }
+      { symbol: 'TQQQ', canvasId: 'sparkTQQQ', loaderId: 'loader_TQQQ', errorId: 'error_TQQQ', color: '#1e3a8a' },
+      { symbol: 'ETHU', canvasId: 'sparkETHU', loaderId: 'loader_ETHU', errorId: 'error_ETHU', color: '#0284c7' },
+      { symbol: 'TSLL', canvasId: 'sparkTSLL', loaderId: 'loader_TSLL', errorId: 'error_TSLL', color: '#64748b' }
     ];
 
     for (const config of chartConfigs) {
       try {
-        const url = `https://finnhub.io/api/v1/stock/candle?symbol=${config.symbol}&resolution=D&from=${startTimestamp}&to=${endTimestamp}&token=${API_KEY}`;
-        const response = await fetch(url);
+        // 야후 파이낸스 (최근 6개월, 일봉) -> 무료 프록시(allorigins)를 태워서 브라우저 차단 우회
+        const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${config.symbol}?interval=1d&range=6mo`;
+        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+        
+        const response = await fetch(proxyUrl);
+        if (!response.ok) throw new Error('API 통신 에러');
+        
         const data = await response.json();
-
-        // 데이터가 정상적으로 들어왔고 종가(c) 배열이 있으면 진짜 차트를 그림
-        if (data.s === 'ok' && data.c && data.c.length > 0) {
-          drawSparkline(config.canvasId, data.c, config.color);
+        
+        // 종가(close) 배열에서 null 값 걸러내기
+        const prices = data.chart.result[0].indicators.quote[0].close.filter(p => p !== null);
+        
+        if (prices && prices.length > 0) {
+          // 성공: 빙글빙글 로더 숨기고, 캔버스 띄워서 차트 쫙 그려줌
+          document.getElementById(config.loaderId).style.display = 'none';
+          document.getElementById(config.canvasId).style.display = 'block';
+          drawSparkline(config.canvasId, prices, config.color);
         } else {
-          // 간혹 신규 ETF라서 API 데이터가 없거나 에러 시 화면 깨짐 방지용(더미)
-          console.warn(`[Finnhub] ${config.symbol} 데이터를 불러올 수 없습니다.`);
-          drawSparkline(config.canvasId, [1, 2, 1.5, 2.5, 2, 3], config.color);
+          throw new Error('데이터 없음');
         }
       } catch (error) {
-        console.error(`[Finnhub] ${config.symbol} 통신 에러:`, error);
-        // 에러 시 화면 깨짐 방지
-        drawSparkline(config.canvasId, [1, 2, 1.5, 2.5, 2, 3], config.color);
+        console.error(`[주가 가져오기 실패] ${config.symbol}:`, error);
+        // 실패: 로더 숨기고, 빨간색 '조회 실패' 글자 노출
+        document.getElementById(config.loaderId).style.display = 'none';
+        document.getElementById(config.errorId).style.display = 'block';
       }
     }
   }
@@ -893,7 +928,7 @@
     const debug = document.getElementById("debug");
     const errorBanner = document.getElementById("errorBanner"); 
 
-    // 🔥 메인 렌더링이 시작될 때 Finnhub API를 찔러서 실제 6개월 주가 차트를 그립니다.
+    // 🔥 메인 시작할 때 무조건 진짜 주가 가져오는 로직 호출
     fetchAndDrawRealSparklines();
 
     try {
