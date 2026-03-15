@@ -202,19 +202,19 @@
       white-space: nowrap;
     }
 
-    /* 🔥 [신규 업데이트] 폴드 접었을 때(모바일) 차트 하단 가로 모드 자동 전환 */
+    /* 🔥 폴드 접었을 때(모바일) 차트 하단 가로 모드 자동 전환 */
     @media (max-width: 768px) {
       .sparkline-container {
-        position: relative; /* 절대 위치 해제 -> 글씨 아래로 자연스럽게 이동 */
+        position: relative; 
         top: auto;
         right: auto;
-        width: 100%; /* 카드 가로폭 전체 시원하게 사용 */
-        margin-top: 12px; /* 상단 진행바와 겹치지 않게 여백 추가 */
+        width: 100%; 
+        margin-top: 12px; 
         align-items: flex-end; 
       }
       .sparkline-canvas-wrap {
         width: 100%;
-        height: 45px; /* 좁은 화면에서는 위아래 공간을 최적화하기 위해 높이 살짝 슬림하게 조정 */
+        height: 45px; 
         justify-content: center;
       }
     }
@@ -896,7 +896,48 @@
     }
   }
 
-  // 🔥 Yahoo Finance API를 무료 프록시로 우회해서 찐 주가 가져오기!
+  // 🔥 3중 철통 방어망: 주가 가져오기 핵심 함수
+  async function fetchHistoricalPrices(symbol) {
+    const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=6mo`;
+    
+    // 1순위: 가장 빠르고 안정적인 corsproxy 통신
+    try {
+      const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(targetUrl)}`);
+      const data = await res.json();
+      const prices = data.chart.result[0].indicators.quote[0].close.filter(p => p !== null);
+      if (prices && prices.length > 0) return prices;
+    } catch (e) {
+      console.warn(`[1순위 실패] ${symbol}: corsproxy.io 연결 지연`);
+    }
+
+    // 2순위: 기존 allorigins 우회 통신 (1순위 실패 시 즉각 투입)
+    try {
+      const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`);
+      const data = await res.json();
+      const prices = data.chart.result[0].indicators.quote[0].close.filter(p => p !== null);
+      if (prices && prices.length > 0) return prices;
+    } catch (e) {
+      console.warn(`[2순위 실패] ${symbol}: allorigins.win 연결 지연`);
+    }
+
+    // 3순위: 회원님 전용 Finnhub API 멱살잡고 가져오기 (최후의 보루)
+    try {
+      const API_KEY = 'd6om8dpr01qi5kh3g1cgd6om8dpr01qi5kh3g1d0';
+      const endTs = Math.floor(Date.now() / 1000);
+      const startTs = endTs - (180 * 24 * 60 * 60);
+      const finnhubUrl = `https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=D&from=${startTs}&to=${endTs}&token=${API_KEY}`;
+      
+      const res = await fetch(finnhubUrl);
+      const data = await res.json();
+      if (data.s === 'ok' && data.c && data.c.length > 0) return data.c;
+    } catch (e) {
+      console.warn(`[3순위 실패] ${symbol}: Finnhub API마저 막힘`);
+    }
+
+    throw new Error('모든 조회 경로 차단됨');
+  }
+
+  // 🔥 3중 방어망을 통해 가져온 데이터를 차트에 그리는 실행부
   async function fetchAndDrawRealSparklines() {
     const chartConfigs = [
       { symbol: 'TQQQ', canvasId: 'sparkTQQQ', loaderId: 'loader_TQQQ', errorId: 'error_TQQQ', color: '#1e3a8a' },
@@ -906,29 +947,17 @@
 
     for (const config of chartConfigs) {
       try {
-        // 야후 파이낸스 (최근 6개월, 일봉) -> 무료 프록시(allorigins)를 태워서 브라우저 차단 우회
-        const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${config.symbol}?interval=1d&range=6mo`;
-        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+        // 무조건 가져올 때까지 3중 로직 대기
+        const prices = await fetchHistoricalPrices(config.symbol);
         
-        const response = await fetch(proxyUrl);
-        if (!response.ok) throw new Error('API 통신 에러');
+        // 성공: 빙글빙글 로더 숨기고 차트 노출
+        document.getElementById(config.loaderId).style.display = 'none';
+        document.getElementById(config.canvasId).style.display = 'block';
+        drawSparkline(config.canvasId, prices, config.color);
         
-        const data = await response.json();
-        
-        // 종가(close) 배열에서 null 값 걸러내기
-        const prices = data.chart.result[0].indicators.quote[0].close.filter(p => p !== null);
-        
-        if (prices && prices.length > 0) {
-          // 성공: 빙글빙글 로더 숨기고, 캔버스 띄워서 차트 쫙 그려줌
-          document.getElementById(config.loaderId).style.display = 'none';
-          document.getElementById(config.canvasId).style.display = 'block';
-          drawSparkline(config.canvasId, prices, config.color);
-        } else {
-          throw new Error('데이터 없음');
-        }
       } catch (error) {
-        console.error(`[주가 가져오기 실패] ${config.symbol}:`, error);
-        // 실패: 로더 숨기고, 빨간색 '조회 실패' 글자 노출
+        console.error(`[최종 에러] ${config.symbol}:`, error);
+        // 실패: 로더 숨기고 에러 텍스트 노출
         document.getElementById(config.loaderId).style.display = 'none';
         document.getElementById(config.errorId).style.display = 'block';
       }
