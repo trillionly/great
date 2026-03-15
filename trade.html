@@ -51,8 +51,8 @@
         <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-2">
             <h4 class="fw-bold m-0" style="color: #1a237e; letter-spacing: -0.5px;">📈 떨사오팔 센터</h4>
             <div class="nav-links">
-                <a href="https://trillionly.github.io/great/?t=1">그리드매매 시스템 </a>
-                <a href="https://trillionly.github.io/great/trillion.html">장투리밸런싱 시스템 </a>
+                <a href="https://trillionly.github.io/great/?t=1">그리드매매 시스템</a>
+                <a href="https://trillionly.github.io/great/trillion.html">장투리밸런싱 시스템</a>
             </div>
         </div>
         
@@ -95,9 +95,21 @@
             
             <div class="col-md-6">
                 <div class="card h-100 mb-0">
-                    <div class="card-header d-flex justify-content-between">
-                        <span>실시간 LOC 시세 <span id="dataSource" class="badge bg-secondary ms-1" style="font-size:0.6rem;">대기중</span></span>
-                        <span id="priceChangeBadge"></span>
+                    <div class="card-header d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2">
+                        <div>
+                            <span>실시간 시세 <span id="dataSource" class="badge bg-secondary ms-1" style="font-size:0.6rem;">대기중</span></span>
+                            <span id="priceChangeBadge"></span>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <span id="trendTitle" class="text-muted me-2" style="font-size: 0.7rem; font-weight: 700;">최근 6개월 주가 추이</span>
+                            <div style="width: 70px; height: 22px; margin-right: 8px;">
+                                <canvas id="miniTrendChart"></canvas>
+                            </div>
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-outline-secondary" style="font-size:0.6rem; padding: 2px 4px;" onclick="loadMiniChart(6)">6개월</button>
+                                <button type="button" class="btn btn-outline-secondary" style="font-size:0.6rem; padding: 2px 4px;" onclick="loadMiniChart(12)">12개월</button>
+                            </div>
+                        </div>
                     </div>
                     <div class="card-body p-3">
                         <div class="row g-2 align-items-center h-100">
@@ -221,11 +233,11 @@
         const SETTINGS_TABLE = 'app_settings';
 
         let sysHogis = 6, sysSeed = 11000, sysTarget = 0.7, sysDday = 45;
-        let isLocked = false, globalData = [], globalStats = {}, myChart = null; 
+        let isLocked = false, globalData = [], globalStats = {}, myChart = null;
+        let miniTrendChartInstance = null; // 미니 차트 객체 보관용
 
         document.getElementById('dateInput').valueAsDate = new Date();
 
-        // [핵심] 이중화(Hybrid) 시세 조회 엔진
         async function fetchTicker() {
             const ticker = document.getElementById('tickerInput').value.toUpperCase();
             if(!ticker) return;
@@ -241,13 +253,10 @@
 
             let price = null, prevClose = null;
             
-            // 1. 야후 파이낸스 고속 프록시 연결 (2.5초 타임아웃)
             try {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 2500); // 2.5초 한계점
-                
+                const timeoutId = setTimeout(() => controller.abort(), 2500); 
                 const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}`;
-                // 기존 /get 방식보다 빠른 /raw 방식 적용
                 const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`;
                 
                 const res = await fetch(proxyUrl, { signal: controller.signal });
@@ -258,14 +267,13 @@
                     const result = data.chart.result[0];
                     price = result.meta.regularMarketPrice;
                     prevClose = result.meta.chartPreviousClose;
-                    sourceBadge.innerText = 'Yahoo LOC';
+                    sourceBadge.innerText = 'Yahoo 종가';
                     sourceBadge.className = 'badge bg-success ms-1';
                 }
             } catch(e) {
                 console.warn("야후 프록시 지연 발생. Finnhub 백업 가동.");
             }
 
-            // 2. 야후 실패 시 즉각 Finnhub 백업 호출 (속도 보장)
             if (!price) {
                 sourceBadge.innerText = 'Finnhub 가동중';
                 try {
@@ -278,17 +286,14 @@
                         sourceBadge.className = 'badge bg-info text-dark ms-1';
                     }
                 } catch (error) {
-                    console.error("백업 API 마저 실패", error);
                     sourceBadge.innerText = '연결 실패';
                     sourceBadge.className = 'badge bg-danger ms-1';
                 }
             }
 
-            // UI 업데이트 및 변동률 계산
             if (price && prevClose) {
                 const change = (price - prevClose).toFixed(2);
                 const percent = ((change / prevClose) * 100).toFixed(2);
-                
                 const colorClass = change > 0 ? 'text-loss' : (change < 0 ? 'text-profit' : 'text-muted');
                 const sign = change > 0 ? '▲' : (change < 0 ? '▼' : '');
                 
@@ -299,12 +304,71 @@
                     document.getElementById('priceInput').value = price.toFixed(2); 
                 }
                 calcTodayBuyPrice();
+                
+                // 시세 조회가 성공하면 6개월 기본 차트도 자동으로 갱신합니다.
+                loadMiniChart(6);
             } else {
                 alert("현재 시세를 가져오지 못했습니다. 잠시 후 다시 시도해주세요.");
             }
             
             btn.innerHTML = "조회"; 
             btn.disabled = false;
+        }
+
+        // [신규] 스파크라인 형태의 미니 추이 차트 로드 함수
+        async function loadMiniChart(months) {
+            const ticker = document.getElementById('tickerInput').value.toUpperCase();
+            if(!ticker) return;
+
+            document.getElementById('trendTitle').innerText = `최근 ${months}개월 주가 추이`;
+            
+            const range = months === 6 ? '6mo' : '1y';
+            const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=${range}&interval=1d`;
+            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`;
+
+            try {
+                const res = await fetch(proxyUrl);
+                if (res.ok) {
+                    const data = await res.json();
+                    const result = data.chart.result[0];
+                    const closes = result.indicators.quote[0].close;
+
+                    // 빈(null) 데이터 걸러내기
+                    let cleanData = closes.filter(val => val !== null);
+
+                    const ctx = document.getElementById('miniTrendChart').getContext('2d');
+                    if(miniTrendChartInstance) miniTrendChartInstance.destroy();
+
+                    // 첫날보다 마지막 날이 올랐으면 빨강, 내렸으면 파랑
+                    const isUp = cleanData[cleanData.length - 1] >= cleanData[0];
+                    const lineColor = isUp ? '#d32f2f' : '#1565c0'; 
+
+                    miniTrendChartInstance = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: cleanData.map((_, i) => i),
+                            datasets: [{
+                                data: cleanData,
+                                borderColor: lineColor,
+                                borderWidth: 1.8,
+                                fill: false,
+                                pointRadius: 0,
+                                pointHoverRadius: 0,
+                                tension: 0.1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: { legend: { display: false }, tooltip: { enabled: false } },
+                            scales: { x: { display: false }, y: { display: false } },
+                            layout: { padding: 0 }
+                        }
+                    });
+                }
+            } catch(e) {
+                console.warn("미니 차트 로드 실패", e);
+            }
         }
 
         function calcTodayBuyPrice() {
@@ -545,4 +609,3 @@
     </script>
 </body>
 </html>
-
