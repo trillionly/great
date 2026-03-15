@@ -59,7 +59,7 @@
         <div class="row g-3 mb-3">
             <div class="col-md-6">
                 <div class="card h-100 mb-0">
-                    <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="card-header d-flex justify-content-between align-items-center" style="min-height: 58px; padding: 10px 16px;">
                         <span>매매 시스템 세팅</span>
                         <span id="lockStatus" class="badge bg-danger d-none" style="font-size: 0.7rem;">잠금됨 (DB 동기화)</span>
                     </div>
@@ -95,19 +95,18 @@
             
             <div class="col-md-6">
                 <div class="card h-100 mb-0">
-                    <div class="card-header d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2">
-                        <div>
+                    <div class="card-header d-flex justify-content-between align-items-center flex-nowrap" style="min-height: 58px; padding: 6px 16px;">
+                        <div class="text-nowrap" style="margin-right: 5px;">
                             <span>실시간 시세 <span id="dataSource" class="badge bg-secondary ms-1" style="font-size:0.6rem;">대기중</span></span>
                             <span id="priceChangeBadge"></span>
                         </div>
-                        <div class="d-flex align-items-center">
-                            <span id="trendTitle" class="text-muted me-2" style="font-size: 0.7rem; font-weight: 700;">최근 6개월 주가 추이</span>
-                            <div style="width: 70px; height: 22px; margin-right: 8px;">
+                        <div class="d-flex align-items-center gap-2">
+                            <div style="width: 90px; height: 36px;">
                                 <canvas id="miniTrendChart"></canvas>
                             </div>
-                            <div class="btn-group">
-                                <button type="button" class="btn btn-outline-secondary" style="font-size:0.6rem; padding: 2px 4px;" onclick="loadMiniChart(6)">6개월</button>
-                                <button type="button" class="btn btn-outline-secondary" style="font-size:0.6rem; padding: 2px 4px;" onclick="loadMiniChart(12)">12개월</button>
+                            <div class="d-flex flex-column gap-1">
+                                <button id="btn6mo" type="button" class="btn btn-primary" style="font-size:0.55rem; padding: 2px 4px; line-height: 1;" onclick="loadMiniChart(6)">6개월</button>
+                                <button id="btn12mo" type="button" class="btn btn-outline-secondary" style="font-size:0.55rem; padding: 2px 4px; line-height: 1;" onclick="loadMiniChart(12)">12개월</button>
                             </div>
                         </div>
                     </div>
@@ -234,7 +233,7 @@
 
         let sysHogis = 6, sysSeed = 11000, sysTarget = 0.7, sysDday = 45;
         let isLocked = false, globalData = [], globalStats = {}, myChart = null;
-        let miniTrendChartInstance = null; // 미니 차트 객체 보관용
+        let miniTrendChartInstance = null;
 
         document.getElementById('dateInput').valueAsDate = new Date();
 
@@ -305,8 +304,7 @@
                 }
                 calcTodayBuyPrice();
                 
-                // 시세 조회가 성공하면 6개월 기본 차트도 자동으로 갱신합니다.
-                loadMiniChart(6);
+                loadMiniChart(6); // 6개월 디폴트 차트 호출
             } else {
                 alert("현재 시세를 가져오지 못했습니다. 잠시 후 다시 시도해주세요.");
             }
@@ -315,12 +313,14 @@
             btn.disabled = false;
         }
 
-        // [신규] 스파크라인 형태의 미니 추이 차트 로드 함수
+        // 스파크라인 로직 (Y축 강제 확장 및 버튼 색상 토글 적용)
         async function loadMiniChart(months) {
             const ticker = document.getElementById('tickerInput').value.toUpperCase();
             if(!ticker) return;
 
-            document.getElementById('trendTitle').innerText = `최근 ${months}개월 주가 추이`;
+            // 버튼 색상 토글 (눌린 버튼만 Primary 진한색으로)
+            document.getElementById('btn6mo').className = months === 6 ? 'btn btn-primary' : 'btn btn-outline-secondary';
+            document.getElementById('btn12mo').className = months === 12 ? 'btn btn-primary' : 'btn btn-outline-secondary';
             
             const range = months === 6 ? '6mo' : '1y';
             const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=${range}&interval=1d`;
@@ -333,13 +333,15 @@
                     const result = data.chart.result[0];
                     const closes = result.indicators.quote[0].close;
 
-                    // 빈(null) 데이터 걸러내기
                     let cleanData = closes.filter(val => val !== null);
+                    
+                    // 최저점과 최고점 계산 (Y축 스케일 강제 확장용)
+                    const minVal = Math.min(...cleanData);
+                    const maxVal = Math.max(...cleanData);
 
                     const ctx = document.getElementById('miniTrendChart').getContext('2d');
                     if(miniTrendChartInstance) miniTrendChartInstance.destroy();
 
-                    // 첫날보다 마지막 날이 올랐으면 빨강, 내렸으면 파랑
                     const isUp = cleanData[cleanData.length - 1] >= cleanData[0];
                     const lineColor = isUp ? '#d32f2f' : '#1565c0'; 
 
@@ -361,7 +363,14 @@
                             responsive: true,
                             maintainAspectRatio: false,
                             plugins: { legend: { display: false }, tooltip: { enabled: false } },
-                            scales: { x: { display: false }, y: { display: false } },
+                            scales: { 
+                                x: { display: false }, 
+                                y: { 
+                                    display: false,
+                                    min: minVal, // 맨 아래까지 그래프 찢기
+                                    max: maxVal  // 맨 위까지 그래프 찢기
+                                } 
+                            },
                             layout: { padding: 0 }
                         }
                     });
