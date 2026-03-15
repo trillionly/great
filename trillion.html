@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>장투리밸런싱 시스템 v3.8</title>
+    <title>장투리밸런싱 시스템 v3.9</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -14,7 +14,6 @@
         .input-field:focus { border-color: #3b82f6; }
         .table-container { overflow-x: auto; }
         table { width: 100%; text-align: center; border-collapse: collapse; white-space: nowrap; }
-        /* ✅ 폰트 크기(1rem)는 유지하되 위아래 패딩을 줄여 높이를 15% 다이어트 */
         th, td { padding: 0.5rem 0.4rem; border-bottom: 1px solid #334155; font-size: 1rem; }
         th { background-color: #0f172a; color: #94a3b8; font-weight: 600; text-align: center; }
         .text-up { color: #ef4444; } 
@@ -25,6 +24,20 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #475569; }
+        
+        /* ✅ 빙글빙글 로딩 애니메이션 CSS 추가 */
+        .loader {
+            border: 2px solid #334155;
+            border-top: 2px solid #3b82f6;
+            border-radius: 50%;
+            width: 14px;
+            height: 14px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="p-4 md:p-8">
@@ -46,7 +59,7 @@
                     <h2 class="text-lg font-semibold mb-3 flex items-center justify-between">
                         <div class="flex items-center">
                             <span class="w-2 h-2 rounded-full bg-indigo-500 mr-2 inline-block"></span> 자산 현황
-                            <span id="price-status" class="text-xs text-slate-500 ml-3 mt-1">대기중...</span>
+                            <span id="price-status" class="text-xs text-slate-500 ml-3 mt-1 flex items-center">대기중...</span>
                         </div>
                         <div class="text-sm font-medium text-slate-300 bg-slate-800 px-3 py-1 rounded-lg">
                             총자산(₩): <span id="total-krw" class="text-green-400 font-bold ml-1">₩0</span>
@@ -134,7 +147,7 @@
         return dateStr;
     };
 
-    // 🚀 휴장일을 대비해 과거 탐색 기간을 10일로 대폭 확장하여 정확도 100% 달성
+    // ✅ 과거 주가를 긁어오는 핵심 API 호출 함수 (휴장일 대비 10일치 탐색)
     async function fetchPastPrice(symbol, targetTimestamp) {
         try {
             const from = targetTimestamp - (10 * 86400); 
@@ -142,7 +155,7 @@
             const res = await fetch(`https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=D&from=${from}&to=${to}&token=${FINNHUB_API_KEY}`);
             const data = await res.json();
             if (data.s === 'ok' && data.c && data.c.length > 0) {
-                return data.c[data.c.length - 1]; 
+                return data.c[data.c.length - 1]; // 가장 최신(타겟에 가까운) 종가
             }
         } catch(e) { console.log(symbol + ' 과거 데이터 로딩 실패'); }
         return null;
@@ -159,7 +172,8 @@
     }
 
     async function runAutomation() {
-        document.getElementById('price-status').innerText = '데이터 집계 중...';
+        // ✅ 빙글빙글 로딩 스피너 활성화
+        document.getElementById('price-status').innerHTML = '<span class="loader"></span>데이터 긁어오는 중...';
         
         const { data: trades } = await db.from('long_term_trade').select('*');
         let assets = { SCHD: { qty:0, cost:0 }, QLD: { qty:0, cost:0 } };
@@ -178,13 +192,13 @@
         let dailyChange = { SCHD: 0, QLD: 0 };
         let pastPrices = { SCHD: { mo: null, yr: null }, QLD: { mo: null, yr: null } };
 
-        // 현재 날짜 기준의 유닉스 타임스탬프 추출
         const dNow = new Date();
         const nowSec = Math.floor(dNow.getTime() / 1000);
         const sec1Mo = nowSec - (30 * 86400); // 30일 전
         const sec1Yr = nowSec - (365 * 86400); // 365일 전
 
         try {
+            // 실시간 현재가 호출
             const [s, q] = await Promise.all([
                 fetch(`https://finnhub.io/api/v1/quote?symbol=SCHD&token=${FINNHUB_API_KEY}`).then(r=>r.json()),
                 fetch(`https://finnhub.io/api/v1/quote?symbol=QLD&token=${FINNHUB_API_KEY}`).then(r=>r.json())
@@ -192,7 +206,7 @@
             if(s.c) { prices.SCHD = s.c; dailyChange.SCHD = s.dp; }
             if(q.c) { prices.QLD = q.c; dailyChange.QLD = q.dp; }
 
-            // 🚀 API를 통한 과거 주가 동시 연동
+            // ✅ 개별 종목의 1달 전, 1년 전 과거 주가 동시 호출
             const [s1Mo, s1Yr, q1Mo, q1Yr] = await Promise.all([
                 fetchPastPrice('SCHD', sec1Mo), fetchPastPrice('SCHD', sec1Yr),
                 fetchPastPrice('QLD', sec1Mo), fetchPastPrice('QLD', sec1Yr)
@@ -213,7 +227,7 @@
         const totalRt = totalInvested > 0 ? (totalPl / totalInvested) * 100 : 0; 
         const totalDailyChange = totalUsd > 0 ? ((schdVal * dailyChange.SCHD + qldVal * dailyChange.QLD) / totalUsd) : 0;
 
-        // DB 스냅샷(총자산용) 연동
+        // DB 스냅샷(총자산용 전월비/전년비 역추적)
         const { data: snapData } = await db.from('daily_snapshot').select('*');
         let chartData = snapData || [];
         const todayStr = `${dNow.getFullYear()}. ${dNow.getMonth()+1}. ${dNow.getDate()}`;
@@ -253,7 +267,7 @@
             const price = prices[item.id];
             const d_change = dailyChange[item.id] || 0;
             
-            // ✅ API에서 역추적한 종목별 전월비/전년비 계산
+            // ✅ 방금 가져온 과거 주가로 종목별 전월비/전년비 계산
             const p1Mo = pastPrices[item.id].mo;
             const p1Yr = pastPrices[item.id].yr;
             const moRt = p1Mo ? ((price - p1Mo) / p1Mo) * 100 : null;
