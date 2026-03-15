@@ -3,20 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>장투리밸런싱 시스템 v3.3</title>
+    <title>장투리밸런싱 시스템 v3.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         body { background-color: #0f172a; color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         .card { background-color: #1e293b; border: 1px solid #334155; border-radius: 1rem; }
-        .input-field { background-color: #0f172a; border: 1px solid #334155; color: white; width: 100%; padding: 0.75rem; border-radius: 0.5rem; outline: none; }
+        .input-field { background-color: #0f172a; border: 1px solid #334155; color: white; width: 100%; padding: 0.75rem; border-radius: 0.5rem; outline: none; transition: border-color 0.2s; }
+        .input-field:focus { border-color: #3b82f6; }
         .table-container { overflow-x: auto; }
         table { width: 100%; text-align: center; border-collapse: collapse; white-space: nowrap; }
         th, td { padding: 0.75rem 0.5rem; border-bottom: 1px solid #334155; font-size: 1rem; }
         th { background-color: #0f172a; color: #94a3b8; font-weight: 600; text-align: center; }
         .text-up { color: #ef4444; } 
         .text-down { color: #3b82f6; }
+        .btn-sm { padding: 4px 8px; font-size: 12px; border-radius: 4px; transition: opacity 0.2s; }
+        .btn-sm:hover { opacity: 0.8; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
     </style>
 </head>
 <body class="p-4 md:p-8">
@@ -24,7 +31,7 @@
         <header class="flex flex-col md:flex-row justify-between items-center mb-6 pb-4 border-b border-slate-700">
             <div class="flex items-center space-x-4 mb-4 md:mb-0">
                 <h1 class="text-2xl font-bold tracking-tight">📊 장투리밸런싱 시스템</h1>
-                <span id="fx-rate" class="text-sm font-bold text-slate-400 bg-slate-800 px-3 py-1 rounded-full">💵 환율 로딩중...</span>
+                <span id="fx-rate" class="text-xs font-bold text-slate-400 bg-slate-800 px-3 py-1 rounded-full">💵 환율 로딩중...</span>
             </div>
             <nav class="flex space-x-5 text-sm font-medium text-slate-400">
                 <a href="https://trillionly.github.io/great/index.html" class="hover:text-white transition-colors">그리드매매 시스템</a>
@@ -48,6 +55,7 @@
                         <thead>
                             <tr>
                                 <th>종목</th><th>현재가</th><th>수량</th><th>평단가</th><th>매입 금액</th><th>평가 금액</th><th>평가 손익</th><th>수익률</th><th>비중</th>
+                                <th>전일비</th><th>전월비</th><th>전년비</th>
                                 <th class="leading-tight">적정수량<br><span class="text-xs font-normal text-slate-500">(4:6)</span></th>
                                 <th class="leading-tight">리밸런싱<br><span class="text-xs font-normal text-slate-500">가이드</span></th>
                             </tr>
@@ -76,20 +84,22 @@
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            <div class="card p-6 shadow-lg table-container">
+            <div class="card p-6 shadow-lg">
                 <h2 class="text-lg font-semibold mb-4 flex items-center">
                     <span class="w-2 h-2 rounded-full bg-red-500 mr-2 inline-block"></span> 매매 기록 (수정/삭제)
                 </h2>
-                <table class="w-full text-center text-sm">
-                    <thead>
-                        <tr>
-                            <th class="text-center">날짜</th><th class="text-center">종목</th><th class="text-center">구분</th><th class="text-center">수량</th><th class="text-center">단가</th>
-                            <th class="text-center">수익금</th><th class="text-center">수익률</th>
-                            <th class="text-center w-1 whitespace-nowrap px-1">관리</th>
-                        </tr>
-                    </thead>
-                    <tbody id="trade-history-body"></tbody>
-                </table>
+                <div class="overflow-y-auto max-h-52 pr-2">
+                    <table class="w-full text-center text-sm relative">
+                        <thead class="sticky top-0 z-10">
+                            <tr>
+                                <th class="text-center py-2">날짜</th><th class="text-center py-2">종목</th><th class="text-center py-2">구분</th>
+                                <th class="text-center py-2">수량</th><th class="text-center py-2">단가</th>
+                                <th class="text-center w-1 whitespace-nowrap px-1 py-2">관리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trade-history-body"></tbody>
+                    </table>
+                </div>
             </div>
             <div class="card p-6 shadow-lg">
                 <h2 class="text-lg font-semibold mb-4 text-center">포트폴리오 비중</h2>
@@ -109,7 +119,6 @@
     const SUPABASE_URL = 'https://qutualbddxsyrhwzaosf.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1dHVhbGJkZHhzeXJod3phb3NmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE1ODA1MTEsImV4cCI6MjA4NzE1NjUxMX0.iDcwZg9bGFnbl0DJfU0ks4DZtdVJ24Rh_e2ooDP-dts';
     const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
     const FINNHUB_API_KEY = 'd6om8dpr01qi5kh3g1cgd6om8dpr01qi5kh3g1d0'; 
 
     let weightChartInstance = null;
@@ -124,6 +133,21 @@
         return dateStr;
     };
 
+    // 🚀 개별 종목 과거 주가 불러오기 함수 (Finnhub Candle API 활용)
+    async function fetchPastPrice(symbol, targetTimestamp) {
+        try {
+            // 오차를 줄이기 위해 타겟 날짜 기준 과거 7일치 데이터를 불러와 가장 최근 종가를 씁니다.
+            const from = targetTimestamp - (7 * 86400); 
+            const to = targetTimestamp;
+            const res = await fetch(`https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=D&from=${from}&to=${to}&token=${FINNHUB_API_KEY}`);
+            const data = await res.json();
+            if (data.s === 'ok' && data.c && data.c.length > 0) {
+                return data.c[data.c.length - 1]; // 가장 마지막(타겟과 가까운) 종가 리턴
+            }
+        } catch(e) { console.error('과거 주가 로드 실패'); }
+        return null;
+    }
+
     async function init() {
         try {
             const fxRes = await fetch('https://open.er-api.com/v6/latest/USD').then(r => r.json());
@@ -135,6 +159,8 @@
     }
 
     async function runAutomation() {
+        document.getElementById('price-status').innerText = '데이터 집계 중...';
+        
         const { data: trades } = await db.from('long_term_trade').select('*');
         let assets = { SCHD: { qty:0, cost:0 }, QLD: { qty:0, cost:0 } };
         
@@ -148,15 +174,37 @@
             }
         });
 
+        // 현재 주가 및 전일비
         let prices = { SCHD: 30.9, QLD: 67.91 };
+        let dailyChange = { SCHD: 0, QLD: 0 };
+        // 과거 주가 변수 세팅
+        let pastPrices = { SCHD: { mo: null, yr: null }, QLD: { mo: null, yr: null } };
+
+        const nowSec = Math.floor(Date.now() / 1000);
+        const sec1Mo = nowSec - (30 * 86400); // 30일 전
+        const sec1Yr = nowSec - (365 * 86400); // 365일 전
+
         try {
+            // 현재가 로드
             const [s, q] = await Promise.all([
                 fetch(`https://finnhub.io/api/v1/quote?symbol=SCHD&token=${FINNHUB_API_KEY}`).then(r=>r.json()),
                 fetch(`https://finnhub.io/api/v1/quote?symbol=QLD&token=${FINNHUB_API_KEY}`).then(r=>r.json())
             ]);
-            if(s.c) prices.SCHD = s.c; if(q.c) prices.QLD = q.c;
-            document.getElementById('price-status').innerText = '🟢 실시간 연동됨';
-        } catch(e) { document.getElementById('price-status').innerText = '🟠 백업가 사용'; }
+            if(s.c) { prices.SCHD = s.c; dailyChange.SCHD = s.dp; }
+            if(q.c) { prices.QLD = q.c; dailyChange.QLD = q.dp; }
+
+            // 🚀 개별 종목 과거 주가 동시 로드
+            const [s1Mo, s1Yr, q1Mo, q1Yr] = await Promise.all([
+                fetchPastPrice('SCHD', sec1Mo), fetchPastPrice('SCHD', sec1Yr),
+                fetchPastPrice('QLD', sec1Mo), fetchPastPrice('QLD', sec1Yr)
+            ]);
+            
+            pastPrices.SCHD.mo = s1Mo; pastPrices.SCHD.yr = s1Yr;
+            pastPrices.QLD.mo = q1Mo; pastPrices.QLD.yr = q1Yr;
+
+            document.getElementById('price-status').innerText = '🟢 전체 연동 완료';
+            document.getElementById('price-status').classList.add('text-green-500');
+        } catch(e) { document.getElementById('price-status').innerText = '🟠 연동 지연 (백업가 사용)'; }
 
         const schdVal = assets.SCHD.qty * prices.SCHD;
         const qldVal = assets.QLD.qty * prices.QLD;
@@ -164,6 +212,35 @@
         const totalInvested = assets.SCHD.cost + assets.QLD.cost;
         const totalPl = totalUsd - totalInvested;
         const totalRt = totalInvested > 0 ? (totalPl / totalInvested) * 100 : 0; 
+        const totalDailyChange = totalUsd > 0 ? ((schdVal * dailyChange.SCHD + qldVal * dailyChange.QLD) / totalUsd) : 0;
+
+        // 총계 자산용 과거 스냅샷 역추적
+        const { data: snapData } = await db.from('daily_snapshot').select('*');
+        let chartData = snapData || [];
+        const d = new Date();
+        const todayStr = `${d.getFullYear()}. ${d.getMonth()+1}. ${d.getDate()}`;
+        if(totalUsd > 0 && !chartData.find(r => r.record_date === todayStr)) {
+            await db.from('daily_snapshot').insert([{ record_date: todayStr, total_asset: totalUsd, principal: totalInvested }]);
+            chartData.push({ record_date: todayStr, total_asset: totalUsd, principal: totalInvested });
+        }
+        chartData.sort((a, b) => new Date(a.record_date.replace(/\.\s/g, '-')) - new Date(b.record_date.replace(/\.\s/g, '-')));
+        const oneMonthAgo = new Date(d.getFullYear(), d.getMonth() - 1, d.getDate());
+        const oneYearAgo = new Date(d.getFullYear() - 1, d.getMonth(), d.getDate());
+
+        function getPastAsset(targetDate) {
+            let closest = null, minDiff = Infinity;
+            for (let row of chartData) {
+                let rowDate = new Date(row.record_date.replace(/\.\s/g, '-'));
+                let diff = Math.abs(targetDate - rowDate);
+                if (diff < 15 * 24 * 60 * 60 * 1000 && diff < minDiff) { minDiff = diff; closest = row.total_asset; }
+            }
+            return closest;
+        }
+
+        const asset1Mo = getPastAsset(oneMonthAgo);
+        const asset1Yr = getPastAsset(oneYearAgo);
+        const momRt = asset1Mo ? ((totalUsd - asset1Mo) / asset1Mo) * 100 : null;
+        const yoyRt = asset1Yr ? ((totalUsd - asset1Yr) / asset1Yr) * 100 : null;
 
         const tbody = document.getElementById('asset-table-body');
         tbody.innerHTML = '';
@@ -175,6 +252,13 @@
             const val = item.id === 'SCHD' ? schdVal : qldVal;
             const data = assets[item.id];
             const price = prices[item.id];
+            const d_change = dailyChange[item.id] || 0;
+            
+            // 개별 종목 전월비/전년비 계산
+            const p1Mo = pastPrices[item.id].mo;
+            const p1Yr = pastPrices[item.id].yr;
+            const moRt = p1Mo ? ((price - p1Mo) / p1Mo) * 100 : null;
+            const yrRt = p1Yr ? ((price - p1Yr) / p1Yr) * 100 : null;
             
             const pl = val - data.cost;
             const profitRate = data.cost > 0 ? (pl / data.cost) * 100 : 0;
@@ -198,24 +282,31 @@
                     <td class="${pl >= 0 ? 'text-up' : 'text-down'} font-bold">${pl >= 0 ? '+' : ''}${fmt(pl)}</td>
                     <td class="${profitRate >= 0 ? 'text-up' : 'text-down'} font-bold">${profitRate >= 0 ? '+' : ''}${profitRate.toFixed(2)}%</td>
                     <td class="font-bold">${ratio.toFixed(1)}%</td>
+                    
+                    <td class="${d_change >= 0 ? 'text-up' : 'text-down'} font-bold">${d_change >= 0 ? '+' : ''}${d_change.toFixed(2)}%</td>
+                    <td class="${moRt !== null ? (moRt >= 0 ? 'text-up' : 'text-down') : 'text-slate-400'} font-bold">${moRt !== null ? (moRt >= 0 ? '+' : '') + moRt.toFixed(2) + '%' : '-'}</td>
+                    <td class="${yrRt !== null ? (yrRt >= 0 ? 'text-up' : 'text-down') : 'text-slate-400'} font-bold">${yrRt !== null ? (yrRt >= 0 ? '+' : '') + yrRt.toFixed(2) + '%' : '-'}</td>
+
                     <td class="text-slate-400">${diffQty === 0 ? '-' : Math.round(targetVal/price).toLocaleString()}</td>
                     <td class="bg-slate-800/50">${guide}</td>
                 </tr>
             `;
         });
 
-        // ✅ 총계 줄에 총 매입 금액, 총 평가 손익 복구
         tbody.innerHTML += `
             <tr class="bg-slate-800 font-bold border-t-2 border-slate-600">
                 <td class="text-left text-white">총계</td>
-                <td>-</td>
-                <td>-</td>
-                <td>-</td>
+                <td>-</td><td>-</td><td>-</td>
                 <td class="text-slate-300">${fmt(totalInvested)}</td>
                 <td class="text-green-400">${fmt(totalUsd)}</td>
                 <td class="${totalPl >= 0 ? 'text-up' : 'text-down'}">${totalPl >= 0 ? '+' : ''}${fmt(totalPl)}</td>
                 <td class="${totalRt >= 0 ? 'text-up' : 'text-down'}">${totalRt >= 0 ? '+' : ''}${totalRt.toFixed(2)}%</td>
                 <td>100.0%</td>
+                
+                <td class="${totalDailyChange >= 0 ? 'text-up' : 'text-down'}">${totalDailyChange >= 0 ? '+' : ''}${totalDailyChange.toFixed(2)}%</td>
+                <td class="${momRt !== null ? (momRt >= 0 ? 'text-up' : 'text-down') : 'text-slate-400'}">${momRt !== null ? (momRt >= 0 ? '+' : '') + momRt.toFixed(2) + '%' : '데이터없음'}</td>
+                <td class="${yoyRt !== null ? (yoyRt >= 0 ? 'text-up' : 'text-down') : 'text-slate-400'}">${yoyRt !== null ? (yoyRt >= 0 ? '+' : '') + yoyRt.toFixed(2) + '%' : '데이터없음'}</td>
+
                 <td class="text-slate-400">-</td>
                 <td class="bg-slate-800/50">-</td>
             </tr>
@@ -237,23 +328,10 @@
             options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom', labels: { color: '#cbd5e1' } } } }
         });
 
-        await drawGrowthChart(totalUsd, totalInvested);
+        drawGrowthChart(chartData);
     }
 
-    async function drawGrowthChart(currentTotal, currentPrincipal) {
-        const { data } = await db.from('daily_snapshot').select('*');
-        let chartData = data || [];
-        
-        const d = new Date();
-        const todayStr = `${d.getFullYear()}. ${d.getMonth()+1}. ${d.getDate()}`;
-        
-        if(currentTotal > 0 && !chartData.find(r => r.record_date === todayStr)) {
-            await db.from('daily_snapshot').insert([{ record_date: todayStr, total_asset: currentTotal, principal: currentPrincipal }]);
-            chartData.push({ record_date: todayStr, total_asset: currentTotal, principal: currentPrincipal });
-        }
-
-        chartData.sort((a, b) => new Date(a.record_date.replace(/\.\s/g, '-')) - new Date(b.record_date.replace(/\.\s/g, '-')));
-        
+    function drawGrowthChart(chartData) {
         const labels = chartData.map(row => formatShortDate(row.record_date));
         const totalAssets = chartData.map(row => row.total_asset);
         const principals = chartData.map(row => row.principal);
@@ -283,55 +361,25 @@
     }
 
     async function loadTradeHistory() {
-        const { data } = await db.from('long_term_trade').select('*').order('created_at', { ascending: true });
-        
-        let avgCost = { SCHD: { qty: 0, cost: 0 }, QLD: { qty: 0, cost: 0 } };
-        let profitInfo = {}; 
-
-        if (data) {
-            data.forEach(t => {
-                let target = avgCost[t.ticker];
-                if (t.trade_type === '매수') {
-                    target.qty += t.quantity; target.cost += t.total_amount;
-                } else if (t.trade_type === '매도') {
-                    let avg = target.qty > 0 ? target.cost / target.qty : 0;
-                    let pnl = (t.price - avg) * t.quantity;
-                    let pnlRate = avg > 0 ? ((t.price - avg) / avg) * 100 : 0;
-                    profitInfo[t.id] = { pnl, pnlRate };
-                    target.qty -= t.quantity; target.cost -= avg * t.quantity;
-                }
-            });
-        }
-
+        const { data } = await db.from('long_term_trade').select('*').order('created_at', { ascending: false }).limit(30);
         const tbody = document.getElementById('trade-history-body');
         tbody.innerHTML = '';
-        
-        const recentData = data ? data.reverse().slice(0, 6) : [];
-
-        recentData.forEach(t => {
-            const dateShort = formatShortDate(t.created_at.split('T')[0]);
-            const typeColor = t.trade_type === '매수' ? 'text-up font-bold' : 'text-down font-bold';
-            
-            let pnlText = '<span class="text-slate-500">-</span>';
-            let pnlRateText = '<span class="text-slate-500">-</span>';
-            
-            if (t.trade_type === '매도' && profitInfo[t.id]) {
-                pnlText = `<span class="text-blue-500 font-bold">$${profitInfo[t.id].pnl.toFixed(2)}</span>`;
-                pnlRateText = `<span class="text-blue-500 font-bold">${profitInfo[t.id].pnlRate.toFixed(2)}%</span>`;
-            }
-
-            tbody.innerHTML += `
-                <tr class="hover:bg-slate-800 border-b border-slate-700">
-                    <td>${dateShort}</td><td class="font-bold">${t.ticker}</td><td class="${typeColor}">${t.trade_type}</td>
-                    <td>${t.quantity}</td><td>$${t.price}</td>
-                    <td>${pnlText}</td><td>${pnlRateText}</td>
-                    <td class="w-1 whitespace-nowrap px-1">
-                        <button onclick="editTrade('${t.id}', '${t.ticker}', '${t.trade_type}', ${t.quantity}, ${t.price})" class="bg-blue-600 hover:bg-blue-500 text-white px-2 py-0.5 rounded text-[10px] mr-1">수정</button>
-                        <button onclick="deleteTrade('${t.id}')" class="bg-red-600 hover:bg-red-500 text-white px-2 py-0.5 rounded text-[10px]">삭제</button>
-                    </td>
-                </tr>
-            `;
-        });
+        if (data) {
+            data.forEach(t => {
+                const dateShort = formatShortDate(t.created_at.split('T')[0]);
+                const typeColor = t.trade_type === '매수' ? 'text-up font-bold' : 'text-down font-bold';
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-800 border-b border-slate-700">
+                        <td class="py-2">${dateShort}</td><td class="font-bold py-2">${t.ticker}</td><td class="${typeColor} py-2">${t.trade_type}</td>
+                        <td class="py-2">${t.quantity.toLocaleString()}</td><td class="py-2">$${t.price}</td>
+                        <td class="w-1 whitespace-nowrap px-1 py-2">
+                            <button onclick="editTrade('${t.id}', '${t.ticker}', '${t.trade_type}', ${t.quantity}, ${t.price})" class="bg-blue-600 hover:bg-blue-500 text-white px-2 py-0.5 rounded text-[10px] mr-1">수정</button>
+                            <button onclick="deleteTrade('${t.id}')" class="bg-red-600 hover:bg-red-500 text-white px-2 py-0.5 rounded text-[10px]">삭제</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
     }
 
     async function saveData() {
