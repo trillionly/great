@@ -137,6 +137,7 @@
     let weightChartInstance = null;
     let growthChartInstance = null;
     let usdToKrw = 1350; 
+    const HISTORY_CACHE_PREFIX = 'great:history-ref:';
 
     const fmt = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(n);
     const fmtKrw = (n) => new Intl.NumberFormat('ko-KR').format(Math.round(n));
@@ -147,7 +148,7 @@
     };
 
     // 🚀 궁극의 데이터 확보 함수: 1년치 차트를 한방에 긁어와서 필요한 날짜만 자체 추출
-    async function fetchAllHistoryPrice(symbol) {
+    async function legacyFetchAllHistoryPrice(symbol) {
         try {
             const nowSec = Math.floor(Date.now() / 1000);
             const from = nowSec - (364 * 86400); // 정확히 364일 전 (무료 한도 1년 이내 안전 구역)
@@ -174,6 +175,135 @@
         return { mo: null, yr: null }; // 최악의 경우에만 null
     }
 
+    function findClosestClose(timestamps, closes, targetSec) {
+        if (!Array.isArray(timestamps) || !Array.isArray(closes) || timestamps.length !== closes.length) return null;
+
+        let closestPrice = null;
+        let minDiff = Infinity;
+        for (let i = 0; i < timestamps.length; i++) {
+            const ts = timestamps[i];
+            const close = closes[i];
+            if (!Number.isFinite(ts) || !Number.isFinite(close)) continue;
+
+            const diff = Math.abs(ts - targetSec);
+            if (diff < minDiff) {
+                minDiff = diff;
+                closestPrice = close;
+            }
+        }
+        return closestPrice;
+    }
+
+    async function fetchJsonWithTimeout(url, timeoutMs = 9000) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+        try {
+            const res = await fetch(url, { signal: controller.signal });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            return await res.json();
+        } finally {
+            clearTimeout(timeoutId);
+        }
+    }
+
+    function savePriceCache(symbol, payload) {
+        try {
+            localStorage.setItem(`${HISTORY_CACHE_PREFIX}${symbol}`, JSON.stringify({
+                ...payload,
+                cachedAt: Date.now()
+            }));
+        } catch (e) {
+            console.warn(`${symbol} 기준가 캐시 저장 실패`, e);
+        }
+    }
+
+    function loadPriceCache(symbol) {
+        try {
+            const raw = localStorage.getItem(`${HISTORY_CACHE_PREFIX}${symbol}`);
+            if (!raw) return null;
+
+            const parsed = JSON.parse(raw);
+            if (!parsed || !Number.isFinite(parsed.mo) || !Number.isFinite(parsed.yr)) return null;
+            return parsed;
+        } catch (e) {
+            console.warn(`${symbol} 기준가 캐시 로드 실패`, e);
+            return null;
+        }
+    }
+
+    async function fetchHistoryFromFinnhub(symbol) {
+        const nowSec = Math.floor(Date.now() / 1000);
+        const from = nowSec - (370 * 86400);
+        const to = nowSec;
+        const data = await fetchJsonWithTimeout(`https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=D&from=${from}&to=${to}&token=${FINNHUB_API_KEY}`);
+
+        if (data.s !== 'ok' || !Array.isArray(data.t) || !Array.isArray(data.c) || data.t.length === 0) {
+            throw new Error('Finnhub candle unavailable');
+        }
+
+        return {
+            timestamps: data.t,
+            closes: data.c,
+            source: 'Finnhub'
+        };
+    }
+
+    async function fetchHistoryFromYahoo(symbol, proxyName) {
+        const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=1y`;
+        const proxyUrl = proxyName === 'corsproxy'
+            ? `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`
+            : `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+        const data = await fetchJsonWithTimeout(proxyUrl);
+        const result = data?.chart?.result?.[0];
+        const timestamps = result?.timestamp;
+        const closes = result?.indicators?.quote?.[0]?.close;
+
+        if (!Array.isArray(timestamps) || !Array.isArray(closes) || timestamps.length === 0) {
+            throw new Error(`Yahoo ${proxyName} unavailable`);
+        }
+
+        return {
+            timestamps,
+            closes,
+            source: proxyName === 'corsproxy' ? 'Yahoo/corsproxy' : 'Yahoo/allorigins'
+        };
+    }
+
+    async function fetchAllHistoryPrice(symbol) {
+        const nowSec = Math.floor(Date.now() / 1000);
+        const targetMo = nowSec - (30 * 86400);
+        const targetYr = nowSec - (365 * 86400);
+        const providers = [
+            () => fetchHistoryFromFinnhub(symbol),
+            () => fetchHistoryFromYahoo(symbol, 'corsproxy'),
+            () => fetchHistoryFromYahoo(symbol, 'allorigins')
+        ];
+
+        for (const provider of providers) {
+            try {
+                const result = await provider();
+                const mo = findClosestClose(result.timestamps, result.closes, targetMo);
+                const yr = findClosestClose(result.timestamps, result.closes, targetYr);
+
+                if (Number.isFinite(mo) && Number.isFinite(yr)) {
+                    const payload = { mo, yr, source: result.source };
+                    savePriceCache(symbol, payload);
+                    return payload;
+                }
+            } catch (e) {
+                console.warn(`${symbol} 기준가 조회 실패`, e);
+            }
+        }
+
+        const cached = loadPriceCache(symbol);
+        if (cached) {
+            return { mo: cached.mo, yr: cached.yr, source: `Cache/${cached.source || 'unknown'}` };
+        }
+
+        return { mo: null, yr: null, source: 'None' };
+    }
+
     async function init() {
         try {
             const fxRes = await fetch('https://open.er-api.com/v6/latest/USD').then(r => r.json());
@@ -187,6 +317,9 @@
     async function runAutomation() {
         // 애니메이션 확실하게 노출 (최소 0.5초 보장)
         document.getElementById('price-status').innerHTML = '<span class="loader"></span>1년치 차트 긁어오는 중...';
+        const priceStatusEl = document.getElementById('price-status');
+        priceStatusEl.classList.remove('text-green-500', 'text-yellow-400', 'text-red-400');
+        priceStatusEl.innerHTML = '<span class="loader"></span>전월/전년 기준가 다중 조회중...';
         await new Promise(resolve => setTimeout(resolve, 500));
         
         const { data: trades } = await db.from('long_term_trade').select('*');
@@ -224,9 +357,53 @@
             pastPrices.SCHD = sHist; 
             pastPrices.QLD = qHist;
 
+            const historyStatuses = [
+                { symbol: 'SCHD', result: sHist },
+                { symbol: 'QLD', result: qHist }
+            ];
+            const successStatuses = historyStatuses.filter(({ result }) => Number.isFinite(result.mo) && Number.isFinite(result.yr));
+            const statusDetails = historyStatuses.map(({ symbol, result }) => `${symbol}:${result.source}`);
+
+            if (successStatuses.length === historyStatuses.length) {
+                priceStatusEl.innerHTML = `전월/전년 기준가 조회 성공 (${statusDetails.join(', ')})`;
+                priceStatusEl.classList.add('text-green-500');
+            } else if (successStatuses.length > 0) {
+                priceStatusEl.innerHTML = `전월/전년 기준가 일부 조회 성공 (${statusDetails.join(', ')})`;
+                priceStatusEl.classList.add('text-yellow-400');
+            } else {
+                priceStatusEl.innerHTML = `전월/전년 기준가 조회 실패 (${statusDetails.join(', ')})`;
+                priceStatusEl.classList.add('text-red-400');
+            }
+
             document.getElementById('price-status').innerHTML = '🟢 전체 연동 완료';
             document.getElementById('price-status').classList.add('text-green-500');
         } catch(e) { document.getElementById('price-status').innerHTML = '🟠 연동 지연 (백업가 사용)'; }
+
+        const [schdHistory, qldHistory] = await Promise.all([
+            fetchAllHistoryPrice('SCHD'),
+            fetchAllHistoryPrice('QLD')
+        ]);
+        pastPrices.SCHD = schdHistory;
+        pastPrices.QLD = qldHistory;
+
+        const historyStatuses = [
+            { symbol: 'SCHD', result: schdHistory },
+            { symbol: 'QLD', result: qldHistory }
+        ];
+        const successStatuses = historyStatuses.filter(({ result }) => Number.isFinite(result.mo) && Number.isFinite(result.yr));
+        const statusDetails = historyStatuses.map(({ symbol, result }) => `${symbol}:${result.source}`);
+
+        priceStatusEl.classList.remove('text-green-500', 'text-yellow-400', 'text-red-400');
+        if (successStatuses.length === historyStatuses.length) {
+            priceStatusEl.textContent = `전월/전년 기준가 조회 성공 (${statusDetails.join(', ')})`;
+            priceStatusEl.classList.add('text-green-500');
+        } else if (successStatuses.length > 0) {
+            priceStatusEl.textContent = `전월/전년 기준가 일부 조회 성공 (${statusDetails.join(', ')})`;
+            priceStatusEl.classList.add('text-yellow-400');
+        } else {
+            priceStatusEl.textContent = `전월/전년 기준가 조회 실패 (${statusDetails.join(', ')})`;
+            priceStatusEl.classList.add('text-red-400');
+        }
 
         const schdVal = assets.SCHD.qty * prices.SCHD;
         const qldVal = assets.QLD.qty * prices.QLD;
