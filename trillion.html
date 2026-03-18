@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>장투리밸런싱 시스템 v3.10</title>
+    <title>?ν닾由щ갭?곗떛 ?쒖뒪??v3.10</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -36,6 +36,19 @@
             margin-right: 6px;
             vertical-align: middle;
         }
+        .cell-loader {
+            width: 12px;
+            height: 12px;
+            margin-right: 0;
+            border-width: 2px;
+        }
+        .cell-loading {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 18px;
+            min-height: 18px;
+        }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
@@ -43,12 +56,12 @@
     <div class="max-w-7xl mx-auto">
         <header class="flex flex-col md:flex-row justify-between items-center mb-6 pb-4 border-b border-slate-700">
             <div class="flex items-center space-x-4 mb-4 md:mb-0">
-                <h1 class="text-2xl font-bold tracking-tight">📊 장투리밸런싱 시스템</h1>
-                <span id="fx-rate" class="text-sm font-bold text-slate-400 bg-slate-800 px-3 py-1 rounded-full">💵 환율 로딩중...</span>
+                <h1 class="text-2xl font-bold tracking-tight">?뱤 ?ν닾由щ갭?곗떛 ?쒖뒪??/h1>
+                <span id="fx-rate" class="text-sm font-bold text-slate-400 bg-slate-800 px-3 py-1 rounded-full">?뮫 ?섏쑉 濡쒕뵫以?..</span>
             </div>
             <nav class="flex space-x-5 text-sm font-medium text-slate-400">
-                <a href="https://trillionly.github.io/great/index.html" class="hover:text-white transition-colors">그리드매매 시스템</a>
-                <a href="https://trillionly.github.io/great/trade.html" class="hover:text-white transition-colors">떨사오팔 센터</a>
+                <a href="https://trillionly.github.io/great/index.html" class="hover:text-white transition-colors">洹몃━?쒕ℓ留??쒖뒪??/a>
+                <a href="https://trillionly.github.io/great/trade.html" class="hover:text-white transition-colors">?⑥궗?ㅽ뙏 ?쇳꽣</a>
             </nav>
         </header>
 
@@ -57,20 +70,20 @@
                 <div>
                     <h2 class="text-lg font-semibold mb-3 flex items-center justify-between">
                         <div class="flex items-center">
-                            <span class="w-2 h-2 rounded-full bg-indigo-500 mr-2 inline-block"></span> 자산 현황
-                            <span id="price-status" class="text-xs text-slate-500 ml-3 mt-1 flex items-center">대기중...</span>
+                            <span class="w-2 h-2 rounded-full bg-indigo-500 mr-2 inline-block"></span> ?먯궛 ?꾪솴
+                            <span id="price-status" class="text-xs text-slate-500 ml-3 mt-1 flex items-center">?湲곗쨷...</span>
                         </div>
                         <div class="text-sm font-medium text-slate-300 bg-slate-800 px-3 py-1 rounded-lg">
-                            총자산(₩): <span id="total-krw" class="text-green-400 font-bold ml-1">₩0</span>
+                            珥앹옄????: <span id="total-krw" class="text-green-400 font-bold ml-1">??</span>
                         </div>
                     </h2>
                     <table>
                         <thead>
                             <tr>
-                                <th>종목</th><th>현재가</th><th>수량</th><th>평단가</th><th>매입 금액</th><th>평가 금액</th><th>평가 손익</th><th>수익률</th><th>비중</th>
-                                <th>전일비</th><th>전월비</th><th>전년비</th>
-                                <th class="leading-tight">적정수량<br><span class="text-xs font-normal text-slate-500">(4:6)</span></th>
-                                <th class="leading-tight">리밸런싱<br><span class="text-xs font-normal text-slate-500">가이드</span></th>
+                                <th>醫낅ぉ</th><th>?꾩옱媛</th><th>?섎웾</th><th>?됰떒媛</th><th>留ㅼ엯 湲덉븸</th><th>?됯? 湲덉븸</th><th>?됯? ?먯씡</th><th>?섏씡瑜?/th><th>鍮꾩쨷</th>
+                                <th>?꾩씪鍮?/th><th>?꾩썡鍮?/th><th>?꾨뀈鍮?/th>
+                                <th class="leading-tight">?곸젙?섎웾<br><span class="text-xs font-normal text-slate-500">(4:6)</span></th>
+                                <th class="leading-tight">由щ갭?곗떛<br><span class="text-xs font-normal text-slate-500">媛?대뱶</span></th>
                             </tr>
                         </thead>
                         <tbody id="asset-table-body"></tbody>
@@ -80,18 +93,18 @@
 
             <div class="lg:col-span-1 card p-5 shadow-lg">
                 <h2 id="form-title" class="text-lg font-semibold mb-4 flex items-center">
-                    <span class="w-2 h-2 rounded-full bg-blue-500 mr-2 inline-block"></span> 거래 기록
+                    <span class="w-2 h-2 rounded-full bg-blue-500 mr-2 inline-block"></span> 嫄곕옒 湲곕줉
                 </h2>
                 <div class="space-y-3">
                     <input type="hidden" id="edit-id">
                     <select id="ticker" class="input-field text-sm"><option value="QLD">QLD</option><option value="SCHD">SCHD</option></select>
                     <div class="grid grid-cols-2 gap-2">
-                        <select id="tradeType" class="input-field text-sm"><option value="매수">매수</option><option value="매도">매도</option></select>
-                        <input type="number" id="quantity" class="input-field text-sm" placeholder="수량">
+                        <select id="tradeType" class="input-field text-sm"><option value="留ㅼ닔">留ㅼ닔</option><option value="留ㅻ룄">留ㅻ룄</option></select>
+                        <input type="number" id="quantity" class="input-field text-sm" placeholder="?섎웾">
                     </div>
-                    <input type="number" id="price" step="0.01" class="input-field text-sm" placeholder="단가 ($)">
-                    <button onclick="saveData()" id="save-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-lg shadow-md transition-all">기록 저장</button>
-                    <button onclick="resetForm()" id="cancel-btn" class="w-full bg-slate-600 hidden text-white font-bold py-2 rounded-lg">수정 취소</button>
+                    <input type="number" id="price" step="0.01" class="input-field text-sm" placeholder="?④? ($)">
+                    <button onclick="saveData()" id="save-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-lg shadow-md transition-all">湲곕줉 ???/button>
+                    <button onclick="resetForm()" id="cancel-btn" class="w-full bg-slate-600 hidden text-white font-bold py-2 rounded-lg">?섏젙 痍⑥냼</button>
                 </div>
             </div>
         </div>
@@ -99,15 +112,15 @@
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             <div class="card p-6 shadow-lg">
                 <h2 class="text-lg font-semibold mb-4 flex items-center">
-                    <span class="w-2 h-2 rounded-full bg-red-500 mr-2 inline-block"></span> 매매 기록 (수정/삭제)
+                    <span class="w-2 h-2 rounded-full bg-red-500 mr-2 inline-block"></span> 留ㅻℓ 湲곕줉 (?섏젙/??젣)
                 </h2>
                 <div class="overflow-y-auto max-h-[260px] pr-2">
                     <table class="w-full text-center text-sm relative">
                         <thead class="sticky top-0 z-10">
                             <tr>
-                                <th class="text-center py-2">날짜</th><th class="text-center py-2">종목</th><th class="text-center py-2">구분</th>
-                                <th class="text-center py-2">수량</th><th class="text-center py-2">단가</th>
-                                <th class="text-center w-1 whitespace-nowrap px-1 py-2">관리</th>
+                                <th class="text-center py-2">?좎쭨</th><th class="text-center py-2">醫낅ぉ</th><th class="text-center py-2">援щ텇</th>
+                                <th class="text-center py-2">?섎웾</th><th class="text-center py-2">?④?</th>
+                                <th class="text-center w-1 whitespace-nowrap px-1 py-2">愿由?/th>
                             </tr>
                         </thead>
                         <tbody id="trade-history-body"></tbody>
@@ -115,14 +128,14 @@
                 </div>
             </div>
             <div class="card p-6 shadow-lg">
-                <h2 class="text-lg font-semibold mb-4 text-center">포트폴리오 비중</h2>
+                <h2 class="text-lg font-semibold mb-4 text-center">?ы듃?대━??鍮꾩쨷</h2>
                 <div class="h-64 w-full flex justify-center"><canvas id="weightChart"></canvas></div>
             </div>
         </div>
 
         <div class="card p-6 shadow-lg">
             <h2 class="text-lg font-semibold mb-4 flex items-center">
-                <span class="w-2 h-2 rounded-full bg-green-500 mr-2 inline-block"></span> 자산 성장 추이
+                <span class="w-2 h-2 rounded-full bg-green-500 mr-2 inline-block"></span> ?먯궛 ?깆옣 異붿씠
             </h2>
             <div class="relative h-80 w-full"><canvas id="growthChart"></canvas></div>
         </div>
@@ -147,19 +160,19 @@
         return dateStr;
     };
 
-    // 🚀 궁극의 데이터 확보 함수: 1년치 차트를 한방에 긁어와서 필요한 날짜만 자체 추출
+    // ?? 沅곴레???곗씠???뺣낫 ?⑥닔: 1?꾩튂 李⑦듃瑜??쒕갑??湲곸뼱????꾩슂???좎쭨留??먯껜 異붿텧
     async function legacyFetchAllHistoryPrice(symbol) {
         try {
             const nowSec = Math.floor(Date.now() / 1000);
-            const from = nowSec - (364 * 86400); // 정확히 364일 전 (무료 한도 1년 이내 안전 구역)
+            const from = nowSec - (364 * 86400); // ?뺥솗??364????(臾대즺 ?쒕룄 1???대궡 ?덉쟾 援ъ뿭)
             const to = nowSec;
             const res = await fetch(`https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=D&from=${from}&to=${to}&token=${FINNHUB_API_KEY}`);
             const data = await res.json();
             
             if (data.s === 'ok' && data.c && data.c.length > 0) {
-                const price1Yr = data.c[0]; // 배열의 가장 첫 번째 값이 약 1년 전 주가
+                const price1Yr = data.c[0]; // 諛곗뿴??媛??泥?踰덉㎏ 媛믪씠 ??1????二쇨?
                 
-                // 1달 전(30일 전) 주가 찾기 (타임스탬프 역추적)
+                // 1????30???? 二쇨? 李얘린 (??꾩뒪?ы봽 ??텛??
                 const target1Mo = nowSec - (30 * 86400);
                 let closestIdx = 0;
                 let minDiff = Infinity;
@@ -171,8 +184,8 @@
                 
                 return { mo: price1Mo, yr: price1Yr };
             }
-        } catch(e) { console.error(`${symbol} 차트 통째로 긁어오기 실패`); }
-        return { mo: null, yr: null }; // 최악의 경우에만 null
+        } catch(e) { console.error(`${symbol} 李⑦듃 ?듭㎏濡?湲곸뼱?ㅺ린 ?ㅽ뙣`); }
+        return { mo: null, yr: null }; // 理쒖븙??寃쎌슦?먮쭔 null
     }
 
     function findClosestClose(timestamps, closes, targetSec) {
@@ -214,7 +227,7 @@
                 cachedAt: Date.now()
             }));
         } catch (e) {
-            console.warn(`${symbol} 기준가 캐시 저장 실패`, e);
+            console.warn(`${symbol} 湲곗?媛 罹먯떆 ????ㅽ뙣`, e);
         }
     }
 
@@ -227,7 +240,7 @@
             if (!parsed || !Number.isFinite(parsed.mo) || !Number.isFinite(parsed.yr)) return null;
             return parsed;
         } catch (e) {
-            console.warn(`${symbol} 기준가 캐시 로드 실패`, e);
+            console.warn(`${symbol} 湲곗?媛 罹먯떆 濡쒕뱶 ?ㅽ뙣`, e);
             return null;
         }
     }
@@ -292,7 +305,7 @@
                     return payload;
                 }
             } catch (e) {
-                console.warn(`${symbol} 기준가 조회 실패`, e);
+                console.warn(`${symbol} 湲곗?媛 議고쉶 ?ㅽ뙣`, e);
             }
         }
 
@@ -304,30 +317,178 @@
         return { mo: null, yr: null, source: 'None' };
     }
 
+    function getHistorySpinnerMarkup() {
+        return '<span class="cell-loading"><span class="loader cell-loader"></span></span>';
+    }
+
+    function getHistoryValueMarkup(value, emptyText = '-') {
+        if (!Number.isFinite(value)) {
+            return `<span class="text-slate-500">${emptyText}</span>`;
+        }
+        return `<span class="${value >= 0 ? 'text-up' : 'text-down'} font-bold">${value >= 0 ? '+' : ''}${value.toFixed(2)}%</span>`;
+    }
+
+    function updateHistoricalCells(symbol, moRt, yrRt) {
+        const moCell = document.getElementById(`hist-${symbol}-mo`);
+        const yrCell = document.getElementById(`hist-${symbol}-yr`);
+        if (moCell) moCell.innerHTML = getHistoryValueMarkup(moRt, '-');
+        if (yrCell) yrCell.innerHTML = getHistoryValueMarkup(yrRt, '-');
+    }
+
+    function updateTotalHistoricalCells(momRt, yoyRt, hasEnoughData) {
+        const moCell = document.getElementById('hist-total-mo');
+        const yrCell = document.getElementById('hist-total-yr');
+        if (!moCell || !yrCell) return;
+
+        const emptyText = hasEnoughData ? '-' : '?곗씠?곗뾾??;
+        moCell.innerHTML = getHistoryValueMarkup(momRt, emptyText);
+        yrCell.innerHTML = getHistoryValueMarkup(yoyRt, emptyText);
+    }
+
+    function renderWeightChart(schdRatio, qldRatio) {
+        const ctxWeight = document.getElementById('weightChart').getContext('2d');
+        if(weightChartInstance) weightChartInstance.destroy();
+        weightChartInstance = new Chart(ctxWeight, {
+            type: 'doughnut',
+            data: {
+                labels: [`SCHD (${schdRatio.toFixed(1)}%)`, `QLD (${qldRatio.toFixed(1)}%)`],
+                datasets: [{ data: [schdRatio, qldRatio], backgroundColor: ['#facc15', '#60a5fa'], borderColor: '#1e293b', borderWidth: 3 }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, cutout: '70%', plugins: { legend: { position: 'bottom', labels: { color: '#cbd5e1' } } } }
+        });
+    }
+
+    function renderAssetTableBase({ assets, prices, dailyChange, totalUsd, totalInvested, totalPl, totalRt, totalDailyChange }) {
+        const tbody = document.getElementById('asset-table-body');
+        tbody.innerHTML = '';
+
+        [
+            { id: 'SCHD', color: 'text-yellow-400', target: 0.4 },
+            { id: 'QLD', color: 'text-blue-400', target: 0.6 }
+        ].forEach(item => {
+            const val = item.id === 'SCHD' ? assets.SCHD.qty * prices.SCHD : assets.QLD.qty * prices.QLD;
+            const data = assets[item.id];
+            const price = prices[item.id];
+            const dChange = dailyChange[item.id] || 0;
+            const pl = val - data.cost;
+            const profitRate = data.cost > 0 ? (pl / data.cost) * 100 : 0;
+            const ratio = totalUsd > 0 ? (val / totalUsd) * 100 : 0;
+            const avg = data.qty > 0 ? data.cost / data.qty : 0;
+            const targetVal = totalUsd * item.target;
+            const diffQty = price > 0 ? Math.round((targetVal - val) / price) : 0;
+            const guide = diffQty > 0 ? `<span class="text-up font-bold">+${diffQty}二?/span>` :
+                          (diffQty < 0 ? `<span class="text-down font-bold">${diffQty}二?/span>` : '<span class="text-slate-400">-</span>');
+
+            tbody.innerHTML += `
+                <tr class="hover:bg-slate-800 border-b border-slate-700">
+                    <td class="font-bold text-left ${item.color}">${item.id}</td>
+                    <td>${fmt(price)}</td>
+                    <td>${data.qty.toLocaleString()}</td>
+                    <td class="text-slate-400">${fmt(avg)}</td>
+                    <td>${fmt(data.cost)}</td>
+                    <td class="font-bold">${fmt(val)}</td>
+                    <td class="${pl >= 0 ? 'text-up' : 'text-down'} font-bold">${pl >= 0 ? '+' : ''}${fmt(pl)}</td>
+                    <td class="${profitRate >= 0 ? 'text-up' : 'text-down'} font-bold">${profitRate >= 0 ? '+' : ''}${profitRate.toFixed(2)}%</td>
+                    <td class="font-bold">${ratio.toFixed(1)}%</td>
+                    <td class="${dChange >= 0 ? 'text-up' : 'text-down'} font-bold">${dChange >= 0 ? '+' : ''}${dChange.toFixed(2)}%</td>
+                    <td id="hist-${item.id}-mo">${getHistorySpinnerMarkup()}</td>
+                    <td id="hist-${item.id}-yr">${getHistorySpinnerMarkup()}</td>
+                    <td class="text-slate-400">${diffQty === 0 ? '-' : Math.round(targetVal / price).toLocaleString()}</td>
+                    <td class="bg-slate-800/50">${guide}</td>
+                </tr>
+            `;
+        });
+
+        tbody.innerHTML += `
+            <tr class="bg-slate-800 font-bold border-t-2 border-slate-600">
+                <td class="text-left text-white">珥앷퀎</td>
+                <td>-</td><td>-</td><td>-</td>
+                <td class="text-slate-300">${fmt(totalInvested)}</td>
+                <td class="text-green-400">${fmt(totalUsd)}</td>
+                <td class="${totalPl >= 0 ? 'text-up' : 'text-down'}">${totalPl >= 0 ? '+' : ''}${fmt(totalPl)}</td>
+                <td class="${totalRt >= 0 ? 'text-up' : 'text-down'}">${totalRt >= 0 ? '+' : ''}${totalRt.toFixed(2)}%</td>
+                <td>100.0%</td>
+                <td class="${totalDailyChange >= 0 ? 'text-up' : 'text-down'}">${totalDailyChange >= 0 ? '+' : ''}${totalDailyChange.toFixed(2)}%</td>
+                <td id="hist-total-mo">${getHistorySpinnerMarkup()}</td>
+                <td id="hist-total-yr">${getHistorySpinnerMarkup()}</td>
+                <td class="text-slate-400">-</td>
+                <td class="bg-slate-800/50">-</td>
+            </tr>
+        `;
+    }
+
+    function buildChartData(snapData, totalUsd, totalInvested) {
+        const dNow = new Date();
+        const chartData = snapData || [];
+        const todayStr = `${dNow.getFullYear()}. ${dNow.getMonth()+1}. ${dNow.getDate()}`;
+        const needsInsert = totalUsd > 0 && !chartData.find(r => r.record_date === todayStr);
+
+        if (needsInsert) {
+            chartData.push({ record_date: todayStr, total_asset: totalUsd, principal: totalInvested });
+        }
+
+        chartData.sort((a, b) => new Date(a.record_date.replace(/\.\s/g, '-')) - new Date(b.record_date.replace(/\.\s/g, '-')));
+        return { chartData, todayStr, needsInsert };
+    }
+
+    function calculateTotalHistoricalReturns(chartData, totalUsd) {
+        const dNow = new Date();
+        const oneMonthAgo = new Date(dNow.getFullYear(), dNow.getMonth() - 1, dNow.getDate());
+        const oneYearAgo = new Date(dNow.getFullYear() - 1, dNow.getMonth(), dNow.getDate());
+
+        function getPastAsset(targetDate) {
+            let closest = null, minDiff = Infinity;
+            for (const row of chartData) {
+                const rowDate = new Date(row.record_date.replace(/\.\s/g, '-'));
+                const diff = Math.abs(targetDate - rowDate);
+                if (diff < 15 * 24 * 60 * 60 * 1000 && diff < minDiff) {
+                    minDiff = diff;
+                    closest = row.total_asset;
+                }
+            }
+            return closest;
+        }
+
+        const asset1Mo = getPastAsset(oneMonthAgo);
+        const asset1Yr = getPastAsset(oneYearAgo);
+        return {
+            momRt: asset1Mo ? ((totalUsd - asset1Mo) / asset1Mo) * 100 : null,
+            yoyRt: asset1Yr ? ((totalUsd - asset1Yr) / asset1Yr) * 100 : null,
+            hasEnoughData: Boolean(asset1Mo || asset1Yr)
+        };
+    }
+
     async function init() {
         try {
             const fxRes = await fetch('https://open.er-api.com/v6/latest/USD').then(r => r.json());
             usdToKrw = fxRes.rates.KRW;
-            document.getElementById('fx-rate').innerText = `💵 ₩${usdToKrw.toFixed(2)}`;
+            document.getElementById('fx-rate').innerText = `?뮫 ??{usdToKrw.toFixed(2)}`;
         } catch(e) {}
         await runAutomation();
         await loadTradeHistory();
     }
 
-    async function runAutomation() {
-        // 애니메이션 확실하게 노출 (최소 0.5초 보장)
-        document.getElementById('price-status').innerHTML = '<span class="loader"></span>1년치 차트 긁어오는 중...';
+TESTLINE
+        // ?좊땲硫붿씠???뺤떎?섍쾶 ?몄텧 (理쒖냼 0.5珥?蹂댁옣)
+        document.getElementById('price-status').innerHTML = '<span class="loader"></span>1?꾩튂 李⑦듃 湲곸뼱?ㅻ뒗 以?..';
         const priceStatusEl = document.getElementById('price-status');
+        const tradesPromise = db.from('long_term_trade').select('*');
+        const snapPromise = db.from('daily_snapshot').select('*');
+        const historyPromises = {
+            SCHD: fetchAllHistoryPrice('SCHD'),
+            QLD: fetchAllHistoryPrice('QLD')
+        };
         priceStatusEl.classList.remove('text-green-500', 'text-yellow-400', 'text-red-400');
-        priceStatusEl.innerHTML = '<span class="loader"></span>전월/전년 기준가 다중 조회중...';
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        const { data: trades } = await db.from('long_term_trade').select('*');
+        priceStatusEl.innerHTML = '<span class="loader"></span>?꾩옱媛瑜?遺덈윭?ㅻ뒗 以?..';
+        priceStatusEl.innerHTML = '<span class="loader"></span>?꾩썡/?꾨뀈 湲곗?媛 ?ㅼ쨷 議고쉶以?..';
+        priceStatusEl.innerHTML = '<span class="loader"></span>?꾩옱媛瑜?遺덈윭?ㅻ뒗 以?..';
+
+        const { data: trades } = await tradesPromise;
         let assets = { SCHD: { qty:0, cost:0 }, QLD: { qty:0, cost:0 } };
         
         trades?.forEach(t => {
             let target = assets[t.ticker];
-            if(t.trade_type === '매수') { 
+            if(t.trade_type === '留ㅼ닔') { 
                 target.qty += t.quantity; target.cost += t.total_amount; 
             } else { 
                 let avg = target.qty > 0 ? target.cost / target.qty : 0;
@@ -337,10 +498,9 @@
 
         let prices = { SCHD: 30.9, QLD: 67.91 };
         let dailyChange = { SCHD: 0, QLD: 0 };
-        let pastPrices = { SCHD: { mo: null, yr: null }, QLD: { mo: null, yr: null } };
 
         try {
-            // 실시간 주가 로드
+            // ?ㅼ떆媛?二쇨? 濡쒕뱶
             const [s, q] = await Promise.all([
                 fetch(`https://finnhub.io/api/v1/quote?symbol=SCHD&token=${FINNHUB_API_KEY}`).then(r=>r.json()),
                 fetch(`https://finnhub.io/api/v1/quote?symbol=QLD&token=${FINNHUB_API_KEY}`).then(r=>r.json())
@@ -348,7 +508,7 @@
             if(s.c) { prices.SCHD = s.c; dailyChange.SCHD = s.dp; }
             if(q.c) { prices.QLD = q.c; dailyChange.QLD = q.dp; }
 
-            // 🚀 1년치 차트 한방에 긁어오기 (속도 2배, 안정성 100%)
+            // ?? 1?꾩튂 李⑦듃 ?쒕갑??湲곸뼱?ㅺ린 (?띾룄 2諛? ?덉젙??100%)
             const [sHist, qHist] = await Promise.all([
                 fetchAllHistoryPrice('SCHD'),
                 fetchAllHistoryPrice('QLD')
@@ -365,19 +525,19 @@
             const statusDetails = historyStatuses.map(({ symbol, result }) => `${symbol}:${result.source}`);
 
             if (successStatuses.length === historyStatuses.length) {
-                priceStatusEl.innerHTML = `전월/전년 기준가 조회 성공 (${statusDetails.join(', ')})`;
+                priceStatusEl.innerHTML = `?꾩썡/?꾨뀈 湲곗?媛 議고쉶 ?깃났 (${statusDetails.join(', ')})`;
                 priceStatusEl.classList.add('text-green-500');
             } else if (successStatuses.length > 0) {
-                priceStatusEl.innerHTML = `전월/전년 기준가 일부 조회 성공 (${statusDetails.join(', ')})`;
+                priceStatusEl.innerHTML = `?꾩썡/?꾨뀈 湲곗?媛 ?쇰? 議고쉶 ?깃났 (${statusDetails.join(', ')})`;
                 priceStatusEl.classList.add('text-yellow-400');
             } else {
-                priceStatusEl.innerHTML = `전월/전년 기준가 조회 실패 (${statusDetails.join(', ')})`;
+                priceStatusEl.innerHTML = `?꾩썡/?꾨뀈 湲곗?媛 議고쉶 ?ㅽ뙣 (${statusDetails.join(', ')})`;
                 priceStatusEl.classList.add('text-red-400');
             }
 
-            document.getElementById('price-status').innerHTML = '🟢 전체 연동 완료';
+            document.getElementById('price-status').innerHTML = '?윟 ?꾩껜 ?곕룞 ?꾨즺';
             document.getElementById('price-status').classList.add('text-green-500');
-        } catch(e) { document.getElementById('price-status').innerHTML = '🟠 연동 지연 (백업가 사용)'; }
+        } catch(e) { document.getElementById('price-status').innerHTML = '?윝 ?곕룞 吏??(諛깆뾽媛 ?ъ슜)'; }
 
         const [schdHistory, qldHistory] = await Promise.all([
             fetchAllHistoryPrice('SCHD'),
@@ -395,13 +555,13 @@
 
         priceStatusEl.classList.remove('text-green-500', 'text-yellow-400', 'text-red-400');
         if (successStatuses.length === historyStatuses.length) {
-            priceStatusEl.textContent = `전월/전년 기준가 조회 성공 (${statusDetails.join(', ')})`;
+            priceStatusEl.textContent = `?꾩썡/?꾨뀈 湲곗?媛 議고쉶 ?깃났 (${statusDetails.join(', ')})`;
             priceStatusEl.classList.add('text-green-500');
         } else if (successStatuses.length > 0) {
-            priceStatusEl.textContent = `전월/전년 기준가 일부 조회 성공 (${statusDetails.join(', ')})`;
+            priceStatusEl.textContent = `?꾩썡/?꾨뀈 湲곗?媛 ?쇰? 議고쉶 ?깃났 (${statusDetails.join(', ')})`;
             priceStatusEl.classList.add('text-yellow-400');
         } else {
-            priceStatusEl.textContent = `전월/전년 기준가 조회 실패 (${statusDetails.join(', ')})`;
+            priceStatusEl.textContent = `?꾩썡/?꾨뀈 湲곗?媛 議고쉶 ?ㅽ뙣 (${statusDetails.join(', ')})`;
             priceStatusEl.classList.add('text-red-400');
         }
 
@@ -413,7 +573,7 @@
         const totalRt = totalInvested > 0 ? (totalPl / totalInvested) * 100 : 0; 
         const totalDailyChange = totalUsd > 0 ? ((schdVal * dailyChange.SCHD + qldVal * dailyChange.QLD) / totalUsd) : 0;
 
-        // DB 스냅샷 연동
+        // DB ?ㅻ깄???곕룞
         const dNow = new Date();
         const { data: snapData } = await db.from('daily_snapshot').select('*');
         let chartData = snapData || [];
@@ -454,7 +614,7 @@
             const price = prices[item.id];
             const d_change = dailyChange[item.id] || 0;
             
-            // 🚀 방금 긁어온 1년치 데이터에서 추출한 전월비/전년비
+            // ?? 諛⑷툑 湲곸뼱??1?꾩튂 ?곗씠?곗뿉??異붿텧???꾩썡鍮??꾨뀈鍮?
             const p1Mo = pastPrices[item.id].mo;
             const p1Yr = pastPrices[item.id].yr;
             const moRt = p1Mo ? ((price - p1Mo) / p1Mo) * 100 : null;
@@ -468,8 +628,8 @@
             const targetVal = totalUsd * item.target;
             const diffQty = Math.round((targetVal - val) / price);
             
-            const guide = diffQty > 0 ? `<span class="text-up font-bold">+${diffQty}주</span>` : 
-                          (diffQty < 0 ? `<span class="text-down font-bold">${diffQty}주</span>` : '<span class="text-slate-400">-</span>');
+            const guide = diffQty > 0 ? `<span class="text-up font-bold">+${diffQty}二?/span>` : 
+                          (diffQty < 0 ? `<span class="text-down font-bold">${diffQty}二?/span>` : '<span class="text-slate-400">-</span>');
 
             const moRtText = moRt !== null ? `<span class="${moRt >= 0 ? 'text-up' : 'text-down'} font-bold">${moRt >= 0 ? '+' : ''}${moRt.toFixed(2)}%</span>` : '<span class="text-slate-500">-</span>';
             const yrRtText = yrRt !== null ? `<span class="${yrRt >= 0 ? 'text-up' : 'text-down'} font-bold">${yrRt >= 0 ? '+' : ''}${yrRt.toFixed(2)}%</span>` : '<span class="text-slate-500">-</span>';
@@ -498,7 +658,7 @@
 
         tbody.innerHTML += `
             <tr class="bg-slate-800 font-bold border-t-2 border-slate-600">
-                <td class="text-left text-white">총계</td>
+                <td class="text-left text-white">珥앷퀎</td>
                 <td>-</td><td>-</td><td>-</td>
                 <td class="text-slate-300">${fmt(totalInvested)}</td>
                 <td class="text-green-400">${fmt(totalUsd)}</td>
@@ -507,15 +667,15 @@
                 <td>100.0%</td>
                 
                 <td class="${totalDailyChange >= 0 ? 'text-up' : 'text-down'}">${totalDailyChange >= 0 ? '+' : ''}${totalDailyChange.toFixed(2)}%</td>
-                <td class="${momRt !== null ? (momRt >= 0 ? 'text-up' : 'text-down') : 'text-slate-400'}">${momRt !== null ? (momRt >= 0 ? '+' : '') + momRt.toFixed(2) + '%' : '데이터없음'}</td>
-                <td class="${yoyRt !== null ? (yoyRt >= 0 ? 'text-up' : 'text-down') : 'text-slate-400'}">${yoyRt !== null ? (yoyRt >= 0 ? '+' : '') + yoyRt.toFixed(2) + '%' : '데이터없음'}</td>
+                <td class="${momRt !== null ? (momRt >= 0 ? 'text-up' : 'text-down') : 'text-slate-400'}">${momRt !== null ? (momRt >= 0 ? '+' : '') + momRt.toFixed(2) + '%' : '?곗씠?곗뾾??}</td>
+                <td class="${yoyRt !== null ? (yoyRt >= 0 ? 'text-up' : 'text-down') : 'text-slate-400'}">${yoyRt !== null ? (yoyRt >= 0 ? '+' : '') + yoyRt.toFixed(2) + '%' : '?곗씠?곗뾾??}</td>
 
                 <td class="text-slate-400">-</td>
                 <td class="bg-slate-800/50">-</td>
             </tr>
         `;
 
-        document.getElementById('total-krw').innerText = '₩' + fmtKrw(totalUsd * usdToKrw);
+        document.getElementById('total-krw').innerText = '?? + fmtKrw(totalUsd * usdToKrw);
 
         const schdRatio = totalUsd > 0 ? (schdVal / totalUsd) * 100 : 0;
         const qldRatio = totalUsd > 0 ? (qldVal / totalUsd) * 100 : 0;
@@ -545,8 +705,8 @@
             data: {
                 labels: labels,
                 datasets: [
-                    { label: '총 자산', data: totalAssets, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderWidth: 2, fill: true, tension: 0.1 },
-                    { label: '투자 원금', data: principals, borderColor: '#94a3b8', borderDash: [5, 5], borderWidth: 2, fill: false, tension: 0.1 }
+                    { label: '珥??먯궛', data: totalAssets, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderWidth: 2, fill: true, tension: 0.1 },
+                    { label: '?ъ옄 ?먭툑', data: principals, borderColor: '#94a3b8', borderDash: [5, 5], borderWidth: 2, fill: false, tension: 0.1 }
                 ]
             },
             options: { 
@@ -570,14 +730,14 @@
         if (data) {
             data.forEach(t => {
                 const dateShort = formatShortDate(t.created_at.split('T')[0]);
-                const typeColor = t.trade_type === '매수' ? 'text-up font-bold' : 'text-down font-bold';
+                const typeColor = t.trade_type === '留ㅼ닔' ? 'text-up font-bold' : 'text-down font-bold';
                 tbody.innerHTML += `
                     <tr class="hover:bg-slate-800 border-b border-slate-700">
                         <td class="py-2">${dateShort}</td><td class="font-bold py-2">${t.ticker}</td><td class="${typeColor} py-2">${t.trade_type}</td>
                         <td class="py-2">${t.quantity.toLocaleString()}</td><td class="py-2">$${t.price}</td>
                         <td class="w-1 whitespace-nowrap px-1 py-2">
-                            <button onclick="editTrade('${t.id}', '${t.ticker}', '${t.trade_type}', ${t.quantity}, ${t.price})" class="bg-blue-600 hover:bg-blue-500 text-white px-2 py-0.5 rounded text-[10px] mr-1">수정</button>
-                            <button onclick="deleteTrade('${t.id}')" class="bg-red-600 hover:bg-red-500 text-white px-2 py-0.5 rounded text-[10px]">삭제</button>
+                            <button onclick="editTrade('${t.id}', '${t.ticker}', '${t.trade_type}', ${t.quantity}, ${t.price})" class="bg-blue-600 hover:bg-blue-500 text-white px-2 py-0.5 rounded text-[10px] mr-1">?섏젙</button>
+                            <button onclick="deleteTrade('${t.id}')" class="bg-red-600 hover:bg-red-500 text-white px-2 py-0.5 rounded text-[10px]">??젣</button>
                         </td>
                     </tr>
                 `;
@@ -594,14 +754,14 @@
             price: parseFloat(document.getElementById('price').value),
             total_amount: parseInt(document.getElementById('quantity').value) * parseFloat(document.getElementById('price').value)
         };
-        if(!payload.quantity || !payload.price) return alert("수량과 단가를 입력하세요.");
+        if(!payload.quantity || !payload.price) return alert("?섎웾怨??④?瑜??낅젰?섏꽭??");
         
         let res = id ? await db.from('long_term_trade').update(payload).eq('id', id) : await db.from('long_term_trade').insert([payload]);
-        if(res.error) alert("에러: " + res.error.message); else location.reload();
+        if(res.error) alert("?먮윭: " + res.error.message); else location.reload();
     }
 
     async function deleteTrade(id) {
-        if(confirm("정말 삭제하시겠습니까?")) { await db.from('long_term_trade').delete().eq('id', id); location.reload(); }
+        if(confirm("?뺣쭚 ??젣?섏떆寃좎뒿?덇퉴?")) { await db.from('long_term_trade').delete().eq('id', id); location.reload(); }
     }
 
     function editTrade(id, ticker, type, qty, price) {
@@ -610,7 +770,7 @@
         document.getElementById('tradeType').value = type;
         document.getElementById('quantity').value = qty;
         document.getElementById('price').value = price;
-        document.getElementById('save-btn').innerText = "내용 수정하기";
+        document.getElementById('save-btn').innerText = "?댁슜 ?섏젙?섍린";
         document.getElementById('save-btn').classList.replace('bg-blue-600', 'bg-yellow-600');
         document.getElementById('cancel-btn').classList.remove('hidden');
         window.scrollTo({ top: 0, behavior: 'smooth' });
