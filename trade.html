@@ -44,6 +44,16 @@
         
         .btn-action { padding: 1px 5px !important; font-size: 0.65rem !important; margin: 0 1px; }
         #priceChangeBadge { font-size: 0.75rem; vertical-align: middle; margin-left: 5px; }
+        .mini-chart-wrap { width: 90px; height: 36px; flex: 0 0 90px; position: relative; }
+        .mini-chart-wrap canvas { display: block; width: 100% !important; height: 100% !important; }
+        #settingsSummary { display: flex; align-items: center; justify-content: space-between; gap: 12px; text-align: left; }
+        .settings-summary-copy { min-width: 0; }
+        .settings-summary-line { display: block; line-height: 1.35; }
+        .settings-summary-line + .settings-summary-line { margin-top: 2px; }
+        #unlockBtn { flex-shrink: 0; }
+        @media (max-width: 991.98px) {
+            #settingsSummary { align-items: flex-start; }
+        }
     </style>
 </head>
 <body>
@@ -85,8 +95,8 @@
                             </div>
                             <button id="lockBtn" class="btn btn-primary btn-sm w-100 fw-bold mt-2" onclick="lockSettings()">새 매매 시작 (설정 확정)</button>
                         </div>
-                        <div id="settingsSummary" class="d-none bg-light p-2 rounded text-center border mt-1">
-                            <span id="summaryText" class="fw-bold me-3" style="color: #1a237e;"></span>
+                        <div id="settingsSummary" class="d-none bg-light p-2 rounded border mt-1">
+                            <div id="summaryText" class="fw-bold settings-summary-copy" style="color: #1a237e;"></div>
                             <button id="unlockBtn" class="btn btn-outline-secondary btn-sm" onclick="unlockSettings()" style="font-size:0.7rem;">초기화</button>
                         </div>
                     </div>
@@ -101,12 +111,12 @@
                             <span id="priceChangeBadge"></span>
                         </div>
                         <div class="d-flex align-items-center gap-2">
-                            <div style="width: 90px; height: 36px;">
+                            <div class="mini-chart-wrap">
                                 <canvas id="miniTrendChart"></canvas>
                             </div>
                             <div class="d-flex flex-column gap-1">
-                                <button id="btn6mo" type="button" class="btn btn-primary" style="font-size:0.55rem; padding: 2px 4px; line-height: 1;" onclick="loadMiniChart(6)">6개월</button>
-                                <button id="btn12mo" type="button" class="btn btn-outline-secondary" style="font-size:0.55rem; padding: 2px 4px; line-height: 1;" onclick="loadMiniChart(12)">12개월</button>
+                                <button id="btn6mo" type="button" class="btn btn-primary" style="font-size:0.55rem; padding: 2px 4px; line-height: 1;" onclick="loadMiniChart(6)">6m</button>
+                                <button id="btn12mo" type="button" class="btn btn-outline-secondary" style="font-size:0.55rem; padding: 2px 4px; line-height: 1;" onclick="loadMiniChart(12)">12m</button>
                             </div>
                         </div>
                     </div>
@@ -305,6 +315,14 @@
                 calcTodayBuyPrice();
                 
                 loadMiniChart(6); // 6개월 디폴트 차트 호출
+                document.getElementById('summaryText').innerHTML = `
+                    <span class="settings-summary-line">[${sysHogis}분할] 기본시드 $${sysSeed.toLocaleString()}</span>
+                    <span class="settings-summary-line">매도 +${sysTarget}% | 손절 ${sysDday}일(영업일)</span>
+                `;
+                document.getElementById('summaryText').innerHTML = `
+                    <span class="settings-summary-line">[${sysHogis}분할] 기본시드 $${sysSeed.toLocaleString()}</span>
+                    <span class="settings-summary-line">매도 +${sysTarget}% | 손절 ${sysDday}일(영업일)</span>
+                `;
             } else {
                 alert("현재 시세를 가져오지 못했습니다. 잠시 후 다시 시도해주세요.");
             }
@@ -325,22 +343,35 @@
             const range = months === 6 ? '6mo' : '1y';
             const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=${range}&interval=1d`;
             const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`;
+            const canvas = document.getElementById('miniTrendChart');
+            const canvasWrap = canvas?.parentElement;
+
+            if(!canvas || !canvasWrap) return;
+
+            canvas.width = Math.max(canvasWrap.clientWidth, 90);
+            canvas.height = Math.max(canvasWrap.clientHeight, 36);
 
             try {
                 const res = await fetch(proxyUrl);
                 if (res.ok) {
                     const data = await res.json();
-                    const result = data.chart.result[0];
-                    const closes = result.indicators.quote[0].close;
+                    const result = data?.chart?.result?.[0];
+                    const closes = result?.indicators?.quote?.[0]?.close || [];
 
-                    let cleanData = closes.filter(val => val !== null);
+                    const cleanData = closes.filter(val => Number.isFinite(val));
+                    if (cleanData.length < 2) return;
                     
                     // 최저점과 최고점 계산 (Y축 스케일 강제 확장용)
                     const minVal = Math.min(...cleanData);
                     const maxVal = Math.max(...cleanData);
+                    const yPadding = minVal === maxVal ? Math.max(Math.abs(minVal) * 0.02, 1) : (maxVal - minVal) * 0.12;
 
-                    const ctx = document.getElementById('miniTrendChart').getContext('2d');
-                    if(miniTrendChartInstance) miniTrendChartInstance.destroy();
+                    const ctx = canvas.getContext('2d');
+                    if(!ctx) return;
+                    if(miniTrendChartInstance) {
+                        miniTrendChartInstance.destroy();
+                        miniTrendChartInstance = null;
+                    }
 
                     const isUp = cleanData[cleanData.length - 1] >= cleanData[0];
                     const lineColor = isUp ? '#d32f2f' : '#1565c0'; 
@@ -367,6 +398,8 @@
                                 x: { display: false }, 
                                 y: { 
                                     display: false,
+                                    min: minVal - yPadding,
+                                    max: maxVal + yPadding,
                                     min: minVal, // 맨 아래까지 그래프 찢기
                                     max: maxVal  // 맨 위까지 그래프 찢기
                                 } 
@@ -393,6 +426,10 @@
                 sysHogis = data.sys_hogis; sysSeed = data.sys_seed; sysTarget = data.sys_target; sysDday = data.sys_dday;
                 document.getElementById('settingsForm').classList.add('d-none');
                 document.getElementById('settingsSummary').classList.remove('d-none');
+                document.getElementById('summaryText').innerHTML = `
+                    <span class="settings-summary-line">[${sysHogis}분할] 기본시드 $${sysSeed.toLocaleString()}</span>
+                    <span class="settings-summary-line">매도 +${sysTarget}% | 손절 ${sysDday}일(영업일)</span>
+                `;
                 document.getElementById('lockStatus').classList.remove('d-none');
                 document.getElementById('summaryText').innerText = `[${sysHogis}분할] 기본시드 $${sysSeed.toLocaleString()} | 매도 +${sysTarget}% | 손절 ${sysDday}일(영업일)`;
             } else {
@@ -404,6 +441,12 @@
                 document.getElementById('settingsForm').classList.remove('d-none');
                 document.getElementById('settingsSummary').classList.add('d-none');
                 document.getElementById('lockStatus').classList.add('d-none');
+            }
+            if (isLocked) {
+                document.getElementById('summaryText').innerHTML = `
+                    <span class="settings-summary-line">[${sysHogis}분할] 기본시드 $${sysSeed.toLocaleString()}</span>
+                    <span class="settings-summary-line">매도 +${sysTarget}% | 손절 ${sysDday}일(영업일)</span>
+                `;
             }
             updateHogiSelect();
         }
