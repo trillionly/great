@@ -102,16 +102,41 @@
         }
         @media (max-width: 767px) {
             .price-card-header {
-                flex-wrap: wrap;
-                align-items: center;
+                gap: 8px;
+                align-items: stretch;
+                padding: 6px 12px !important;
             }
             .price-card-summary {
-                flex: 1 1 100%;
-                align-items: flex-start;
+                flex: 1 1 0;
+                margin-right: 0 !important;
+                justify-content: center;
             }
             .price-card-tools {
-                width: 100%;
+                flex: 0 1 148px;
+                width: auto;
                 justify-content: flex-end;
+                gap: 6px;
+                margin-left: 0;
+                padding-top: 0;
+                min-width: 0;
+            }
+            .mini-chart-shell {
+                width: min(96px, calc(100vw - 250px));
+                min-width: 72px;
+                height: 40px;
+                flex: 1 1 auto;
+            }
+            .mini-chart-buttons {
+                flex: 0 0 42px;
+                gap: 3px;
+            }
+            .mini-chart-buttons .btn {
+                width: 42px;
+                min-width: 42px;
+                padding: 2px 3px !important;
+            }
+            #priceChangeBadge {
+                margin-left: 0;
             }
         }
         #settingsSummary {
@@ -769,7 +794,7 @@
         }
 
         function renderMonthlySummaryAndChart() {
-            let monthly = {}; let baseTotalSeed = sysHogis * sysSeed; let currentPrincipal = baseTotalSeed; let currentTotalProfit = 0;
+            let monthly = {}; let baseTotalSeed = sysSeed; let currentPrincipal = baseTotalSeed; let currentTotalProfit = 0;
             [...globalData].reverse().forEach(row => {
                 let month = row.date.substring(0, 7); 
                 if(!monthly[month]) { monthly[month] = { profit: 0, principal: currentPrincipal, evaluated: currentPrincipal + currentTotalProfit }; }
