@@ -46,26 +46,29 @@
         #priceChangeBadge { font-size: 0.75rem; vertical-align: middle; margin-left: 5px; }
         .price-card-header {
             gap: 12px;
-            flex-wrap: wrap;
-            align-items: center;
+            flex-wrap: nowrap;
+            align-items: flex-start;
         }
         .price-card-summary {
             min-width: 0;
-            flex: 1 1 220px;
+            flex: 1 1 auto;
             display: flex;
             flex-direction: column;
             align-items: flex-start;
             justify-content: center;
-            gap: 2px;
+            gap: 0;
         }
         .price-card-title-line {
             display: flex;
             align-items: center;
             gap: 6px;
             min-width: 0;
+            line-height: 1.1;
         }
         .price-card-change-line {
             min-height: 18px;
+            margin-top: 4px;
+            line-height: 1.1;
         }
         .price-card-tools {
             display: flex;
@@ -74,6 +77,7 @@
             flex: 0 0 auto;
             margin-left: auto;
             max-width: 100%;
+            padding-top: 2px;
         }
         .mini-chart-shell {
             width: 110px;
@@ -97,6 +101,10 @@
             min-width: 46px;
         }
         @media (max-width: 767px) {
+            .price-card-header {
+                flex-wrap: wrap;
+                align-items: center;
+            }
             .price-card-summary {
                 flex: 1 1 100%;
                 align-items: flex-start;
