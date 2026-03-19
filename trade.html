@@ -100,6 +100,38 @@
             width: 46px;
             min-width: 46px;
         }
+        .main-trend-card .card-body {
+            padding: 12px 16px 16px;
+        }
+        .main-trend-toolbar {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 10px;
+        }
+        .main-trend-buttons {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+        .main-trend-buttons .btn {
+            font-size: 0.65rem;
+            padding: 3px 8px;
+            line-height: 1.1;
+            min-width: 46px;
+        }
+        .main-trend-shell {
+            width: 100%;
+            height: 210px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #mainTrendChart {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+        }
         @media (max-width: 767px) {
             .price-card-header {
                 gap: 8px;
@@ -137,6 +169,22 @@
             }
             #priceChangeBadge {
                 margin-left: 0;
+            }
+            .main-trend-card .card-body {
+                padding: 10px 12px 14px;
+            }
+            .main-trend-toolbar {
+                margin-bottom: 8px;
+            }
+            .main-trend-buttons {
+                gap: 4px;
+            }
+            .main-trend-buttons .btn {
+                min-width: 44px;
+                padding: 3px 6px;
+            }
+            .main-trend-shell {
+                height: 190px;
             }
         }
         #settingsSummary {
@@ -213,15 +261,6 @@
                                 <span id="priceChangeBadge"></span>
                             </div>
                         </div>
-                        <div class="price-card-tools">
-                            <div class="mini-chart-shell">
-                                <canvas id="miniTrendChart"></canvas>
-                            </div>
-                            <div class="mini-chart-buttons">
-                                <button id="btn6mo" type="button" class="btn btn-primary" style="font-size:0.55rem; padding: 2px 4px; line-height: 1;" onclick="loadMiniChart(6)">6m</button>
-                                <button id="btn12mo" type="button" class="btn btn-outline-secondary" style="font-size:0.55rem; padding: 2px 4px; line-height: 1;" onclick="loadMiniChart(12)">12m</button>
-                            </div>
-                        </div>
                     </div>
                     <div class="card-body p-3">
                         <div class="row g-2 align-items-center h-100">
@@ -240,6 +279,21 @@
                                 <label class="form-label text-muted mb-1" style="font-size: 0.75rem;">매수 타점(-0.1%)</label>
                                 <div id="todayBuyPrice" class="fs-5 text-loss fw-bold mt-1">-</div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card main-trend-card mt-3 mb-0">
+                    <div class="card-body">
+                        <div class="main-trend-toolbar">
+                            <div class="main-trend-buttons">
+                                <button type="button" class="btn btn-outline-secondary">7D</button>
+                                <button type="button" class="btn btn-primary">30D</button>
+                                <button type="button" class="btn btn-outline-secondary">60D</button>
+                                <button type="button" class="btn btn-outline-secondary">180D</button>
+                            </div>
+                        </div>
+                        <div class="main-trend-shell">
+                            <canvas id="mainTrendChart"></canvas>
                         </div>
                     </div>
                 </div>
@@ -431,10 +485,14 @@
         async function loadMiniChartLegacy(months) {
             const ticker = document.getElementById('tickerInput').value.toUpperCase();
             if(!ticker) return;
+            const btn6mo = document.getElementById('btn6mo');
+            const btn12mo = document.getElementById('btn12mo');
+            const chartCanvas = document.getElementById('miniTrendChart');
+            if (!btn6mo || !btn12mo || !chartCanvas) return;
 
             // 버튼 색상 토글 (눌린 버튼만 Primary 진한색으로)
-            document.getElementById('btn6mo').className = months === 6 ? 'btn btn-primary' : 'btn btn-outline-secondary';
-            document.getElementById('btn12mo').className = months === 12 ? 'btn btn-primary' : 'btn btn-outline-secondary';
+            btn6mo.className = months === 6 ? 'btn btn-primary' : 'btn btn-outline-secondary';
+            btn12mo.className = months === 12 ? 'btn btn-primary' : 'btn btn-outline-secondary';
             
             const range = months === 6 ? '6mo' : '1y';
             const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=${range}&interval=1d`;
@@ -453,7 +511,7 @@
                     const minVal = Math.min(...cleanData);
                     const maxVal = Math.max(...cleanData);
 
-                    const ctx = document.getElementById('miniTrendChart').getContext('2d');
+                    const ctx = chartCanvas.getContext('2d');
                     if(miniTrendChartInstance) miniTrendChartInstance.destroy();
 
                     const isUp = cleanData[cleanData.length - 1] >= cleanData[0];
@@ -601,9 +659,11 @@
         }
 
         function renderMiniTrendChart(prices) {
+            const chartCanvas = document.getElementById('miniTrendChart');
+            if (!chartCanvas) return;
             const safePrices = normalizeMiniChartPrices(prices);
             const chartPrices = safePrices.length >= 2 ? safePrices : [1, 1];
-            const ctx = document.getElementById('miniTrendChart').getContext('2d');
+            const ctx = chartCanvas.getContext('2d');
 
             destroyMiniTrendChart();
 
@@ -642,8 +702,13 @@
             const ticker = document.getElementById('tickerInput').value.toUpperCase();
             if (!ticker) return;
 
-            document.getElementById('btn6mo').className = months === 6 ? 'btn btn-primary' : 'btn btn-outline-secondary';
-            document.getElementById('btn12mo').className = months === 12 ? 'btn btn-primary' : 'btn btn-outline-secondary';
+            const btn6mo = document.getElementById('btn6mo');
+            const btn12mo = document.getElementById('btn12mo');
+            const chartCanvas = document.getElementById('miniTrendChart');
+            if (!btn6mo || !btn12mo || !chartCanvas) return;
+
+            btn6mo.className = months === 6 ? 'btn btn-primary' : 'btn btn-outline-secondary';
+            btn12mo.className = months === 12 ? 'btn btn-primary' : 'btn btn-outline-secondary';
             const range = months === 6 ? '6mo' : '1y';
             let chartResult = null;
 
