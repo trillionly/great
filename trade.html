@@ -44,15 +44,42 @@
         
         .btn-action { padding: 1px 5px !important; font-size: 0.65rem !important; margin: 0 1px; }
         #priceChangeBadge { font-size: 0.75rem; vertical-align: middle; margin-left: 5px; }
+        .price-card-header {
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .price-card-summary {
+            min-width: 0;
+            flex: 1 1 220px;
+        }
+        .price-card-tools {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 0 0 auto;
+            margin-left: auto;
+            max-width: 100%;
+        }
         .mini-chart-shell {
-            width: 104px;
-            height: 40px;
-            flex: 0 0 104px;
+            width: 116px;
+            height: 44px;
+            min-width: 116px;
+            flex: 0 0 116px;
         }
         #miniTrendChart {
             display: block;
             width: 100% !important;
             height: 100% !important;
+        }
+        .mini-chart-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex: 0 0 48px;
+        }
+        .mini-chart-buttons .btn {
+            width: 48px;
+            min-width: 48px;
         }
         #settingsSummary {
             display: flex;
@@ -64,7 +91,7 @@
         }
         #summaryText {
             display: block;
-            white-space: normal;
+            white-space: pre-line;
             line-height: 1.35;
         }
     </style>
@@ -118,16 +145,16 @@
             
             <div class="col-md-6">
                 <div class="card h-100 mb-0">
-                    <div class="card-header d-flex justify-content-between align-items-center flex-nowrap" style="min-height: 58px; padding: 6px 16px;">
-                        <div class="text-nowrap" style="margin-right: 5px;">
+                    <div class="card-header d-flex justify-content-between align-items-center price-card-header" style="min-height: 58px; padding: 6px 16px;">
+                        <div class="price-card-summary" style="margin-right: 5px;">
                             <span>실시간 시세 <span id="dataSource" class="badge bg-secondary ms-1" style="font-size:0.6rem;">대기중</span></span>
                             <span id="priceChangeBadge"></span>
                         </div>
-                        <div class="d-flex align-items-center gap-2">
+                        <div class="price-card-tools">
                             <div class="mini-chart-shell">
                                 <canvas id="miniTrendChart"></canvas>
                             </div>
-                            <div class="d-flex flex-column gap-1">
+                            <div class="mini-chart-buttons">
                                 <button id="btn6mo" type="button" class="btn btn-primary" style="font-size:0.55rem; padding: 2px 4px; line-height: 1;" onclick="loadMiniChart(6)">6m</button>
                                 <button id="btn12mo" type="button" class="btn btn-outline-secondary" style="font-size:0.55rem; padding: 2px 4px; line-height: 1;" onclick="loadMiniChart(12)">12m</button>
                             </div>
@@ -408,6 +435,12 @@
             return Number.isFinite(numeric) ? Math.round(numeric).toLocaleString() : '0';
         }
 
+        function normalizeSeedValue(value) {
+            const numeric = Number(value);
+            if (!Number.isFinite(numeric) || numeric <= 0) return 66000;
+            return numeric === 11000 ? 66000 : numeric;
+        }
+
         function getSettingsSummaryHtml() {
             return `[${sysHogis}분할] 기본시드 $${formatSeedAmount(sysSeed)}<br>매도 +${sysTarget}% | 손절 ${sysDday}일(영업일)`;
         }
@@ -422,7 +455,7 @@
         async function getMiniChartPricesFromYahoo(ticker, range) {
             try {
                 const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=${range}&interval=1d`;
-                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`;
+                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`;
                 const response = await fetch(proxyUrl);
                 if (!response.ok) {
                     throw new Error(`Yahoo request failed: ${response.status}`);
@@ -441,6 +474,32 @@
                 return prices;
             } catch (error) {
                 console.warn('Mini chart Yahoo request failed:', error);
+                return null;
+            }
+        }
+
+        async function getMiniChartPricesFromSecondaryProxy(ticker, range) {
+            try {
+                const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=${range}&interval=1d`;
+                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`;
+                const response = await fetch(proxyUrl);
+                if (!response.ok) {
+                    throw new Error(`Secondary proxy request failed: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const result = data?.chart?.result;
+                const firstResult = Array.isArray(result) ? result[0] : null;
+                const closes = firstResult?.indicators?.quote?.[0]?.close;
+                const prices = normalizeMiniChartPrices(closes);
+
+                if (prices.length < 2) {
+                    throw new Error('Secondary proxy chart data is empty');
+                }
+
+                return prices;
+            } catch (error) {
+                console.warn('Mini chart secondary proxy request failed:', error);
                 return null;
             }
         }
@@ -534,6 +593,9 @@
             try {
                 prices = await getMiniChartPricesFromYahoo(ticker, range);
                 if (!prices) {
+                    prices = await getMiniChartPricesFromSecondaryProxy(ticker, range);
+                }
+                if (!prices) {
                     prices = await getMiniChartPricesFromFinnhub(ticker, months);
                 }
             } catch (error) {
@@ -553,7 +615,10 @@
             const { data } = await client.from(SETTINGS_TABLE).select('*').eq('id', 1).single();
             if (data && data.is_locked) {
                 isLocked = true;
-                sysHogis = data.sys_hogis; sysSeed = data.sys_seed; sysTarget = data.sys_target; sysDday = data.sys_dday;
+                sysHogis = Number(data.sys_hogis) || 6;
+                sysSeed = normalizeSeedValue(data.sys_seed);
+                sysTarget = Number(data.sys_target) || 0.7;
+                sysDday = Number(data.sys_dday) || 45;
                 document.getElementById('settingsForm').classList.add('d-none');
                 document.getElementById('settingsSummary').classList.remove('d-none');
                 document.getElementById('lockStatus').classList.remove('d-none');
@@ -561,8 +626,10 @@
             } else {
                 isLocked = false;
                 if(data) {
-                    document.getElementById('setHogis').value = data.sys_hogis; document.getElementById('setSeed').value = data.sys_seed;
-                    document.getElementById('setTarget').value = data.sys_target; document.getElementById('setDday').value = data.sys_dday;
+                    document.getElementById('setHogis').value = Number(data.sys_hogis) || 6;
+                    document.getElementById('setSeed').value = normalizeSeedValue(data.sys_seed);
+                    document.getElementById('setTarget').value = Number(data.sys_target) || 0.7;
+                    document.getElementById('setDday').value = Number(data.sys_dday) || 45;
                 }
                 document.getElementById('settingsForm').classList.remove('d-none');
                 document.getElementById('settingsSummary').classList.add('d-none');
@@ -575,9 +642,10 @@
             const btn = document.getElementById('lockBtn');
             btn.innerText = "동기화 중..."; btn.disabled = true;
             sysHogis = parseInt(document.getElementById('setHogis').value);
-            sysSeed = parseFloat(document.getElementById('setSeed').value);
+            sysSeed = normalizeSeedValue(document.getElementById('setSeed').value);
             sysTarget = parseFloat(document.getElementById('setTarget').value);
             sysDday = parseInt(document.getElementById('setDday').value);
+            document.getElementById('setSeed').value = sysSeed;
             const payload = { id: 1, sys_hogis: sysHogis, sys_seed: sysSeed, sys_target: sysTarget, sys_dday: sysDday, is_locked: true };
             const check = await client.from(SETTINGS_TABLE).select('id').eq('id', 1).single();
             if(check.data) { await client.from(SETTINGS_TABLE).update(payload).eq('id', 1); } 
