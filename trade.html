@@ -45,26 +45,31 @@
         .btn-action { padding: 1px 5px !important; font-size: 0.65rem !important; margin: 0 1px; }
         #priceChangeBadge { font-size: 0.75rem; vertical-align: middle; margin-left: 5px; }
         .price-card-header {
-            gap: 10px;
+            gap: 12px;
             flex-wrap: wrap;
+            align-items: center;
         }
         .price-card-summary {
             min-width: 0;
             flex: 1 1 220px;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 4px 6px;
         }
         .price-card-tools {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
             flex: 0 0 auto;
             margin-left: auto;
             max-width: 100%;
         }
         .mini-chart-shell {
-            width: 116px;
-            height: 44px;
-            min-width: 116px;
-            flex: 0 0 116px;
+            width: 110px;
+            height: 42px;
+            min-width: 110px;
+            flex: 0 0 110px;
         }
         #miniTrendChart {
             display: block;
@@ -75,11 +80,20 @@
             display: flex;
             flex-direction: column;
             gap: 4px;
-            flex: 0 0 48px;
+            flex: 0 0 46px;
         }
         .mini-chart-buttons .btn {
-            width: 48px;
-            min-width: 48px;
+            width: 46px;
+            min-width: 46px;
+        }
+        @media (max-width: 767px) {
+            .price-card-summary {
+                flex: 1 1 100%;
+            }
+            .price-card-tools {
+                width: 100%;
+                justify-content: flex-end;
+            }
         }
         #settingsSummary {
             display: flex;
@@ -280,6 +294,7 @@
         const FINNHUB_KEY = 'd6om8dpr01qi5kh3g1cgd6om8dpr01qi5kh3g1d0'; 
         const TABLE_NAME = 'teol_sa_o_pal';
         const SETTINGS_TABLE = 'app_settings';
+        const SLOT_BASE_SEED = 11000;
 
         let sysHogis = 6, sysSeed = 66000, sysTarget = 0.7, sysDday = 45;
         let isLocked = false, globalData = [], globalStats = {}, myChart = null;
@@ -675,7 +690,7 @@
             const { data } = await client.from(TABLE_NAME).select('*').order('date', { ascending: false }).order('created_at', { ascending: false });
             let chronoData = [...data].reverse();
             let stats = {};
-            for(let i=1; i<=sysHogis; i++) stats[`${i}호기`] = { seed: sysSeed, qty: 0, avgPrice: 0, profit: 0, win: 0, loss: 0, firstDate: null };
+            for(let i=1; i<=sysHogis; i++) stats[`${i}호기`] = { seed: SLOT_BASE_SEED, qty: 0, avgPrice: 0, profit: 0, win: 0, loss: 0, firstDate: null };
 
             chronoData.forEach(row => {
                 let h = row.hogi; if(!stats[h]) return;
