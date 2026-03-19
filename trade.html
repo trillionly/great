@@ -44,6 +44,29 @@
         
         .btn-action { padding: 1px 5px !important; font-size: 0.65rem !important; margin: 0 1px; }
         #priceChangeBadge { font-size: 0.75rem; vertical-align: middle; margin-left: 5px; }
+        .mini-chart-shell {
+            width: 104px;
+            height: 40px;
+            flex: 0 0 104px;
+        }
+        #miniTrendChart {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+        }
+        #settingsSummary {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-align: center;
+        }
+        #summaryText {
+            display: block;
+            white-space: normal;
+            line-height: 1.35;
+        }
     </style>
 </head>
 <body>
@@ -72,7 +95,7 @@
                                 </div>
                                 <div class="col-3">
                                     <label class="form-label text-muted mb-1" style="font-size: 0.75rem;">기본시드($)</label>
-                                    <input type="number" id="setSeed" class="form-control form-control-sm" value="11000">
+                                    <input type="number" id="setSeed" class="form-control form-control-sm" value="66000">
                                 </div>
                                 <div class="col-3">
                                     <label class="form-label text-muted mb-1" style="font-size: 0.75rem;">매도 목표</label>
@@ -86,7 +109,7 @@
                             <button id="lockBtn" class="btn btn-primary btn-sm w-100 fw-bold mt-2" onclick="lockSettings()">새 매매 시작 (설정 확정)</button>
                         </div>
                         <div id="settingsSummary" class="d-none bg-light p-2 rounded text-center border mt-1">
-                            <span id="summaryText" class="fw-bold me-3" style="color: #1a237e;"></span>
+                            <span id="summaryText" class="fw-bold" style="color: #1a237e;"></span>
                             <button id="unlockBtn" class="btn btn-outline-secondary btn-sm" onclick="unlockSettings()" style="font-size:0.7rem;">초기화</button>
                         </div>
                     </div>
@@ -101,12 +124,12 @@
                             <span id="priceChangeBadge"></span>
                         </div>
                         <div class="d-flex align-items-center gap-2">
-                            <div style="width: 90px; height: 36px;">
+                            <div class="mini-chart-shell">
                                 <canvas id="miniTrendChart"></canvas>
                             </div>
                             <div class="d-flex flex-column gap-1">
-                                <button id="btn6mo" type="button" class="btn btn-primary" style="font-size:0.55rem; padding: 2px 4px; line-height: 1;" onclick="loadMiniChart(6)">6개월</button>
-                                <button id="btn12mo" type="button" class="btn btn-outline-secondary" style="font-size:0.55rem; padding: 2px 4px; line-height: 1;" onclick="loadMiniChart(12)">12개월</button>
+                                <button id="btn6mo" type="button" class="btn btn-primary" style="font-size:0.55rem; padding: 2px 4px; line-height: 1;" onclick="loadMiniChart(6)">6m</button>
+                                <button id="btn12mo" type="button" class="btn btn-outline-secondary" style="font-size:0.55rem; padding: 2px 4px; line-height: 1;" onclick="loadMiniChart(12)">12m</button>
                             </div>
                         </div>
                     </div>
@@ -231,7 +254,7 @@
         const TABLE_NAME = 'teol_sa_o_pal';
         const SETTINGS_TABLE = 'app_settings';
 
-        let sysHogis = 6, sysSeed = 11000, sysTarget = 0.7, sysDday = 45;
+        let sysHogis = 6, sysSeed = 66000, sysTarget = 0.7, sysDday = 45;
         let isLocked = false, globalData = [], globalStats = {}, myChart = null;
         let miniTrendChartInstance = null;
 
@@ -380,6 +403,146 @@
             }
         }
 
+        function formatSeedAmount(value) {
+            const numeric = Number(value);
+            return Number.isFinite(numeric) ? Math.round(numeric).toLocaleString() : '0';
+        }
+
+        function getSettingsSummaryHtml() {
+            return `[${sysHogis}분할] 기본시드 $${formatSeedAmount(sysSeed)}<br>매도 +${sysTarget}% | 손절 ${sysDday}일(영업일)`;
+        }
+
+        function normalizeMiniChartPrices(values) {
+            if (!Array.isArray(values)) return [];
+            return values
+                .map(value => Number(value))
+                .filter(value => Number.isFinite(value));
+        }
+
+        async function getMiniChartPricesFromYahoo(ticker, range) {
+            try {
+                const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=${range}&interval=1d`;
+                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`;
+                const response = await fetch(proxyUrl);
+                if (!response.ok) {
+                    throw new Error(`Yahoo request failed: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const result = data?.chart?.result;
+                const firstResult = Array.isArray(result) ? result[0] : null;
+                const closes = firstResult?.indicators?.quote?.[0]?.close;
+                const prices = normalizeMiniChartPrices(closes);
+
+                if (prices.length < 2) {
+                    throw new Error('Yahoo chart data is empty');
+                }
+
+                return prices;
+            } catch (error) {
+                console.warn('Mini chart Yahoo request failed:', error);
+                return null;
+            }
+        }
+
+        async function getMiniChartPricesFromFinnhub(ticker, months) {
+            try {
+                const to = Math.floor(Date.now() / 1000);
+                const from = to - Math.floor(months * 31 * 24 * 60 * 60);
+                const url = `https://finnhub.io/api/v1/stock/candle?symbol=${ticker}&resolution=D&from=${from}&to=${to}&token=${FINNHUB_KEY}`;
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`Finnhub request failed: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const prices = normalizeMiniChartPrices(data?.c);
+
+                if (data?.s !== 'ok' || prices.length < 2) {
+                    throw new Error('Finnhub chart data is empty');
+                }
+
+                return prices;
+            } catch (error) {
+                console.warn('Mini chart Finnhub request failed:', error);
+                return null;
+            }
+        }
+
+        function destroyMiniTrendChart() {
+            if (miniTrendChartInstance) {
+                miniTrendChartInstance.destroy();
+                miniTrendChartInstance = null;
+            }
+        }
+
+        function renderMiniTrendChart(prices) {
+            const safePrices = normalizeMiniChartPrices(prices);
+            const chartPrices = safePrices.length >= 2 ? safePrices : [1, 1];
+            const minVal = Math.min(...chartPrices);
+            const maxVal = Math.max(...chartPrices);
+            const padding = Math.max((maxVal - minVal) * 0.15, 0.5);
+            const ctx = document.getElementById('miniTrendChart').getContext('2d');
+
+            destroyMiniTrendChart();
+
+            miniTrendChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartPrices.map((_, index) => index),
+                    datasets: [{
+                        data: chartPrices,
+                        borderColor: '#d32f2f',
+                        borderWidth: 1.4,
+                        fill: false,
+                        pointRadius: 0,
+                        pointHoverRadius: 0,
+                        tension: 0.18
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false }
+                    },
+                    scales: {
+                        x: { display: false },
+                        y: {
+                            display: false,
+                            min: minVal - padding,
+                            max: maxVal + padding
+                        }
+                    },
+                    layout: { padding: 0 }
+                }
+            });
+        }
+
+        async function loadMiniChart(months) {
+            const ticker = document.getElementById('tickerInput').value.toUpperCase();
+            if (!ticker) return;
+
+            document.getElementById('btn6mo').className = months === 6 ? 'btn btn-primary' : 'btn btn-outline-secondary';
+            document.getElementById('btn12mo').className = months === 12 ? 'btn btn-primary' : 'btn btn-outline-secondary';
+
+            const range = months === 6 ? '6mo' : '1y';
+            let prices = null;
+
+            try {
+                prices = await getMiniChartPricesFromYahoo(ticker, range);
+                if (!prices) {
+                    prices = await getMiniChartPricesFromFinnhub(ticker, months);
+                }
+            } catch (error) {
+                console.warn('Mini chart load failed unexpectedly:', error);
+            }
+
+            renderMiniTrendChart(prices);
+        }
+
         function calcTodayBuyPrice() {
             const current = parseFloat(document.getElementById('currentPrice').value);
             document.getElementById('todayBuyPrice').innerText = current ? (current * 0.999).toFixed(2) : '-';
@@ -394,7 +557,7 @@
                 document.getElementById('settingsForm').classList.add('d-none');
                 document.getElementById('settingsSummary').classList.remove('d-none');
                 document.getElementById('lockStatus').classList.remove('d-none');
-                document.getElementById('summaryText').innerText = `[${sysHogis}분할] 기본시드 $${sysSeed.toLocaleString()} | 매도 +${sysTarget}% | 손절 ${sysDday}일(영업일)`;
+                document.getElementById('summaryText').innerHTML = getSettingsSummaryHtml();
             } else {
                 isLocked = false;
                 if(data) {
