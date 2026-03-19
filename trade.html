@@ -100,6 +100,12 @@
             width: 46px;
             min-width: 46px;
         }
+        #chartSourceBadge {
+            align-self: flex-start;
+            font-size: 0.58rem;
+            line-height: 1;
+            padding: 4px 6px;
+        }
         @media (max-width: 767px) {
             .price-card-header {
                 flex-wrap: wrap;
@@ -193,6 +199,7 @@
                                 <canvas id="miniTrendChart"></canvas>
                             </div>
                             <div class="mini-chart-buttons">
+                                <span id="chartSourceBadge" class="badge bg-secondary">Chart idle</span>
                                 <button id="btn6mo" type="button" class="btn btn-primary" style="font-size:0.55rem; padding: 2px 4px; line-height: 1;" onclick="loadMiniChart(6)">6m</button>
                                 <button id="btn12mo" type="button" class="btn btn-outline-secondary" style="font-size:0.55rem; padding: 2px 4px; line-height: 1;" onclick="loadMiniChart(12)">12m</button>
                             </div>
@@ -403,7 +410,7 @@
         }
 
         // 스파크라인 로직 (Y축 강제 확장 및 버튼 색상 토글 적용)
-        async function loadMiniChart(months) {
+        async function loadMiniChartLegacy(months) {
             const ticker = document.getElementById('tickerInput').value.toUpperCase();
             if(!ticker) return;
 
@@ -491,6 +498,13 @@
                 .filter(value => Number.isFinite(value));
         }
 
+        function setMiniChartSourceBadge(label, badgeClass = 'bg-secondary') {
+            const badge = document.getElementById('chartSourceBadge');
+            if (!badge) return;
+            badge.innerText = label;
+            badge.className = `badge ${badgeClass}`;
+        }
+
         async function getMiniChartPricesFromYahoo(ticker, range) {
             try {
                 const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=${range}&interval=1d`;
@@ -510,7 +524,7 @@
                     throw new Error('Yahoo chart data is empty');
                 }
 
-                return prices;
+                return { prices, sourceLabel: 'Chart Yahoo', sourceClass: 'bg-success' };
             } catch (error) {
                 console.warn('Mini chart Yahoo request failed:', error);
                 return null;
@@ -536,7 +550,7 @@
                     throw new Error('Secondary proxy chart data is empty');
                 }
 
-                return prices;
+                return { prices, sourceLabel: 'Chart Proxy', sourceClass: 'bg-info text-dark' };
             } catch (error) {
                 console.warn('Mini chart secondary proxy request failed:', error);
                 return null;
@@ -561,7 +575,7 @@
                     throw new Error('Finnhub chart data is empty');
                 }
 
-                return prices;
+                return { prices, sourceLabel: 'Chart Finnhub', sourceClass: 'bg-warning text-dark' };
             } catch (error) {
                 console.warn('Mini chart Finnhub request failed:', error);
                 return null;
@@ -619,23 +633,30 @@
 
             document.getElementById('btn6mo').className = months === 6 ? 'btn btn-primary' : 'btn btn-outline-secondary';
             document.getElementById('btn12mo').className = months === 12 ? 'btn btn-primary' : 'btn btn-outline-secondary';
+            setMiniChartSourceBadge('Chart loading', 'bg-secondary');
 
             const range = months === 6 ? '6mo' : '1y';
-            let prices = null;
+            let chartResult = null;
 
             try {
-                prices = await getMiniChartPricesFromYahoo(ticker, range);
-                if (!prices) {
-                    prices = await getMiniChartPricesFromSecondaryProxy(ticker, range);
+                chartResult = await getMiniChartPricesFromYahoo(ticker, range);
+                if (!chartResult) {
+                    chartResult = await getMiniChartPricesFromSecondaryProxy(ticker, range);
                 }
-                if (!prices) {
-                    prices = await getMiniChartPricesFromFinnhub(ticker, months);
+                if (!chartResult) {
+                    chartResult = await getMiniChartPricesFromFinnhub(ticker, months);
                 }
             } catch (error) {
                 console.warn('Mini chart load failed unexpectedly:', error);
             }
 
-            renderMiniTrendChart(prices);
+            if (chartResult?.prices?.length >= 2) {
+                setMiniChartSourceBadge(chartResult.sourceLabel, chartResult.sourceClass);
+                renderMiniTrendChart(chartResult.prices);
+            } else {
+                setMiniChartSourceBadge('Chart fallback', 'bg-secondary');
+                renderMiniTrendChart([1, 1]);
+            }
         }
 
         function calcTodayBuyPrice() {
