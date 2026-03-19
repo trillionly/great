@@ -53,9 +53,19 @@
             min-width: 0;
             flex: 1 1 220px;
             display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: center;
+            gap: 2px;
+        }
+        .price-card-title-line {
+            display: flex;
             align-items: center;
-            flex-wrap: wrap;
-            gap: 4px 6px;
+            gap: 6px;
+            min-width: 0;
+        }
+        .price-card-change-line {
+            min-height: 18px;
         }
         .price-card-tools {
             display: flex;
@@ -89,6 +99,7 @@
         @media (max-width: 767px) {
             .price-card-summary {
                 flex: 1 1 100%;
+                align-items: flex-start;
             }
             .price-card-tools {
                 width: 100%;
@@ -161,8 +172,13 @@
                 <div class="card h-100 mb-0">
                     <div class="card-header d-flex justify-content-between align-items-center price-card-header" style="min-height: 58px; padding: 6px 16px;">
                         <div class="price-card-summary" style="margin-right: 5px;">
-                            <span>실시간 시세 <span id="dataSource" class="badge bg-secondary ms-1" style="font-size:0.6rem;">대기중</span></span>
-                            <span id="priceChangeBadge"></span>
+                            <div class="price-card-title-line">
+                                <span>실시간 시세</span>
+                                <span id="dataSource" class="badge bg-secondary" style="font-size:0.6rem;">대기중</span>
+                            </div>
+                            <div class="price-card-change-line">
+                                <span id="priceChangeBadge"></span>
+                            </div>
                         </div>
                         <div class="price-card-tools">
                             <div class="mini-chart-shell">
