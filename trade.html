@@ -491,27 +491,6 @@
                 .filter(value => Number.isFinite(value));
         }
 
-        function sanitizeMiniChartTail(prices) {
-            if (!Array.isArray(prices) || prices.length < 3) return prices;
-
-            const cleanPrices = [...prices];
-            const lastPrice = cleanPrices[cleanPrices.length - 1];
-            const prevPrice = cleanPrices[cleanPrices.length - 2];
-
-            if (!Number.isFinite(lastPrice) || !Number.isFinite(prevPrice) || prevPrice <= 0) {
-                return cleanPrices;
-            }
-
-            const changeRatio = lastPrice / prevPrice;
-            const hasUnrealisticTail = lastPrice <= 0 || changeRatio >= 1.4 || changeRatio <= 0.6;
-
-            if (hasUnrealisticTail && cleanPrices.length - 1 >= 2) {
-                cleanPrices.pop();
-            }
-
-            return cleanPrices;
-        }
-
         async function getMiniChartPricesFromYahoo(ticker, range) {
             try {
                 const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=${range}&interval=1d`;
@@ -567,7 +546,8 @@
         async function getMiniChartPricesFromFinnhub(ticker, months) {
             try {
                 const to = Math.floor(Date.now() / 1000);
-                const from = to - Math.floor(months * 31 * 24 * 60 * 60);
+                const days = months === 6 ? 180 : 365;
+                const from = to - (days * 24 * 60 * 60);
                 const url = `https://finnhub.io/api/v1/stock/candle?symbol=${ticker}&resolution=D&from=${from}&to=${to}&token=${FINNHUB_KEY}`;
                 const response = await fetch(url);
                 if (!response.ok) {
@@ -596,11 +576,8 @@
         }
 
         function renderMiniTrendChart(prices) {
-            const safePrices = sanitizeMiniChartTail(normalizeMiniChartPrices(prices));
+            const safePrices = normalizeMiniChartPrices(prices);
             const chartPrices = safePrices.length >= 2 ? safePrices : [1, 1];
-            const minVal = Math.min(...chartPrices);
-            const maxVal = Math.max(...chartPrices);
-            const padding = Math.max((maxVal - minVal) * 0.15, 0.5);
             const ctx = document.getElementById('miniTrendChart').getContext('2d');
 
             destroyMiniTrendChart();
@@ -612,11 +589,11 @@
                     datasets: [{
                         data: chartPrices,
                         borderColor: '#d32f2f',
-                        borderWidth: 1.4,
+                        borderWidth: 1.5,
                         fill: false,
                         pointRadius: 0,
                         pointHoverRadius: 0,
-                        tension: 0.18
+                        tension: 0.3
                     }]
                 },
                 options: {
@@ -629,11 +606,7 @@
                     },
                     scales: {
                         x: { display: false },
-                        y: {
-                            display: false,
-                            min: minVal - padding,
-                            max: maxVal + padding
-                        }
+                        y: { display: false }
                     },
                     layout: { padding: 0 }
                 }
