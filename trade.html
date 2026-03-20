@@ -286,10 +286,10 @@
                     <div class="card-body">
                         <div class="main-trend-toolbar">
                             <div class="main-trend-buttons">
-                                <button type="button" class="btn btn-outline-secondary">7D</button>
-                                <button type="button" class="btn btn-primary">30D</button>
-                                <button type="button" class="btn btn-outline-secondary">60D</button>
-                                <button type="button" class="btn btn-outline-secondary">180D</button>
+                                <button id="mainTrendBtn7" type="button" class="btn btn-outline-secondary" onclick="loadMainTrendChart(7)">7D</button>
+                                <button id="mainTrendBtn30" type="button" class="btn btn-primary" onclick="loadMainTrendChart(30)">30D</button>
+                                <button id="mainTrendBtn60" type="button" class="btn btn-outline-secondary" onclick="loadMainTrendChart(60)">60D</button>
+                                <button id="mainTrendBtn180" type="button" class="btn btn-outline-secondary" onclick="loadMainTrendChart(180)">180D</button>
                             </div>
                         </div>
                         <div class="main-trend-shell">
@@ -401,7 +401,8 @@
 
         let sysHogis = 6, sysSeed = 66000, sysTarget = 0.7, sysDday = 45;
         let isLocked = false, globalData = [], globalStats = {}, myChart = null;
-        let miniTrendChartInstance = null;
+        let miniTrendChartInstance = null, mainTrendChartInstance = null;
+        let currentMainChartRange = 30;
 
         document.getElementById('dateInput').valueAsDate = new Date();
 
@@ -471,6 +472,7 @@
                     document.getElementById('priceInput').value = price.toFixed(2); 
                 }
                 calcTodayBuyPrice();
+                loadMainTrendChart(currentMainChartRange);
                 
                 loadMiniChart(6); // 6개월 디폴트 차트 호출
             } else {
@@ -572,6 +574,236 @@
             return values
                 .map(value => Number(value))
                 .filter(value => Number.isFinite(value));
+        }
+
+        function formatMainTrendLabel(timestamp) {
+            const date = new Date(timestamp);
+            if (Number.isNaN(date.getTime())) return '';
+            return `${date.getMonth() + 1}/${date.getDate()}`;
+        }
+
+        function getMainChartTickLimit(days) {
+            if (days <= 7) return 7;
+            if (days <= 30) return 6;
+            if (days <= 60) return 7;
+            return 8;
+        }
+
+        function buildMainChartPlaceholder(days) {
+            const pointCount = days <= 7 ? 7 : (days <= 30 ? 10 : (days <= 60 ? 12 : 16));
+            const now = Date.now();
+            const step = Math.max(1, Math.floor(days / Math.max(1, pointCount - 1)));
+            const labels = [];
+            const prices = [];
+
+            for (let i = pointCount - 1; i >= 0; i--) {
+                const timestamp = now - (i * step * 24 * 60 * 60 * 1000);
+                labels.push(formatMainTrendLabel(timestamp));
+            }
+
+            for (let i = 0; i < pointCount; i++) {
+                prices.push(100 + Math.sin(i / 2) * 2 + (i * 0.35));
+            }
+
+            return { labels, prices };
+        }
+
+        function parseYahooMainChartResponse(data) {
+            const chart = data?.chart;
+            const result = Array.isArray(chart?.result) ? chart.result[0] : null;
+            const timestamps = Array.isArray(result?.timestamp) ? result.timestamp : null;
+            const closes = Array.isArray(result?.indicators?.quote?.[0]?.close) ? result.indicators.quote[0].close : null;
+
+            if (!timestamps || !closes) return null;
+
+            const labels = [];
+            const prices = [];
+            const len = Math.min(timestamps.length, closes.length);
+
+            for (let i = 0; i < len; i++) {
+                const price = Number(closes[i]);
+                const timestamp = Number(timestamps[i]);
+                if (!Number.isFinite(price) || !Number.isFinite(timestamp)) continue;
+                labels.push(formatMainTrendLabel(timestamp * 1000));
+                prices.push(price);
+            }
+
+            return prices.length >= 2 ? { labels, prices } : null;
+        }
+
+        function parseFinnhubMainChartResponse(data) {
+            if (data?.s !== 'ok') return null;
+            const closes = Array.isArray(data?.c) ? data.c : null;
+            const timestamps = Array.isArray(data?.t) ? data.t : null;
+            if (!closes || !timestamps) return null;
+
+            const labels = [];
+            const prices = [];
+            const len = Math.min(closes.length, timestamps.length);
+
+            for (let i = 0; i < len; i++) {
+                const price = Number(closes[i]);
+                const timestamp = Number(timestamps[i]);
+                if (!Number.isFinite(price) || !Number.isFinite(timestamp)) continue;
+                labels.push(formatMainTrendLabel(timestamp * 1000));
+                prices.push(price);
+            }
+
+            return prices.length >= 2 ? { labels, prices } : null;
+        }
+
+        async function fetchMainChartPricesFromYahoo(ticker, days, proxyBaseUrl) {
+            const to = Math.floor(Date.now() / 1000);
+            const from = to - (days * 24 * 60 * 60);
+            const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?period1=${from}&period2=${to}&interval=1d&includePrePost=false&events=div%2Csplits`;
+            const response = await fetch(`${proxyBaseUrl}${encodeURIComponent(yahooUrl)}`);
+            if (!response.ok) {
+                throw new Error(`Yahoo request failed: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const parsed = parseYahooMainChartResponse(data);
+            if (!parsed) {
+                throw new Error('Yahoo chart data is empty');
+            }
+
+            return parsed;
+        }
+
+        async function fetchMainChartPricesFromFinnhub(ticker, days) {
+            const to = Math.floor(Date.now() / 1000);
+            const from = to - (days * 24 * 60 * 60);
+            const url = `https://finnhub.io/api/v1/stock/candle?symbol=${ticker}&resolution=D&from=${from}&to=${to}&token=${FINNHUB_KEY}`;
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`Finnhub request failed: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const parsed = parseFinnhubMainChartResponse(data);
+            if (!parsed) {
+                throw new Error('Finnhub chart data is empty');
+            }
+
+            return parsed;
+        }
+
+        async function fetchMainChartPrices(ticker, days) {
+            try {
+                return await fetchMainChartPricesFromYahoo(ticker, days, 'https://corsproxy.io/?');
+            } catch (error) {
+                console.warn('Main chart Yahoo corsproxy request failed:', error);
+            }
+
+            try {
+                return await fetchMainChartPricesFromYahoo(ticker, days, 'https://api.allorigins.win/raw?url=');
+            } catch (error) {
+                console.warn('Main chart Yahoo allorigins request failed:', error);
+            }
+
+            try {
+                return await fetchMainChartPricesFromFinnhub(ticker, days);
+            } catch (error) {
+                console.warn('Main chart Finnhub request failed:', error);
+            }
+
+            return buildMainChartPlaceholder(days);
+        }
+
+        function destroyMainTrendChart() {
+            if (mainTrendChartInstance) {
+                mainTrendChartInstance.destroy();
+                mainTrendChartInstance = null;
+            }
+        }
+
+        function setActiveMainTrendRange(days) {
+            currentMainChartRange = days;
+            [7, 30, 60, 180].forEach(range => {
+                const button = document.getElementById(`mainTrendBtn${range}`);
+                if (!button) return;
+                button.className = range === days ? 'btn btn-primary' : 'btn btn-outline-secondary';
+            });
+        }
+
+        function renderMainTrendChart(labels, prices) {
+            const canvas = document.getElementById('mainTrendChart');
+            if (!canvas) return;
+
+            const safePrices = Array.isArray(prices) ? prices.map(value => Number(value)).filter(value => Number.isFinite(value)) : [];
+            const safeLabels = Array.isArray(labels) ? labels.slice(0, safePrices.length) : [];
+            const chartData = safePrices.length >= 2 ? safePrices : [100, 101];
+            const chartLabels = safeLabels.length === chartData.length
+                ? safeLabels
+                : chartData.map((_, index) => `${index + 1}`);
+            const tickLimit = getMainChartTickLimit(currentMainChartRange);
+            const ctx = canvas.getContext('2d');
+
+            destroyMainTrendChart();
+
+            mainTrendChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartLabels,
+                    datasets: [{
+                        data: chartData,
+                        borderColor: '#d32f2f',
+                        borderWidth: 1.6,
+                        fill: false,
+                        pointRadius: 0,
+                        pointHoverRadius: 3,
+                        tension: 0.25
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            enabled: true,
+                            intersect: false,
+                            mode: 'index'
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false, drawBorder: false },
+                            ticks: {
+                                color: '#6c757d',
+                                autoSkip: true,
+                                maxTicksLimit: tickLimit,
+                                maxRotation: 0,
+                                minRotation: 0
+                            }
+                        },
+                        y: {
+                            grid: { color: 'rgba(0, 0, 0, 0.06)', drawBorder: false },
+                            ticks: {
+                                color: '#6c757d',
+                                maxTicksLimit: 5,
+                                callback: (value) => Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 })
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        async function loadMainTrendChart(days = currentMainChartRange) {
+            const ticker = document.getElementById('tickerInput')?.value?.toUpperCase();
+            setActiveMainTrendRange(days);
+
+            const chartPayload = ticker
+                ? await fetchMainChartPrices(ticker, days)
+                : buildMainChartPlaceholder(days);
+
+            renderMainTrendChart(chartPayload.labels, chartPayload.prices);
         }
 
         async function getMiniChartPricesFromYahoo(ticker, range) {
@@ -794,7 +1026,10 @@
         }
 
         window.onload = async () => { 
-            await loadSettings(); await loadData(); fetchTicker(); 
+            await loadSettings();
+            await loadData();
+            await fetchTicker();
+            await loadMainTrendChart(currentMainChartRange);
         };
 
         async function loadData() {
