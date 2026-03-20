@@ -1132,8 +1132,10 @@
                         legend: { display: false },
                         tooltip: {
                             enabled: true,
+                            displayColors: false,
                             intersect: false,
-                            mode: 'index',
+                            mode: 'nearest',
+                            filter: (context) => !context.dataset.tradeMarker,
                             callbacks: {
                                 label: (context) => {
                                     const raw = context.raw || {};
@@ -1147,7 +1149,8 @@
                     },
                     interaction: {
                         intersect: false,
-                        mode: 'index'
+                        mode: 'nearest',
+                        axis: 'x'
                     },
                     scales: {
                         x: {
