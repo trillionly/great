@@ -720,7 +720,12 @@
         function formatMainTrendLabel(timestamp) {
             const date = new Date(timestamp);
             if (Number.isNaN(date.getTime())) return '';
-            return `${date.getMonth() + 1}/${date.getDate()}`;
+            const formatter = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'America/New_York',
+                month: 'numeric',
+                day: 'numeric'
+            });
+            return formatter.format(date);
         }
 
         function parseChartPrice(value) {
@@ -1112,44 +1117,11 @@
                             mode: 'index',
                             callbacks: {
                                 label: (context) => {
-                                    const dataset = context.dataset;
-                                    if (dataset.tradeMarker) {
-                                        const raw = context.raw || {};
-                                        const closePrice = Number.isFinite(raw.closePrice)
-                                            ? Number(raw.closePrice).toFixed(2)
-                                            : '-';
-                                        const quantity = Number.isFinite(raw.quantity)
-                                            ? Number(raw.quantity).toLocaleString()
-                                            : '0';
-                                        const amount = Number.isFinite(raw.amount)
-                                            ? Number(raw.amount).toLocaleString(undefined, { maximumFractionDigits: 2 })
-                                            : '0';
-
-                                        if (dataset.label === '매도') {
-                                            const profitRate = Number.isFinite(raw.profitRate)
-                                                ? `${Number(raw.profitRate).toFixed(2)}%`
-                                                : '-';
-                                            const profit = Number.isFinite(raw.profit)
-                                                ? Number(raw.profit).toLocaleString(undefined, { maximumFractionDigits: 2 })
-                                                : '0';
-                                            return [
-                                                ` ${dataset.label}`,
-                                                ` 종가 ${closePrice}`,
-                                                ` ${quantity}주`,
-                                                ` 얼마 ${amount}`,
-                                                ` 수익률 ${profitRate}`,
-                                                ` 수익금 ${profit}`
-                                            ];
-                                        }
-
-                                        return [
-                                            ` ${dataset.label}`,
-                                            ` 종가 ${closePrice}`,
-                                            ` ${quantity}주`,
-                                            ` 얼마 ${amount}`
-                                        ];
-                                    }
-                                    return ` 종가 ${Number(context.parsed.y).toFixed(2)}`;
+                                    const raw = context.raw || {};
+                                    const closePrice = Number.isFinite(raw.closePrice)
+                                        ? Number(raw.closePrice).toFixed(2)
+                                        : Number(context.parsed.y).toFixed(2);
+                                    return ` 종가 ${closePrice}`;
                                 }
                             }
                         }
