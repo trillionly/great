@@ -735,6 +735,44 @@
             return Number.isFinite(timestamp) ? timestamp : null;
         }
 
+        function getNewYorkDateParts(timestamp = Date.now()) {
+            const formatter = new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'America/New_York',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                hour12: false
+            });
+            const parts = formatter.formatToParts(new Date(timestamp));
+            const map = {};
+            parts.forEach(part => {
+                if (part.type !== 'literal') map[part.type] = part.value;
+            });
+            return {
+                dateKey: `${map.year}-${map.month}-${map.day}`,
+                hour: Number(map.hour || '0')
+            };
+        }
+
+        function finalizeMainChartPoints(points) {
+            if (!Array.isArray(points) || points.length < 2) return null;
+
+            const nowNy = getNewYorkDateParts();
+            const filtered = points.filter(point => {
+                const pointNy = getNewYorkDateParts(point.timestamp);
+                if (pointNy.dateKey > nowNy.dateKey) return false;
+                if (pointNy.dateKey === nowNy.dateKey && nowNy.hour < 16) return false;
+                return true;
+            });
+
+            const safePoints = filtered.length >= 2 ? filtered : points;
+            return {
+                labels: safePoints.map(point => formatMainTrendLabel(point.timestamp)),
+                prices: safePoints.map(point => point.price)
+            };
+        }
+
         function getMainChartTickLimit(days) {
             if (days <= 7) return 7;
             if (days <= 30) return 6;
@@ -769,19 +807,17 @@
 
             if (!timestamps || !closes) return null;
 
-            const labels = [];
-            const prices = [];
+            const points = [];
             const len = Math.min(timestamps.length, closes.length);
 
             for (let i = 0; i < len; i++) {
                 const price = parseChartPrice(closes[i]);
                 const timestamp = parseChartTimestamp(timestamps[i]);
                 if (price === null || timestamp === null) continue;
-                labels.push(formatMainTrendLabel(timestamp * 1000));
-                prices.push(price);
+                points.push({ timestamp: timestamp * 1000, price });
             }
 
-            return prices.length >= 2 ? { labels, prices } : null;
+            return finalizeMainChartPoints(points);
         }
 
         function parseFinnhubMainChartResponse(data) {
@@ -790,19 +826,17 @@
             const timestamps = Array.isArray(data?.t) ? data.t : null;
             if (!closes || !timestamps) return null;
 
-            const labels = [];
-            const prices = [];
+            const points = [];
             const len = Math.min(closes.length, timestamps.length);
 
             for (let i = 0; i < len; i++) {
                 const price = parseChartPrice(closes[i]);
                 const timestamp = parseChartTimestamp(timestamps[i]);
                 if (price === null || timestamp === null) continue;
-                labels.push(formatMainTrendLabel(timestamp * 1000));
-                prices.push(price);
+                points.push({ timestamp: timestamp * 1000, price });
             }
 
-            return prices.length >= 2 ? { labels, prices } : null;
+            return finalizeMainChartPoints(points);
         }
 
         async function fetchMainChartPricesFromYahoo(ticker, days, proxyBaseUrl) {
