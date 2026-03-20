@@ -325,11 +325,11 @@
                                 </div>
                                 <div class="col-3">
                                     <label class="form-label text-muted mb-1" style="font-size: 0.75rem;">매도 목표</label>
-                                    <select id="setTarget" class="form-select form-select-sm"><option value="0.5">0.5%</option><option value="0.7" selected>0.7%</option><option value="1.0">1.0%</option></select>
+                                    <input type="number" id="setTarget" class="form-control form-control-sm" value="0.7" step="0.1" min="0">
                                 </div>
                                 <div class="col-3">
                                     <label class="form-label text-muted mb-1" style="font-size: 0.75rem;">손절(D-day)</label>
-                                    <select id="setDday" class="form-select form-select-sm"><option value="15">15일</option><option value="30">30일</option><option value="45" selected>45일</option><option value="60">60일</option></select>
+                                    <input type="number" id="setDday" class="form-control form-control-sm" value="45" step="1" min="1">
                                 </div>
                             </div>
                             <button id="lockBtn" class="btn btn-primary btn-sm w-100 fw-bold mt-2" onclick="lockSettings()">새 매매 시작 (설정 확정)</button>
@@ -955,12 +955,40 @@
             passwordInput.focus();
         }
 
+        function syncSettingsFormFields() {
+            document.getElementById('setHogis').value = sysHogis;
+            document.getElementById('setSeed').value = sysSeed;
+            document.getElementById('setTarget').value = sysTarget;
+            document.getElementById('setDday').value = sysDday;
+        }
+
+        function setSettingsEditMode(isEditing) {
+            const form = document.getElementById('settingsForm');
+            const summary = document.getElementById('settingsSummary');
+            const lockStatus = document.getElementById('lockStatus');
+            const unlockBtn = document.getElementById('unlockBtn');
+            const lockBtn = document.getElementById('lockBtn');
+
+            if (isEditing) {
+                syncSettingsFormFields();
+                form.classList.remove('d-none');
+                summary.classList.add('d-none');
+                lockStatus.classList.add('d-none');
+                unlockBtn.classList.add('d-none');
+                lockBtn.innerText = '설정 저장 후 잠금';
+                return;
+            }
+
+            form.classList.add('d-none');
+            summary.classList.remove('d-none');
+            lockStatus.classList.remove('d-none');
+            unlockBtn.classList.remove('d-none');
+            lockBtn.innerText = '새 매매 시작 (설정 확정)';
+        }
+
         function applyTemporarySettingsAccess() {
             temporarySettingsAccess = true;
-            document.getElementById('settingsForm').classList.remove('d-none');
-            document.getElementById('settingsSummary').classList.add('d-none');
-            document.getElementById('lockStatus').classList.add('d-none');
-            document.getElementById('unlockBtn').classList.remove('d-none');
+            setSettingsEditMode(true);
         }
 
         function confirmUnlockPassword() {
@@ -994,10 +1022,8 @@
                 sysSeed = normalizeSeedValue(data.sys_seed);
                 sysTarget = Number(data.sys_target) || 0.7;
                 sysDday = Number(data.sys_dday) || 45;
-                document.getElementById('settingsForm').classList.add('d-none');
-                document.getElementById('settingsSummary').classList.remove('d-none');
-                document.getElementById('lockStatus').classList.remove('d-none');
-                document.getElementById('unlockBtn').classList.remove('d-none');
+                syncSettingsFormFields();
+                setSettingsEditMode(false);
                 document.getElementById('summaryText').innerHTML = getSettingsSummaryHtml();
             } else {
                 isLocked = false;
@@ -1011,6 +1037,7 @@
                 document.getElementById('settingsSummary').classList.add('d-none');
                 document.getElementById('lockStatus').classList.add('d-none');
                 document.getElementById('unlockBtn').classList.add('d-none');
+                document.getElementById('lockBtn').innerText = '새 매매 시작 (설정 확정)';
             }
             updateHogiSelect();
         }
@@ -1027,6 +1054,7 @@
             const check = await client.from(SETTINGS_TABLE).select('id').eq('id', 1).single();
             if(check.data) { await client.from(SETTINGS_TABLE).update(payload).eq('id', 1); } 
             else { await client.from(SETTINGS_TABLE).insert([payload]); }
+            temporarySettingsAccess = false;
             btn.innerText = "새 매매 시작 (설정 확정)"; btn.disabled = false;
             await loadSettings(); await loadData();
         }
@@ -1040,6 +1068,48 @@
 
         async function unlockSettings() {
             showResetPrompt();
+        }
+
+        function confirmUnlockPassword() {
+            const input = document.getElementById('resetPasswordInput');
+            const errorBox = document.getElementById('resetPasswordError');
+            const successBox = document.getElementById('resetPasswordSuccess');
+            const password = (input.value || '').trim();
+
+            errorBox.innerText = '';
+            successBox.innerText = '';
+
+            if (password !== DEFAULT_RESET_PASSWORD) {
+                errorBox.innerText = '비밀번호가 틀렸습니다.';
+                input.focus();
+                input.select();
+                return;
+            }
+
+            successBox.innerText = '확인되었습니다. 설정 수정 화면을 엽니다.';
+            applyTemporarySettingsAccess();
+            setTimeout(() => hideResetPrompt(false), 500);
+        }
+
+        function confirmUnlockPassword() {
+            const input = document.getElementById('resetPasswordInput');
+            const errorBox = document.getElementById('resetPasswordError');
+            const successBox = document.getElementById('resetPasswordSuccess');
+            const password = (input.value || '').trim();
+
+            errorBox.innerText = '';
+            successBox.innerText = '';
+
+            if (password !== DEFAULT_RESET_PASSWORD) {
+                errorBox.innerText = '비밀번호가 틀렸습니다.';
+                input.focus();
+                input.select();
+                return;
+            }
+
+            successBox.innerText = '확인되었습니다. 설정 수정 화면을 엽니다.';
+            applyTemporarySettingsAccess();
+            setTimeout(() => hideResetPrompt(false), 500);
         }
 
         function updateHogiSelect() {
