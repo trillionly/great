@@ -43,20 +43,34 @@
         .nav-links a:hover { color: #1a237e; text-decoration: underline; }
         
         .btn-action { padding: 1px 5px !important; font-size: 0.65rem !important; margin: 0 1px; }
-        #priceChangeBadge { font-size: 0.75rem; vertical-align: middle; margin-left: 5px; }
+        #priceChangeBadge { font-size: 0.75rem; vertical-align: middle; margin-left: 2px; }
+        .top-card { height: 100%; }
+        .settings-card-header { min-height: 58px; padding: 10px 16px; }
+        .settings-header-tools {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: auto;
+        }
+        .settings-header-tools .btn {
+            font-size: 0.72rem;
+            padding: 3px 10px;
+            line-height: 1.15;
+        }
         .price-card-header {
-            gap: 12px;
+            gap: 8px;
             flex-wrap: nowrap;
-            align-items: flex-start;
+            align-items: center;
         }
         .price-card-summary {
             min-width: 0;
             flex: 1 1 auto;
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
             align-items: flex-start;
             justify-content: center;
-            gap: 0;
+            gap: 8px;
+            flex-wrap: wrap;
         }
         .price-card-title-line {
             display: flex;
@@ -64,11 +78,14 @@
             gap: 6px;
             min-width: 0;
             line-height: 1.1;
+            flex-wrap: wrap;
         }
         .price-card-change-line {
-            min-height: 18px;
-            margin-top: 4px;
+            min-height: 0;
+            margin-top: 0;
             line-height: 1.1;
+            display: flex;
+            align-items: center;
         }
         .main-trend-card {
             margin-top: 0 !important;
@@ -180,18 +197,26 @@
             100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(26, 35, 126, 0); }
         }
         @media (max-width: 767px) {
+            .settings-card-header {
+                align-items: flex-start !important;
+                gap: 8px;
+            }
+            .settings-header-tools {
+                width: 100%;
+                justify-content: flex-end;
+            }
             .price-card-header {
                 gap: 8px;
-                align-items: stretch;
+                align-items: flex-start;
                 padding: 6px 12px !important;
             }
             .price-card-summary {
-                flex: 1 1 0;
+                flex: 1 1 100%;
                 margin-right: 0 !important;
-                justify-content: center;
+                gap: 4px;
             }
             #priceChangeBadge {
-                margin-left: 0;
+                margin-left: 2px;
             }
             .main-trend-card .card-body {
                 padding: 10px 12px 12px;
@@ -226,13 +251,44 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 6px;
             text-align: center;
         }
         #summaryText {
             display: block;
             white-space: pre-line;
             line-height: 1.35;
+        }
+        .reset-prompt {
+            background: #f8f9fc;
+            border: 1px solid #dbe2ef;
+            border-radius: 10px;
+            padding: 12px;
+        }
+        .reset-prompt-label {
+            font-size: 0.76rem;
+            font-weight: 700;
+            color: #1a237e;
+            margin-bottom: 8px;
+        }
+        .reset-prompt-note {
+            font-size: 0.72rem;
+            color: #6c757d;
+            margin-top: 6px;
+        }
+        .reset-prompt-error {
+            font-size: 0.72rem;
+            color: #d32f2f;
+            font-weight: 700;
+            min-height: 18px;
+            margin-top: 6px;
+        }
+        .reset-prompt-success {
+            font-size: 0.72rem;
+            color: #2e7d32;
+            font-weight: 700;
+            min-height: 18px;
+            margin-top: 6px;
         }
     </style>
 </head>
@@ -248,10 +304,13 @@
         
         <div class="row g-3 mb-3">
             <div class="col-md-6">
-                <div class="card mb-0">
-                    <div class="card-header d-flex justify-content-between align-items-center" style="min-height: 58px; padding: 10px 16px;">
+                <div class="card mb-0 top-card">
+                    <div class="card-header d-flex justify-content-between align-items-center settings-card-header">
                         <span>매매 시스템 세팅</span>
-                        <span id="lockStatus" class="badge bg-danger d-none" style="font-size: 0.7rem;">잠금됨 (DB 동기화)</span>
+                        <div class="settings-header-tools">
+                            <span id="lockStatus" class="badge bg-danger d-none" style="font-size: 0.7rem;">잠금됨 (DB 동기화)</span>
+                            <button id="unlockBtn" class="btn btn-outline-secondary btn-sm d-none" onclick="unlockSettings()">초기화</button>
+                        </div>
                     </div>
                     <div class="card-body p-3">
                         <div id="settingsForm">
@@ -277,21 +336,29 @@
                         </div>
                         <div id="settingsSummary" class="d-none bg-light p-2 rounded text-center border mt-1">
                             <span id="summaryText" class="fw-bold" style="color: #1a237e;"></span>
-                            <button id="unlockBtn" class="btn btn-outline-secondary btn-sm" onclick="unlockSettings()" style="font-size:0.7rem;">초기화</button>
+                        </div>
+                        <div id="resetPrompt" class="reset-prompt d-none mt-2">
+                            <div class="reset-prompt-label">비번 숫자 6자리</div>
+                            <div class="input-group input-group-sm">
+                                <input type="password" id="resetPasswordInput" class="form-control" inputmode="numeric" maxlength="6" placeholder="숫자 6자리">
+                                <button type="button" class="btn btn-primary" onclick="confirmUnlockPassword()">확인</button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="hideResetPrompt()">취소</button>
+                            </div>
+                            <div id="resetPasswordError" class="reset-prompt-error"></div>
+                            <div id="resetPasswordSuccess" class="reset-prompt-success"></div>
+                            <div class="reset-prompt-note">기본 비밀번호: 523628</div>
                         </div>
                     </div>
                 </div>
             </div>
             
             <div class="col-md-6">
-                <div class="card mb-0">
+                <div class="card mb-0 top-card">
                     <div class="card-header d-flex justify-content-between align-items-center price-card-header" style="min-height: 58px; padding: 6px 16px;">
                         <div class="price-card-summary" style="margin-right: 5px;">
                             <div class="price-card-title-line">
                                 <span>실시간 시세</span>
                                 <span id="dataSource" class="badge bg-secondary" style="font-size:0.6rem;">대기중</span>
-                            </div>
-                            <div class="price-card-change-line">
                                 <span id="priceChangeBadge"></span>
                             </div>
                         </div>
@@ -434,11 +501,13 @@
         const TABLE_NAME = 'teol_sa_o_pal';
         const SETTINGS_TABLE = 'app_settings';
         const SLOT_BASE_SEED = 11000;
+        const DEFAULT_RESET_PASSWORD = '523628';
 
         let sysHogis = 6, sysSeed = 66000, sysTarget = 0.7, sysDday = 45;
         let isLocked = false, globalData = [], globalStats = {}, myChart = null;
         let mainTrendChartInstance = null;
         let currentMainChartRange = 30;
+        let temporarySettingsAccess = false;
 
         document.getElementById('dateInput').valueAsDate = new Date();
 
@@ -866,7 +935,58 @@
             renderDashboard(); 
         }
 
+        function hideResetPrompt(clearMessage = true) {
+            const prompt = document.getElementById('resetPrompt');
+            const passwordInput = document.getElementById('resetPasswordInput');
+            if (prompt) prompt.classList.add('d-none');
+            if (passwordInput) passwordInput.value = '';
+            if (clearMessage) {
+                document.getElementById('resetPasswordError').innerText = '';
+                document.getElementById('resetPasswordSuccess').innerText = '';
+            }
+        }
+
+        function showResetPrompt() {
+            document.getElementById('resetPrompt').classList.remove('d-none');
+            document.getElementById('resetPasswordError').innerText = '';
+            document.getElementById('resetPasswordSuccess').innerText = '';
+            const passwordInput = document.getElementById('resetPasswordInput');
+            passwordInput.value = '';
+            passwordInput.focus();
+        }
+
+        function applyTemporarySettingsAccess() {
+            temporarySettingsAccess = true;
+            document.getElementById('settingsForm').classList.remove('d-none');
+            document.getElementById('settingsSummary').classList.add('d-none');
+            document.getElementById('lockStatus').classList.add('d-none');
+            document.getElementById('unlockBtn').classList.remove('d-none');
+        }
+
+        function confirmUnlockPassword() {
+            const input = document.getElementById('resetPasswordInput');
+            const errorBox = document.getElementById('resetPasswordError');
+            const successBox = document.getElementById('resetPasswordSuccess');
+            const password = (input.value || '').trim();
+
+            errorBox.innerText = '';
+            successBox.innerText = '';
+
+            if (password !== DEFAULT_RESET_PASSWORD) {
+                errorBox.innerText = '비밀번호가 틀렸습니다.';
+                input.focus();
+                input.select();
+                return;
+            }
+
+            successBox.innerText = '확인되었습니다. 설정 수정 화면을 엽니다.';
+            applyTemporarySettingsAccess();
+            setTimeout(() => hideResetPrompt(false), 500);
+        }
+
         async function loadSettings() {
+            temporarySettingsAccess = false;
+            hideResetPrompt();
             const { data } = await client.from(SETTINGS_TABLE).select('*').eq('id', 1).single();
             if (data && data.is_locked) {
                 isLocked = true;
@@ -877,6 +997,7 @@
                 document.getElementById('settingsForm').classList.add('d-none');
                 document.getElementById('settingsSummary').classList.remove('d-none');
                 document.getElementById('lockStatus').classList.remove('d-none');
+                document.getElementById('unlockBtn').classList.remove('d-none');
                 document.getElementById('summaryText').innerHTML = getSettingsSummaryHtml();
             } else {
                 isLocked = false;
@@ -889,6 +1010,7 @@
                 document.getElementById('settingsForm').classList.remove('d-none');
                 document.getElementById('settingsSummary').classList.add('d-none');
                 document.getElementById('lockStatus').classList.add('d-none');
+                document.getElementById('unlockBtn').classList.add('d-none');
             }
             updateHogiSelect();
         }
@@ -914,6 +1036,10 @@
                 await client.from(SETTINGS_TABLE).update({ is_locked: false }).eq('id', 1);
                 await loadSettings();
             }
+        }
+
+        async function unlockSettings() {
+            showResetPrompt();
         }
 
         function updateHogiSelect() {
