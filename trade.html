@@ -933,9 +933,9 @@
 
         function getMainChartTickLimit(days) {
             if (days <= 7) return 7;
-            if (days <= 30) return 6;
-            if (days <= 60) return 7;
-            return 8;
+            if (days <= 30) return 8;
+            if (days <= 60) return 10;
+            return 12;
         }
 
         function buildMainChartPlaceholder(days) {
