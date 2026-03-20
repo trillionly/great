@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
@@ -817,39 +817,53 @@
                 const chartPoint = chartPointMap.get(row.date);
                 if (!chartPoint) return;
 
-                const key = `${row.date}:${row.trade_type}`;
+                const key = `${row.date}:${row.hogi}:${row.trade_type}`;
                 if (!grouped.has(key)) {
                     grouped.set(key, {
                         tradeType: row.trade_type,
+                        hogi: row.hogi,
+                        date: row.date,
                         label: chartPoint.label,
                         price: chartPoint.price,
                         count: 0,
                         quantity: 0,
-                        prices: []
+                        amount: 0,
+                        profit: 0
                     });
                 }
 
                 const group = grouped.get(key);
                 group.count += 1;
                 group.quantity += Number(row.quantity) || 0;
-                group.prices.push(Number(row.price) || 0);
+                group.amount += (Number(row.quantity) || 0) * (Number(row.price) || 0);
+                group.profit += Number(row.realizedProfit) || 0;
             });
 
             const buyPoints = [];
             const sellPoints = [];
+            const stackCounters = new Map();
 
             grouped.forEach(group => {
-                const avgTradePrice = group.prices.length
-                    ? group.prices.reduce((sum, value) => sum + value, 0) / group.prices.length
+                const stackKey = `${group.date}:${group.tradeType}`;
+                const stackIndex = stackCounters.get(stackKey) || 0;
+                stackCounters.set(stackKey, stackIndex + 1);
+                const labelPrefix = group.hogi ? group.hogi.replace('기', '') : '';
+                const tradeAmount = group.amount;
+                const profitRate = group.tradeType === '매도' && tradeAmount > 0
+                    ? (group.profit / tradeAmount) * 100
                     : null;
-                const labelSuffix = group.count > 1 ? `${group.count}` : '';
                 const rawPoint = {
                     x: group.label,
-                    y: group.tradeType === '매수' ? group.price - offsetBase : group.price + offsetBase,
-                    tradeLabel: `${group.tradeType}${labelSuffix}`,
+                    y: group.tradeType === '매수'
+                        ? group.price - (offsetBase * (stackIndex + 1))
+                        : group.price + (offsetBase * (stackIndex + 1)),
+                    tradeLabel: `${labelPrefix}${group.tradeType}`,
                     labelOffsetY: group.tradeType === '매수' ? 12 : -12,
                     quantity: group.quantity,
-                    avgTradePrice
+                    amount: tradeAmount,
+                    profit: group.profit,
+                    profitRate,
+                    closePrice: group.price
                 };
 
                 if (group.tradeType === '매수') buyPoints.push(rawPoint);
@@ -1101,8 +1115,39 @@
                                     const dataset = context.dataset;
                                     if (dataset.tradeMarker) {
                                         const raw = context.raw || {};
-                                        const avgPrice = Number.isFinite(raw.avgTradePrice) ? raw.avgTradePrice.toFixed(2) : '-';
-                                        return ` ${dataset.label} ${raw.quantity || 0}주 @ ${avgPrice}`;
+                                        const closePrice = Number.isFinite(raw.closePrice)
+                                            ? Number(raw.closePrice).toFixed(2)
+                                            : '-';
+                                        const quantity = Number.isFinite(raw.quantity)
+                                            ? Number(raw.quantity).toLocaleString()
+                                            : '0';
+                                        const amount = Number.isFinite(raw.amount)
+                                            ? Number(raw.amount).toLocaleString(undefined, { maximumFractionDigits: 2 })
+                                            : '0';
+
+                                        if (dataset.label === '매도') {
+                                            const profitRate = Number.isFinite(raw.profitRate)
+                                                ? `${Number(raw.profitRate).toFixed(2)}%`
+                                                : '-';
+                                            const profit = Number.isFinite(raw.profit)
+                                                ? Number(raw.profit).toLocaleString(undefined, { maximumFractionDigits: 2 })
+                                                : '0';
+                                            return [
+                                                ` ${dataset.label}`,
+                                                ` 종가 ${closePrice}`,
+                                                ` ${quantity}주`,
+                                                ` 얼마 ${amount}`,
+                                                ` 수익률 ${profitRate}`,
+                                                ` 수익금 ${profit}`
+                                            ];
+                                        }
+
+                                        return [
+                                            ` ${dataset.label}`,
+                                            ` 종가 ${closePrice}`,
+                                            ` ${quantity}주`,
+                                            ` 얼마 ${amount}`
+                                        ];
                                     }
                                     return ` 종가 ${Number(context.parsed.y).toFixed(2)}`;
                                 }
@@ -1612,3 +1657,5 @@
     </script>
 </body>
 </html>
+
+
