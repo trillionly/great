@@ -70,67 +70,114 @@
             margin-top: 4px;
             line-height: 1.1;
         }
-        .price-card-tools {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex: 0 0 auto;
-            margin-left: auto;
-            max-width: 100%;
-            padding-top: 2px;
-        }
-        .mini-chart-shell {
-            width: 110px;
-            height: 42px;
-            min-width: 110px;
-            flex: 0 0 110px;
-        }
-        #miniTrendChart {
-            display: block;
-            width: 100% !important;
-            height: 100% !important;
-        }
-        .mini-chart-buttons {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            flex: 0 0 46px;
-        }
-        .mini-chart-buttons .btn {
-            width: 46px;
-            min-width: 46px;
+        .main-trend-card {
+            margin-top: 10px !important;
         }
         .main-trend-card .card-body {
-            padding: 12px 16px 16px;
+            padding: 12px 14px 14px;
         }
         .main-trend-toolbar {
             display: flex;
             justify-content: flex-end;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
         .main-trend-buttons {
             display: flex;
-            gap: 6px;
+            gap: 8px;
             flex-wrap: wrap;
             justify-content: flex-end;
+            width: 100%;
         }
         .main-trend-buttons .btn {
-            font-size: 0.65rem;
-            padding: 3px 8px;
-            line-height: 1.1;
-            min-width: 46px;
+            min-width: 54px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            border-color: #cfd6e4;
+            color: #5b6578;
+            background-color: #ffffff;
+            font-size: 0.68rem;
+            font-weight: 700;
+            line-height: 1.15;
+            box-shadow: none;
+        }
+        .main-trend-buttons .btn:hover,
+        .main-trend-buttons .btn:focus {
+            border-color: #1a237e;
+            color: #1a237e;
+            background-color: #f5f7ff;
+        }
+        .main-trend-buttons .btn.btn-primary {
+            border-color: #1a237e;
+            background-color: #1a237e;
+            color: #ffffff;
         }
         .main-trend-shell {
             width: 100%;
-            height: 210px;
+            height: 208px;
             display: flex;
             align-items: center;
             justify-content: center;
+            position: relative;
+            padding: 10px 10px 6px;
+            border: 1px solid #edf0f5;
+            border-radius: 12px;
+            background: linear-gradient(180deg, #fbfcff 0%, #f6f8fc 100%);
+            overflow: hidden;
         }
         #mainTrendChart {
             display: block;
             width: 100% !important;
             height: 100% !important;
+        }
+        .main-trend-state {
+            position: absolute;
+            left: 12px;
+            top: 12px;
+            z-index: 2;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 0.68rem;
+            font-weight: 600;
+            color: #5f6b7a;
+            background: rgba(255, 255, 255, 0.92);
+            border: 1px solid rgba(207, 214, 228, 0.95);
+            box-shadow: 0 4px 10px rgba(26, 35, 126, 0.06);
+            backdrop-filter: blur(4px);
+        }
+        .main-trend-state.loading {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 7px 12px;
+        }
+        .main-trend-state::before {
+            content: '';
+            width: 7px;
+            height: 7px;
+            border-radius: 999px;
+            background: #aeb7c6;
+            flex: 0 0 auto;
+        }
+        .main-trend-state.loading::before {
+            width: 9px;
+            height: 9px;
+            background: #1a237e;
+            box-shadow: 0 0 0 0 rgba(26, 35, 126, 0.25);
+            animation: pulseDot 1.2s ease-in-out infinite;
+        }
+        .main-trend-shell.is-loading canvas {
+            opacity: 0.3;
+        }
+        .main-trend-shell.is-fallback canvas {
+            opacity: 0.92;
+        }
+        @keyframes pulseDot {
+            0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(26, 35, 126, 0.25); }
+            70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(26, 35, 126, 0); }
+            100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(26, 35, 126, 0); }
         }
         @media (max-width: 767px) {
             .price-card-header {
@@ -143,48 +190,35 @@
                 margin-right: 0 !important;
                 justify-content: center;
             }
-            .price-card-tools {
-                flex: 0 1 148px;
-                width: auto;
-                justify-content: flex-end;
-                gap: 6px;
-                margin-left: 0;
-                padding-top: 0;
-                min-width: 0;
-            }
-            .mini-chart-shell {
-                width: min(96px, calc(100vw - 250px));
-                min-width: 72px;
-                height: 40px;
-                flex: 1 1 auto;
-            }
-            .mini-chart-buttons {
-                flex: 0 0 42px;
-                gap: 3px;
-            }
-            .mini-chart-buttons .btn {
-                width: 42px;
-                min-width: 42px;
-                padding: 2px 3px !important;
-            }
             #priceChangeBadge {
                 margin-left: 0;
             }
             .main-trend-card .card-body {
-                padding: 10px 12px 14px;
+                padding: 10px 12px 12px;
             }
             .main-trend-toolbar {
-                margin-bottom: 8px;
+                margin-bottom: 6px;
             }
             .main-trend-buttons {
-                gap: 4px;
+                gap: 6px;
+                justify-content: flex-start;
             }
             .main-trend-buttons .btn {
-                min-width: 44px;
-                padding: 3px 6px;
+                min-width: 50px;
+                padding: 4px 9px;
             }
             .main-trend-shell {
-                height: 190px;
+                height: 188px;
+                padding: 8px 8px 4px;
+            }
+            .main-trend-state {
+                left: 10px;
+                top: 10px;
+                font-size: 0.65rem;
+            }
+            .main-trend-state.loading {
+                left: 50%;
+                top: 50%;
             }
         }
         #settingsSummary {
@@ -293,6 +327,7 @@
                             </div>
                         </div>
                         <div class="main-trend-shell">
+                            <div id="mainTrendState" class="main-trend-state d-none"></div>
                             <canvas id="mainTrendChart"></canvas>
                         </div>
                     </div>
@@ -401,7 +436,7 @@
 
         let sysHogis = 6, sysSeed = 66000, sysTarget = 0.7, sysDday = 45;
         let isLocked = false, globalData = [], globalStats = {}, myChart = null;
-        let miniTrendChartInstance = null, mainTrendChartInstance = null;
+        let mainTrendChartInstance = null;
         let currentMainChartRange = 30;
 
         document.getElementById('dateInput').valueAsDate = new Date();
@@ -474,7 +509,6 @@
                 calcTodayBuyPrice();
                 loadMainTrendChart(currentMainChartRange);
                 
-                loadMiniChart(6); // 6개월 디폴트 차트 호출
             } else {
                 alert("현재 시세를 가져오지 못했습니다. 잠시 후 다시 시도해주세요.");
             }
@@ -484,13 +518,8 @@
         }
 
         // 스파크라인 로직 (Y축 강제 확장 및 버튼 색상 토글 적용)
-        async function loadMiniChartLegacy(months) {
-            const ticker = document.getElementById('tickerInput').value.toUpperCase();
-            if(!ticker) return;
-            const btn6mo = document.getElementById('btn6mo');
-            const btn12mo = document.getElementById('btn12mo');
-            const chartCanvas = document.getElementById('miniTrendChart');
-            if (!btn6mo || !btn12mo || !chartCanvas) return;
+        async function loadMiniChartLegacy_removed(months) {
+            return null;
 
             // 버튼 색상 토글 (눌린 버튼만 Primary 진한색으로)
             btn6mo.className = months === 6 ? 'btn btn-primary' : 'btn btn-outline-secondary';
@@ -567,13 +596,6 @@
 
         function getSettingsSummaryHtml() {
             return `[${sysHogis}분할] 기본시드 $${formatSeedAmount(sysSeed)}<br>매도 +${sysTarget}% | 손절 ${sysDday}일(영업일)`;
-        }
-
-        function normalizeMiniChartPrices(values) {
-            if (!Array.isArray(values)) return [];
-            return values
-                .map(value => Number(value))
-                .filter(value => Number.isFinite(value));
         }
 
         function formatMainTrendLabel(timestamp) {
@@ -690,24 +712,27 @@
 
         async function fetchMainChartPrices(ticker, days) {
             try {
-                return await fetchMainChartPricesFromYahoo(ticker, days, 'https://corsproxy.io/?');
+                const result = await fetchMainChartPricesFromYahoo(ticker, days, 'https://corsproxy.io/?');
+                return { ...result, source: 'yahoo-corsproxy', isFallback: false };
             } catch (error) {
                 console.warn('Main chart Yahoo corsproxy request failed:', error);
             }
 
             try {
-                return await fetchMainChartPricesFromYahoo(ticker, days, 'https://api.allorigins.win/raw?url=');
+                const result = await fetchMainChartPricesFromYahoo(ticker, days, 'https://api.allorigins.win/raw?url=');
+                return { ...result, source: 'yahoo-allorigins', isFallback: false };
             } catch (error) {
                 console.warn('Main chart Yahoo allorigins request failed:', error);
             }
 
             try {
-                return await fetchMainChartPricesFromFinnhub(ticker, days);
+                const result = await fetchMainChartPricesFromFinnhub(ticker, days);
+                return { ...result, source: 'finnhub', isFallback: false };
             } catch (error) {
                 console.warn('Main chart Finnhub request failed:', error);
             }
 
-            return buildMainChartPlaceholder(days);
+            return { ...buildMainChartPlaceholder(days), source: 'placeholder', isFallback: true };
         }
 
         function destroyMainTrendChart() {
@@ -715,6 +740,25 @@
                 mainTrendChartInstance.destroy();
                 mainTrendChartInstance = null;
             }
+        }
+
+        function setMainTrendState(message = '', mode = '') {
+            const state = document.getElementById('mainTrendState');
+            const shell = document.querySelector('.main-trend-shell');
+            if (!state || !shell) return;
+
+            shell.classList.remove('is-loading', 'is-fallback');
+
+            if (!message) {
+                state.className = 'main-trend-state d-none';
+                state.textContent = '';
+                return;
+            }
+
+            state.className = `main-trend-state ${mode}`.trim();
+            state.textContent = message;
+            if (mode === 'loading') shell.classList.add('is-loading');
+            if (mode === 'fallback') shell.classList.add('is-fallback');
         }
 
         function setActiveMainTrendRange(days) {
@@ -798,168 +842,20 @@
         async function loadMainTrendChart(days = currentMainChartRange) {
             const ticker = document.getElementById('tickerInput')?.value?.toUpperCase();
             setActiveMainTrendRange(days);
-
-            const chartPayload = ticker
-                ? await fetchMainChartPrices(ticker, days)
-                : buildMainChartPlaceholder(days);
-
-            renderMainTrendChart(chartPayload.labels, chartPayload.prices);
-        }
-
-        async function getMiniChartPricesFromYahoo(ticker, range) {
-            try {
-                const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=${range}&interval=1d`;
-                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`;
-                const response = await fetch(proxyUrl);
-                if (!response.ok) {
-                    throw new Error(`Yahoo request failed: ${response.status}`);
-                }
-
-                const data = await response.json();
-                const result = data?.chart?.result;
-                const firstResult = Array.isArray(result) ? result[0] : null;
-                const closes = firstResult?.indicators?.quote?.[0]?.close;
-                const prices = normalizeMiniChartPrices(closes);
-
-                if (prices.length < 2) {
-                    throw new Error('Yahoo chart data is empty');
-                }
-
-                return { prices };
-            } catch (error) {
-                console.warn('Mini chart Yahoo request failed:', error);
-                return null;
-            }
-        }
-
-        async function getMiniChartPricesFromSecondaryProxy(ticker, range) {
-            try {
-                const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?range=${range}&interval=1d`;
-                const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`;
-                const response = await fetch(proxyUrl);
-                if (!response.ok) {
-                    throw new Error(`Secondary proxy request failed: ${response.status}`);
-                }
-
-                const data = await response.json();
-                const result = data?.chart?.result;
-                const firstResult = Array.isArray(result) ? result[0] : null;
-                const closes = firstResult?.indicators?.quote?.[0]?.close;
-                const prices = normalizeMiniChartPrices(closes);
-
-                if (prices.length < 2) {
-                    throw new Error('Secondary proxy chart data is empty');
-                }
-
-                return { prices };
-            } catch (error) {
-                console.warn('Mini chart secondary proxy request failed:', error);
-                return null;
-            }
-        }
-
-        async function getMiniChartPricesFromFinnhub(ticker, months) {
-            try {
-                const to = Math.floor(Date.now() / 1000);
-                const days = months === 6 ? 180 : 365;
-                const from = to - (days * 24 * 60 * 60);
-                const url = `https://finnhub.io/api/v1/stock/candle?symbol=${ticker}&resolution=D&from=${from}&to=${to}&token=${FINNHUB_KEY}`;
-                const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error(`Finnhub request failed: ${response.status}`);
-                }
-
-                const data = await response.json();
-                const prices = normalizeMiniChartPrices(data?.c);
-
-                if (data?.s !== 'ok' || prices.length < 2) {
-                    throw new Error('Finnhub chart data is empty');
-                }
-
-                return { prices };
-            } catch (error) {
-                console.warn('Mini chart Finnhub request failed:', error);
-                return null;
-            }
-        }
-
-        function destroyMiniTrendChart() {
-            if (miniTrendChartInstance) {
-                miniTrendChartInstance.destroy();
-                miniTrendChartInstance = null;
-            }
-        }
-
-        function renderMiniTrendChart(prices) {
-            const chartCanvas = document.getElementById('miniTrendChart');
-            if (!chartCanvas) return;
-            const safePrices = normalizeMiniChartPrices(prices);
-            const chartPrices = safePrices.length >= 2 ? safePrices : [1, 1];
-            const ctx = chartCanvas.getContext('2d');
-
-            destroyMiniTrendChart();
-
-            miniTrendChartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: chartPrices.map((_, index) => index),
-                    datasets: [{
-                        data: chartPrices,
-                        borderColor: '#d32f2f',
-                        borderWidth: 1.5,
-                        fill: false,
-                        pointRadius: 0,
-                        pointHoverRadius: 0,
-                        tension: 0.3
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: false,
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: { enabled: false }
-                    },
-                    scales: {
-                        x: { display: false },
-                        y: { display: false }
-                    },
-                    layout: { padding: 0 }
-                }
-            });
-        }
-
-        async function loadMiniChart(months) {
-            const ticker = document.getElementById('tickerInput').value.toUpperCase();
-            if (!ticker) return;
-
-            const btn6mo = document.getElementById('btn6mo');
-            const btn12mo = document.getElementById('btn12mo');
-            const chartCanvas = document.getElementById('miniTrendChart');
-            if (!btn6mo || !btn12mo || !chartCanvas) return;
-
-            btn6mo.className = months === 6 ? 'btn btn-primary' : 'btn btn-outline-secondary';
-            btn12mo.className = months === 12 ? 'btn btn-primary' : 'btn btn-outline-secondary';
-            const range = months === 6 ? '6mo' : '1y';
-            let chartResult = null;
+            setMainTrendState('Loading chart...', 'loading');
 
             try {
-                chartResult = await getMiniChartPricesFromYahoo(ticker, range);
-                if (!chartResult) {
-                    chartResult = await getMiniChartPricesFromSecondaryProxy(ticker, range);
-                }
-                if (!chartResult) {
-                    chartResult = await getMiniChartPricesFromFinnhub(ticker, months);
-                }
-            } catch (error) {
-                console.warn('Mini chart load failed unexpectedly:', error);
-            }
+                const chartPayload = ticker
+                    ? await fetchMainChartPrices(ticker, days)
+                    : { ...buildMainChartPlaceholder(days), source: 'placeholder', isFallback: true };
 
-            if (chartResult?.prices?.length >= 2) {
-                renderMiniTrendChart(chartResult.prices);
-            } else {
-                renderMiniTrendChart([1, 1]);
+                renderMainTrendChart(chartPayload.labels, chartPayload.prices);
+                setMainTrendState(chartPayload.isFallback ? 'Preview data' : '', chartPayload.isFallback ? 'fallback' : '');
+            } catch (error) {
+                console.warn('Main chart render failed unexpectedly:', error);
+                const placeholder = buildMainChartPlaceholder(days);
+                renderMainTrendChart(placeholder.labels, placeholder.prices);
+                setMainTrendState('Preview data', 'fallback');
             }
         }
 
