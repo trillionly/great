@@ -558,7 +558,7 @@
         let currentMainChartRange = 30;
         let temporarySettingsAccess = false;
 
-        document.getElementById('dateInput').valueAsDate = new Date();
+        document.getElementById('dateInput').value = getDefaultTradeDate();
 
         async function fetchTicker() {
             const ticker = document.getElementById('tickerInput').value.toUpperCase();
@@ -1409,6 +1409,15 @@
             return `${year}-${month}-${day}`;
         }
 
+        function getDefaultTradeDate() {
+            const date = new Date();
+            date.setDate(date.getDate() - 1);
+            const year = date.getFullYear();
+            const month = `${date.getMonth() + 1}`.padStart(2, '0');
+            const day = `${date.getDate()}`.padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
         async function saveExtraSeed() {
             const hogi = document.getElementById('extraSeedHogi').value;
             const amount = parseFloat(document.getElementById('extraSeedAmount').value);
@@ -1623,6 +1632,7 @@
 
         function resetForm() {
             document.getElementById('recordId').value = ''; document.getElementById('qtyInput').value = ''; document.getElementById('priceInput').value = ''; document.getElementById('memoInput').value = ''; document.getElementById('formTitle').innerText = "매매 기록 입력"; document.getElementById('saveBtn').innerText = "저장하기"; document.getElementById('cancelBtn').classList.add('d-none');
+            document.getElementById('dateInput').value = getDefaultTradeDate();
             if(document.getElementById('typeInput').value === '시드추가') document.getElementById('typeInput').value = '매수';
             autoFillTrade(); 
         }
