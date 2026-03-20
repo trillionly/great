@@ -717,15 +717,11 @@
             return `[${sysHogis}분할] 기본시드 $${formatSeedAmount(sysSeed)}<br>매도 +${sysTarget}% | 손절 ${sysDday}일(영업일)`;
         }
 
-        function formatMainTrendLabel(timestamp) {
-            const date = new Date(timestamp);
-            if (Number.isNaN(date.getTime())) return '';
-            const formatter = new Intl.DateTimeFormat('en-US', {
-                timeZone: 'America/New_York',
-                month: 'numeric',
-                day: 'numeric'
-            });
-            return formatter.format(date);
+        function formatMainTrendLabel(dateKey) {
+            if (typeof dateKey !== 'string') return '';
+            const parts = dateKey.split('-');
+            if (parts.length !== 3) return '';
+            return `${Number(parts[1])}/${Number(parts[2])}`;
         }
 
         function parseChartPrice(value) {
@@ -760,22 +756,45 @@
             };
         }
 
+        function getKoreaDateKey(timestamp = Date.now()) {
+            const formatter = new Intl.DateTimeFormat('en-CA', {
+                timeZone: 'Asia/Seoul',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            });
+            const parts = formatter.formatToParts(new Date(timestamp));
+            const map = {};
+            parts.forEach(part => {
+                if (part.type !== 'literal') map[part.type] = part.value;
+            });
+            return `${map.year}-${map.month}-${map.day}`;
+        }
+
+        function getChartDateKey(timestamp) {
+            const date = new Date(timestamp);
+            if (Number.isNaN(date.getTime())) return null;
+            return date.toISOString().slice(0, 10);
+        }
+
         function finalizeMainChartPoints(points) {
             if (!Array.isArray(points) || points.length < 2) return null;
 
-            const nowNy = getNewYorkDateParts();
-            const filtered = points.filter(point => {
-                const pointNy = getNewYorkDateParts(point.timestamp);
-                if (pointNy.dateKey > nowNy.dateKey) return false;
-                if (pointNy.dateKey === nowNy.dateKey && nowNy.hour < 16) return false;
-                return true;
-            });
-
-            const safePoints = filtered.length >= 2 ? filtered : points;
+            const koreaYesterday = new Date();
+            koreaYesterday.setDate(koreaYesterday.getDate() - 1);
+            const maxDateKey = getKoreaDateKey(koreaYesterday.getTime());
+            const normalizedPoints = points
+                .map(point => {
+                    const dateKey = getChartDateKey(point.timestamp);
+                    return dateKey ? { ...point, dateKey } : null;
+                })
+                .filter(Boolean);
+            const filtered = normalizedPoints.filter(point => point.dateKey <= maxDateKey);
+            const safePoints = filtered.length >= 2 ? filtered : normalizedPoints;
             return {
-                labels: safePoints.map(point => formatMainTrendLabel(point.timestamp)),
+                labels: safePoints.map(point => formatMainTrendLabel(point.dateKey)),
                 prices: safePoints.map(point => point.price),
-                dateKeys: safePoints.map(point => getNewYorkDateParts(point.timestamp).dateKey)
+                dateKeys: safePoints.map(point => point.dateKey)
             };
         }
 
