@@ -290,7 +290,38 @@
             min-height: 18px;
             margin-top: 6px;
         }
-    </style>
+        .dashboard-header-tools {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: auto;
+        }
+        .dashboard-header-tools .btn {
+            font-size: 0.72rem;
+            padding: 4px 10px;
+            line-height: 1.15;
+        }
+        .extra-seed-panel {
+            margin: 12px 12px 0;
+            padding: 12px;
+            background: #f8f9fc;
+            border: 1px solid #dbe2ef;
+            border-radius: 10px;
+        }
+        .extra-seed-meta {
+            font-size: 0.76rem;
+            font-weight: 700;
+            color: #1a237e;
+            margin-bottom: 8px;
+        }
+        .extra-seed-error {
+            min-height: 18px;
+            margin-top: 6px;
+            font-size: 0.72rem;
+            color: #d32f2f;
+            font-weight: 700;
+        }
+        </style>
 </head>
 <body>
     <div class="container mt-4 mb-5" style="max-width: 1100px;">
@@ -406,6 +437,24 @@
         <div class="card">
             <div class="card-header">전체 누적 호기별 현황</div>
             <div class="card-body p-0">
+                <div id="extraSeedPanel" class="extra-seed-panel d-none">
+                    <div class="extra-seed-meta">추가 시드 입력</div>
+                    <div class="row g-2">
+                        <div class="col-sm-4">
+                            <label class="form-label text-muted mb-1" style="font-size:0.75rem;">몇 호기</label>
+                            <select id="extraSeedHogi" class="form-select form-select-sm"></select>
+                        </div>
+                        <div class="col-sm-4">
+                            <label class="form-label text-muted mb-1" style="font-size:0.75rem;">얼마</label>
+                            <input type="number" id="extraSeedAmount" class="form-control form-control-sm" min="0" step="0.01" placeholder="0.00">
+                        </div>
+                        <div class="col-sm-4 d-flex align-items-end gap-2">
+                            <button type="button" class="btn btn-primary btn-sm w-100" onclick="saveExtraSeed()">저장</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="hideExtraSeedPrompt()">취소</button>
+                        </div>
+                    </div>
+                    <div id="extraSeedError" class="extra-seed-error"></div>
+                </div>
                 <div class="table-responsive">
                     <table class="table-excel mb-0">
                         <thead>
@@ -674,6 +723,18 @@
             return `${date.getMonth() + 1}/${date.getDate()}`;
         }
 
+        function parseChartPrice(value) {
+            if (value === null || value === undefined || value === '') return null;
+            const price = typeof value === 'number' ? value : Number(value);
+            return Number.isFinite(price) ? price : null;
+        }
+
+        function parseChartTimestamp(value) {
+            if (value === null || value === undefined || value === '') return null;
+            const timestamp = typeof value === 'number' ? value : Number(value);
+            return Number.isFinite(timestamp) ? timestamp : null;
+        }
+
         function getMainChartTickLimit(days) {
             if (days <= 7) return 7;
             if (days <= 30) return 6;
@@ -713,9 +774,9 @@
             const len = Math.min(timestamps.length, closes.length);
 
             for (let i = 0; i < len; i++) {
-                const price = Number(closes[i]);
-                const timestamp = Number(timestamps[i]);
-                if (!Number.isFinite(price) || !Number.isFinite(timestamp)) continue;
+                const price = parseChartPrice(closes[i]);
+                const timestamp = parseChartTimestamp(timestamps[i]);
+                if (price === null || timestamp === null) continue;
                 labels.push(formatMainTrendLabel(timestamp * 1000));
                 prices.push(price);
             }
@@ -734,9 +795,9 @@
             const len = Math.min(closes.length, timestamps.length);
 
             for (let i = 0; i < len; i++) {
-                const price = Number(closes[i]);
-                const timestamp = Number(timestamps[i]);
-                if (!Number.isFinite(price) || !Number.isFinite(timestamp)) continue;
+                const price = parseChartPrice(closes[i]);
+                const timestamp = parseChartTimestamp(timestamps[i]);
+                if (price === null || timestamp === null) continue;
                 labels.push(formatMainTrendLabel(timestamp * 1000));
                 prices.push(price);
             }
@@ -1115,7 +1176,86 @@
         function updateHogiSelect() {
             const select = document.getElementById('hogiInput'); select.innerHTML = '';
             for(let i=1; i<=sysHogis; i++) { select.innerHTML += `<option value="${i}호기">${i}호기</option>`; }
+            updateExtraSeedHogiOptions();
             autoFillTrade();
+        }
+
+        function ensureExtraSeedButton() {
+            const dashboardTable = document.getElementById('dashboardBody');
+            const dashboardCard = dashboardTable?.closest('.card');
+            const header = dashboardCard?.querySelector('.card-header');
+            if (!header || header.querySelector('.dashboard-header-tools')) return;
+
+            header.classList.add('d-flex', 'justify-content-between', 'align-items-center');
+            const tools = document.createElement('div');
+            tools.className = 'dashboard-header-tools';
+            tools.innerHTML = '<button type="button" class="btn btn-outline-secondary btn-sm" onclick="showExtraSeedPrompt()">추가 시드 입력</button>';
+            header.appendChild(tools);
+        }
+
+        function updateExtraSeedHogiOptions() {
+            const select = document.getElementById('extraSeedHogi');
+            if (!select) return;
+            select.innerHTML = '';
+            for (let i = 1; i <= sysHogis; i++) {
+                select.innerHTML += `<option value="${i}호기">${i}호기</option>`;
+            }
+        }
+
+        function showExtraSeedPrompt() {
+            ensureExtraSeedButton();
+            updateExtraSeedHogiOptions();
+            document.getElementById('extraSeedPanel').classList.remove('d-none');
+            document.getElementById('extraSeedAmount').value = '';
+            document.getElementById('extraSeedError').innerText = '';
+            document.getElementById('extraSeedAmount').focus();
+        }
+
+        function hideExtraSeedPrompt() {
+            document.getElementById('extraSeedPanel').classList.add('d-none');
+            document.getElementById('extraSeedError').innerText = '';
+        }
+
+        function getTodayLocalDate() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = `${now.getMonth() + 1}`.padStart(2, '0');
+            const day = `${now.getDate()}`.padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        async function saveExtraSeed() {
+            const hogi = document.getElementById('extraSeedHogi').value;
+            const amount = parseFloat(document.getElementById('extraSeedAmount').value);
+            const errorBox = document.getElementById('extraSeedError');
+
+            errorBox.innerText = '';
+            if (!hogi) {
+                errorBox.innerText = '호기를 선택해 주세요.';
+                return;
+            }
+            if (!Number.isFinite(amount) || amount <= 0) {
+                errorBox.innerText = '추가할 금액을 올바르게 입력해 주세요.';
+                return;
+            }
+
+            const payload = {
+                date: getTodayLocalDate(),
+                hogi,
+                trade_type: '시드추가',
+                quantity: 1,
+                price: amount,
+                memo: '[추가시드입력]'
+            };
+
+            const { error } = await client.from(TABLE_NAME).insert([payload]);
+            if (error) {
+                errorBox.innerText = '추가 시드를 저장하지 못했습니다.';
+                return;
+            }
+
+            hideExtraSeedPrompt();
+            await loadData();
         }
 
         window.onload = async () => { 
@@ -1123,6 +1263,7 @@
             await loadData();
             await fetchTicker();
             await loadMainTrendChart(currentMainChartRange);
+            ensureExtraSeedButton();
         };
 
         async function loadData() {
