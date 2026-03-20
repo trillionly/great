@@ -769,8 +769,128 @@
             const safePoints = filtered.length >= 2 ? filtered : points;
             return {
                 labels: safePoints.map(point => formatMainTrendLabel(point.timestamp)),
-                prices: safePoints.map(point => point.price)
+                prices: safePoints.map(point => point.price),
+                dateKeys: safePoints.map(point => getNewYorkDateParts(point.timestamp).dateKey)
             };
+        }
+
+        const mainTrendTradeLabelPlugin = {
+            id: 'mainTrendTradeLabelPlugin',
+            afterDatasetsDraw(chart) {
+                const { ctx } = chart;
+                chart.data.datasets.forEach((dataset, datasetIndex) => {
+                    if (!dataset.tradeMarker) return;
+                    const meta = chart.getDatasetMeta(datasetIndex);
+                    ctx.save();
+                    ctx.font = "10px 'Noto Sans KR', sans-serif";
+                    ctx.fillStyle = dataset.tradeLabelColor || dataset.borderColor || '#333';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+
+                    meta.data.forEach((point, index) => {
+                        const raw = dataset.data[index];
+                        if (!raw || !raw.tradeLabel) return;
+                        const offsetY = raw.labelOffsetY || 0;
+                        ctx.fillText(raw.tradeLabel, point.x, point.y + offsetY);
+                    });
+
+                    ctx.restore();
+                });
+            }
+        };
+
+        function buildMainTrendTradeDatasets(labels, prices, dateKeys) {
+            if (!Array.isArray(labels) || !Array.isArray(prices) || !Array.isArray(dateKeys) || !globalData?.length) {
+                return [];
+            }
+
+            const priceRange = Math.max(...prices) - Math.min(...prices);
+            const offsetBase = Math.max(priceRange * 0.04, 0.35);
+            const chartPointMap = new Map();
+            dateKeys.forEach((dateKey, index) => {
+                chartPointMap.set(dateKey, { label: labels[index], price: prices[index], index });
+            });
+
+            const grouped = new Map();
+            globalData.forEach(row => {
+                if (row.trade_type !== '매수' && row.trade_type !== '매도') return;
+                const chartPoint = chartPointMap.get(row.date);
+                if (!chartPoint) return;
+
+                const key = `${row.date}:${row.trade_type}`;
+                if (!grouped.has(key)) {
+                    grouped.set(key, {
+                        tradeType: row.trade_type,
+                        label: chartPoint.label,
+                        price: chartPoint.price,
+                        count: 0,
+                        quantity: 0,
+                        prices: []
+                    });
+                }
+
+                const group = grouped.get(key);
+                group.count += 1;
+                group.quantity += Number(row.quantity) || 0;
+                group.prices.push(Number(row.price) || 0);
+            });
+
+            const buyPoints = [];
+            const sellPoints = [];
+
+            grouped.forEach(group => {
+                const avgTradePrice = group.prices.length
+                    ? group.prices.reduce((sum, value) => sum + value, 0) / group.prices.length
+                    : null;
+                const labelSuffix = group.count > 1 ? `${group.count}` : '';
+                const rawPoint = {
+                    x: group.label,
+                    y: group.tradeType === '매수' ? group.price - offsetBase : group.price + offsetBase,
+                    tradeLabel: `${group.tradeType}${labelSuffix}`,
+                    labelOffsetY: group.tradeType === '매수' ? 12 : -12,
+                    quantity: group.quantity,
+                    avgTradePrice
+                };
+
+                if (group.tradeType === '매수') buyPoints.push(rawPoint);
+                else sellPoints.push(rawPoint);
+            });
+
+            const datasets = [];
+            if (buyPoints.length) {
+                datasets.push({
+                    label: '매수',
+                    data: buyPoints,
+                    type: 'scatter',
+                    showLine: false,
+                    borderColor: '#1565c0',
+                    backgroundColor: '#1565c0',
+                    pointRadius: 4,
+                    pointHoverRadius: 5,
+                    pointStyle: 'triangle',
+                    rotation: 180,
+                    tradeMarker: true,
+                    tradeLabelColor: '#1565c0'
+                });
+            }
+            if (sellPoints.length) {
+                datasets.push({
+                    label: '매도',
+                    data: sellPoints,
+                    type: 'scatter',
+                    showLine: false,
+                    borderColor: '#d32f2f',
+                    backgroundColor: '#d32f2f',
+                    pointRadius: 4,
+                    pointHoverRadius: 5,
+                    pointStyle: 'triangle',
+                    rotation: 0,
+                    tradeMarker: true,
+                    tradeLabelColor: '#d32f2f'
+                });
+            }
+
+            return datasets;
         }
 
         function getMainChartTickLimit(days) {
@@ -935,18 +1055,20 @@
             });
         }
 
-        function renderMainTrendChart(labels, prices) {
+        function renderMainTrendChart(labels, prices, dateKeys = []) {
             const canvas = document.getElementById('mainTrendChart');
             if (!canvas) return;
 
             const safePrices = Array.isArray(prices) ? prices.map(value => Number(value)).filter(value => Number.isFinite(value)) : [];
             const safeLabels = Array.isArray(labels) ? labels.slice(0, safePrices.length) : [];
+            const safeDateKeys = Array.isArray(dateKeys) ? dateKeys.slice(0, safePrices.length) : [];
             const chartData = safePrices.length >= 2 ? safePrices : [100, 101];
             const chartLabels = safeLabels.length === chartData.length
                 ? safeLabels
                 : chartData.map((_, index) => `${index + 1}`);
             const tickLimit = getMainChartTickLimit(currentMainChartRange);
             const ctx = canvas.getContext('2d');
+            const tradeDatasets = buildMainTrendTradeDatasets(chartLabels, chartData, safeDateKeys);
 
             destroyMainTrendChart();
 
@@ -962,7 +1084,7 @@
                         pointRadius: 0,
                         pointHoverRadius: 3,
                         tension: 0
-                    }]
+                    }, ...tradeDatasets]
                 },
                 options: {
                     responsive: true,
@@ -973,7 +1095,18 @@
                         tooltip: {
                             enabled: true,
                             intersect: false,
-                            mode: 'index'
+                            mode: 'index',
+                            callbacks: {
+                                label: (context) => {
+                                    const dataset = context.dataset;
+                                    if (dataset.tradeMarker) {
+                                        const raw = context.raw || {};
+                                        const avgPrice = Number.isFinite(raw.avgTradePrice) ? raw.avgTradePrice.toFixed(2) : '-';
+                                        return ` ${dataset.label} ${raw.quantity || 0}주 @ ${avgPrice}`;
+                                    }
+                                    return ` 종가 ${Number(context.parsed.y).toFixed(2)}`;
+                                }
+                            }
                         }
                     },
                     interaction: {
@@ -1000,7 +1133,8 @@
                             }
                         }
                     }
-                }
+                },
+                plugins: [mainTrendTradeLabelPlugin]
             });
         }
 
@@ -1014,12 +1148,12 @@
                     ? await fetchMainChartPrices(ticker, days)
                     : { ...buildMainChartPlaceholder(days), source: 'placeholder', isFallback: true };
 
-                renderMainTrendChart(chartPayload.labels, chartPayload.prices);
+                renderMainTrendChart(chartPayload.labels, chartPayload.prices, chartPayload.dateKeys);
                 setMainTrendState(chartPayload.isFallback ? 'Preview data' : '', chartPayload.isFallback ? 'fallback' : '');
             } catch (error) {
                 console.warn('Main chart render failed unexpectedly:', error);
                 const placeholder = buildMainChartPlaceholder(days);
-                renderMainTrendChart(placeholder.labels, placeholder.prices);
+                renderMainTrendChart(placeholder.labels, placeholder.prices, placeholder.dateKeys || []);
                 setMainTrendState('Preview data', 'fallback');
             }
         }
