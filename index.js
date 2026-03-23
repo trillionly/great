@@ -20,26 +20,87 @@ const {
   GH_TOKEN,
   GH_OWNER,
   GH_REPO,
+  GH_BRANCH,
+  REPORT_JSON_ROW_LIMIT,
   PORT
 } = process.env;
+
+const REPORT_PATH = "data/report.json";
+const TARGET_OWNER = GH_OWNER || "trillionly";
+const TARGET_REPO = GH_REPO || "great";
+const TARGET_BRANCH = GH_BRANCH || "main";
+const REPORT_LIMIT = Number(REPORT_JSON_ROW_LIMIT) > 0 ? Number(REPORT_JSON_ROW_LIMIT) : 1000;
 
 // ===============================
 // Supabase 연결
 // ===============================
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+function summarizeRows(rows = []) {
+  const count = Array.isArray(rows) ? rows.length : 0;
+  const firstRowDate = count ? rows[0]?.date || null : null;
+  const lastRowDate = count ? rows[count - 1]?.date || null : null;
+  const newestRowDate = count
+    ? rows.reduce((latest, row) => {
+        const current = row?.date || "";
+        return current > latest ? current : latest;
+      }, "")
+    : null;
+
+  return { count, newestRowDate, firstRowDate, lastRowDate };
+}
+
+async function fetchReportRows() {
+  const query = supabase
+    .from("daily_records")
+    .select("date, raw_message, created_at")
+    .order("created_at", { ascending: false })
+    .limit(REPORT_LIMIT);
+
+  const { data: rows, error } = await query;
+
+  if (error) {
+    console.error("[SUPABASE] report rows select failed:", error);
+    throw error;
+  }
+
+  const summary = summarizeRows(rows || []);
+  console.log("[SUPABASE] report rows fetched", {
+    limit: REPORT_LIMIT,
+    count: summary.count,
+    newestRowDate: summary.newestRowDate,
+    firstRowDate: summary.firstRowDate,
+    lastRowDate: summary.lastRowDate
+  });
+
+  return rows || [];
+}
+
 // ===============================
 // GitHub 업서트 함수
 // ===============================
 async function upsertToGitHub(path, contentText, message) {
-  if (!GH_TOKEN || !GH_OWNER || !GH_REPO) {
-    console.log("[GH] Missing env vars, skip GitHub update");
-    return;
+  if (!GH_TOKEN) {
+    const error = new Error("Missing GitHub env vars");
+    console.error("[GH] Missing env vars, skip GitHub update", {
+      hasToken: Boolean(GH_TOKEN),
+      owner: TARGET_OWNER,
+      repo: TARGET_REPO,
+      branch: TARGET_BRANCH,
+      path
+    });
+    throw error;
   }
 
-  console.log("[GH] about to update GitHub");
+  console.log("[GH] about to update GitHub", {
+    owner: TARGET_OWNER,
+    repo: TARGET_REPO,
+    branch: TARGET_BRANCH,
+    path
+  });
 
-  const api = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${path}`;
+  const api = `https://api.github.com/repos/${TARGET_OWNER}/${TARGET_REPO}/contents/${path}`;
+  const getApi = `${api}?ref=${encodeURIComponent(TARGET_BRANCH)}`;
 
   const headers = {
     Authorization: `Bearer ${GH_TOKEN}`,
@@ -50,20 +111,28 @@ async function upsertToGitHub(path, contentText, message) {
   try {
     // 기존 파일 SHA 확인
     let sha = null;
-    const getRes = await fetch(api, { headers });
+    const getRes = await fetch(getApi, { headers });
+    const getText = await getRes.text();
+
+    console.log("[GH] GET existing file response", {
+      status: getRes.status,
+      body: getText.slice(0, 2000)
+    });
 
     if (getRes.status === 200) {
-      const j = await getRes.json();
+      const j = JSON.parse(getText);
       sha = j.sha;
+      console.log("[GH] existing SHA fetched", { sha });
     } else if (getRes.status !== 404) {
-      const t = await getRes.text();
-      console.error("[GH] GET failed:", getRes.status, t);
-      return;
+      throw new Error(`[GH] GET failed: ${getRes.status} ${getText}`);
+    } else {
+      console.log("[GH] existing file not found, creating new file");
     }
 
     const body = {
       message,
       content: Buffer.from(contentText, "utf8").toString("base64"),
+      branch: TARGET_BRANCH,
       ...(sha ? { sha } : {})
     };
 
@@ -72,17 +141,28 @@ async function upsertToGitHub(path, contentText, message) {
       headers: { ...headers, "Content-Type": "application/json" },
       body: JSON.stringify(body)
     });
+    const putText = await putRes.text();
 
-    // 테스트용
     if (![200, 201].includes(putRes.status)) {
-      const t = await putRes.text();
-      console.error("[GH] PUT failed:", putRes.status, t);
+      console.error("[GH] PUT failed", {
+        status: putRes.status,
+        body: putText.slice(0, 4000)
+      });
+      throw new Error(`[GH] PUT failed: ${putRes.status} ${putText}`);
     } else {
-      console.log("[GH] report.json updated");
+      console.log("GITHUB_UPLOAD_OK", {
+        owner: TARGET_OWNER,
+        repo: TARGET_REPO,
+        branch: TARGET_BRANCH,
+        path,
+        status: putRes.status,
+        body: putText.slice(0, 2000)
+      });
     }
 
   } catch (err) {
     console.error("[GH] error:", err);
+    throw err;
   }
 }
 
@@ -97,18 +177,13 @@ app.get("/", (req, res) => {
 // 리포트 조회 API (최근 50개 기록을 JSON으로 보여줌)
 // ===============================
 app.get("/report", async (req, res) => {
-  const { data, error } = await supabase
-    .from("daily_records")
-    .select("date, raw_message, created_at")
-    .order("created_at", { ascending: false })
-    .limit(50);
-
-  if (error) {
+  try {
+    const rows = await fetchReportRows();
+    res.json({ ok: true, rows });
+  } catch (error) {
     console.error("[SUPABASE] select error:", error);
     return res.status(500).json({ ok: false, error });
   }
-
-  res.json({ ok: true, rows: data });
 });
 
 // ===============================
@@ -139,21 +214,22 @@ app.post("/telegram", async (req, res) => {
     }
 
     // 최신 데이터 조회하여 GitHub에 업데이트
-    const { data: rows, error: selErr } = await supabase
-      .from("daily_records")
-      .select("date, raw_message, created_at")
-      .order("created_at", { ascending: false })
-      .limit(50);
+    const rows = await fetchReportRows();
+    const summary = summarizeRows(rows);
+    const report = { ok: true, rows };
 
-    if (!selErr) {
-      const report = { ok: true, rows };
+    console.log("REPORT_JSON_BUILD_OK", {
+      count: summary.count,
+      newestRowDate: summary.newestRowDate,
+      firstRowDate: summary.firstRowDate,
+      lastRowDate: summary.lastRowDate
+    });
 
-      await upsertToGitHub(
-        "data/report.json",
-        JSON.stringify(report, null, 2),
-        `update report ${today}`
-      );
-    }
+    await upsertToGitHub(
+      REPORT_PATH,
+      JSON.stringify(report, null, 2),
+      `update report ${summary.newestRowDate || today}`
+    );
 
     // 텔레그램에는 빨리 200을 주는 게 중요
     res.sendStatus(200);
