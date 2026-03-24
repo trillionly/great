@@ -120,6 +120,9 @@
     
     .k { font-size:13px; color: var(--primary); font-weight: 700; line-height: 1.2; margin-bottom: 8px; }
     .v { font-size:20px; font-weight:800; margin-top:auto; padding-top: 2px; }
+    .summary-profit-card .k { margin-bottom: 6px; }
+    .summary-profit-card .v { margin-top: 0; padding-top: 0; }
+    .summary-profit-card .small { display: block; margin-top: 6px; margin-bottom: 6px !important; }
     
     /* 컨트롤러 (드롭다운) 영역 */
     .controls { display: flex; gap: 12px; justify-content: flex-end; margin-bottom: 16px; flex-wrap: wrap; }
@@ -265,14 +268,14 @@
       <div class="k">데이터 파싱 일자</div>
       <div class="v" style="font-size: 16px; margin-top: auto; padding-top: 6px;"><span id="count">-</span>건 / <span class="muted" id="latest">-</span></div>
     </div>
-    <div class="card">
+    <div class="card summary-profit-card">
       <div class="k">총 누적 수익 (합계)</div>
       <div class="v" id="monthProfitAll">-</div>
       <div class="small muted" id="monthRoiAll" style="margin-bottom: 6px;">-</div>
       <div id="progAll" style="width:100%; margin-top:auto;"></div>
     </div>
 
-    <div class="card">
+    <div class="card summary-profit-card">
       <div class="k">TQQQ 누적 수익</div>
       <div class="v" id="monthProfitTQQQ">-</div>
       <div class="small muted" id="monthRoiTQQQ" style="margin-bottom: 6px;">-</div>
@@ -288,7 +291,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card summary-profit-card">
       <div class="k">ETHU 누적 수익</div>
       <div class="v" id="monthProfitETHU">-</div>
       <div class="small muted" id="monthRoiETHU" style="margin-bottom: 6px;">-</div>
@@ -304,7 +307,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card summary-profit-card">
       <div class="k">TSLL 누적 수익</div>
       <div class="v" id="monthProfitTSLL">-</div>
       <div class="small muted" id="monthRoiTSLL" style="margin-bottom: 6px;">-</div>
