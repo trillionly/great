@@ -837,6 +837,32 @@
             }
         };
 
+        const mainTrendProfitLabelPlugin = {
+            id: 'mainTrendProfitLabelPlugin',
+            afterDatasetsDraw(chart) {
+                const { ctx } = chart;
+                chart.data.datasets.forEach((dataset, datasetIndex) => {
+                    if (!dataset.profitBar) return;
+                    const meta = chart.getDatasetMeta(datasetIndex);
+                    ctx.save();
+                    ctx.font = "10px 'Noto Sans KR', sans-serif";
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+
+                    meta.data.forEach((bar, index) => {
+                        const value = Number(dataset.data[index]);
+                        if (!Number.isFinite(value) || value === 0) return;
+                        const label = `${value > 0 ? '+' : ''}${Math.round(value).toLocaleString()}`;
+                        const isPositive = value >= 0;
+                        ctx.fillStyle = isPositive ? '#1565c0' : '#d32f2f';
+                        ctx.fillText(label, bar.x, isPositive ? bar.y - 9 : bar.y + 9);
+                    });
+
+                    ctx.restore();
+                });
+            }
+        };
+
         function buildMainTrendTradeDatasets(labels, prices, dateKeys) {
             if (!Array.isArray(labels) || !Array.isArray(prices) || !Array.isArray(dateKeys) || !globalData?.length) {
                 return [];
@@ -1225,13 +1251,17 @@
                         },
                         yProfit: {
                             position: 'right',
-                            display: false,
+                            display: true,
                             grid: { display: false, drawBorder: false },
-                            ticks: { display: false }
+                            ticks: {
+                                color: '#94a3b8',
+                                maxTicksLimit: 5,
+                                callback: (value) => `${Number(value).toLocaleString()}`
+                            }
                         }
                     }
                 },
-                plugins: [mainTrendTradeLabelPlugin]
+                plugins: [mainTrendTradeLabelPlugin, mainTrendProfitLabelPlugin]
             });
         }
 
