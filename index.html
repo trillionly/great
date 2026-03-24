@@ -120,7 +120,6 @@
     
     .k { font-size:13px; color: var(--primary); font-weight: 700; line-height: 1.2; margin-bottom: 8px; }
     .v { font-size:20px; font-weight:800; margin-top:auto; padding-top: 2px; }
-    .profit-krw { font-size:11px; color:#2563eb; font-weight:700; line-height:1.2; margin-top:2px; }
     
     /* 컨트롤러 (드롭다운) 영역 */
     .controls { display: flex; gap: 12px; justify-content: flex-end; margin-bottom: 16px; flex-wrap: wrap; }
@@ -269,7 +268,6 @@
     <div class="card">
       <div class="k">총 누적 수익 (합계)</div>
       <div class="v" id="monthProfitAll">-</div>
-      <div class="profit-krw" id="monthProfitAllKrw">-</div>
       <div class="small muted" id="monthRoiAll" style="margin-bottom: 6px;">-</div>
       <div id="progAll" style="width:100%; margin-top:auto;"></div>
     </div>
@@ -805,10 +803,6 @@
     
     const totalTarget = currentSeedTotal * 0.015 * finalMultiplier;
     setCard("monthProfitAll", "monthRoiAll", "progAll", lastCumAll, currentSeedTotal ? (lastCumAll / currentSeedTotal) : null, totalTarget);
-    const monthProfitAllKrw = document.getElementById("monthProfitAllKrw");
-    if (monthProfitAllKrw) {
-      monthProfitAllKrw.textContent = `(₩${fmtKrw((lastCumAll || 0) * usdToKrw)})`;
-    }
 
     for (const sym of ["TQQQ","ETHU","TSLL"]) {
       const cumVal = lastCumBySym[sym] ?? 0;
