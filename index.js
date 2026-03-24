@@ -50,7 +50,35 @@ function summarizeRows(rows = []) {
   return { count, newestRowDate, firstRowDate, lastRowDate };
 }
 
+function previewMessage(text, length = 180) {
+  return String(text || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, length);
+}
+
+function findNewestRow(rows = []) {
+  if (!Array.isArray(rows) || !rows.length) return null;
+
+  return rows.reduce((latest, row) => {
+    if (!latest) return row;
+
+    const latestCreatedAt = latest?.created_at || "";
+    const currentCreatedAt = row?.created_at || "";
+    if (currentCreatedAt > latestCreatedAt) return row;
+    if (currentCreatedAt === latestCreatedAt && (row?.date || "") > (latest?.date || "")) return row;
+    return latest;
+  }, null);
+}
+
 async function fetchReportRows() {
+  console.log("[SUPABASE] report generation query", {
+    table: "daily_records",
+    select: "date, raw_message, created_at",
+    orderBy: "created_at desc",
+    limit: REPORT_LIMIT
+  });
+
   const query = supabase
     .from("daily_records")
     .select("date, raw_message, created_at")
@@ -65,12 +93,15 @@ async function fetchReportRows() {
   }
 
   const summary = summarizeRows(rows || []);
+  const newestRow = findNewestRow(rows || []);
   console.log("[SUPABASE] report rows fetched", {
     limit: REPORT_LIMIT,
     count: summary.count,
     newestRowDate: summary.newestRowDate,
     firstRowDate: summary.firstRowDate,
-    lastRowDate: summary.lastRowDate
+    lastRowDate: summary.lastRowDate,
+    newestRowCreatedAt: newestRow?.created_at || null,
+    newestRowPreview: previewMessage(newestRow?.raw_message)
   });
 
   return rows || [];
@@ -216,13 +247,23 @@ app.post("/telegram", async (req, res) => {
     // 최신 데이터 조회하여 GitHub에 업데이트
     const rows = await fetchReportRows();
     const summary = summarizeRows(rows);
+    const newestFetchedRow = findNewestRow(rows);
     const report = { ok: true, rows };
+    const finalRows = report.rows || [];
+    const finalSummary = summarizeRows(finalRows);
+    const newestFinalRow = findNewestRow(finalRows);
+    const hasTargetRow = finalRows.some(row => row?.date === "2026-03-24");
 
     console.log("REPORT_JSON_BUILD_OK", {
-      count: summary.count,
-      newestRowDate: summary.newestRowDate,
-      firstRowDate: summary.firstRowDate,
-      lastRowDate: summary.lastRowDate
+      fetchedCount: summary.count,
+      fetchedNewestDate: summary.newestRowDate,
+      fetchedNewestCreatedAt: newestFetchedRow?.created_at || null,
+      fetchedNewestPreview: previewMessage(newestFetchedRow?.raw_message),
+      finalCount: finalSummary.count,
+      finalNewestDate: finalSummary.newestRowDate,
+      finalNewestCreatedAt: newestFinalRow?.created_at || null,
+      finalNewestPreview: previewMessage(newestFinalRow?.raw_message),
+      has2026_03_24Row: hasTargetRow
     });
 
     await upsertToGitHub(
