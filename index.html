@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
@@ -120,6 +120,7 @@
     
     .k { font-size:13px; color: var(--primary); font-weight: 700; line-height: 1.2; margin-bottom: 8px; }
     .v { font-size:20px; font-weight:800; margin-top:auto; padding-top: 2px; }
+    .sub-krw { font-size:12px; font-weight:700; color:#2563eb; line-height:1.2; margin-top:4px; white-space:nowrap; }
     
     /* 컨트롤러 (드롭다운) 영역 */
     .controls { display: flex; gap: 12px; justify-content: flex-end; margin-bottom: 16px; flex-wrap: wrap; }
@@ -268,6 +269,7 @@
     <div class="card">
       <div class="k">총 누적 수익 (합계)</div>
       <div class="v" id="monthProfitAll">-</div>
+      <div class="sub-krw" id="monthProfitAllKrw">-</div>
       <div class="small muted" id="monthRoiAll" style="margin-bottom: 6px;">-</div>
       <div id="progAll" style="width:100%; margin-top:auto;"></div>
     </div>
@@ -773,9 +775,14 @@
       const v = document.getElementById(idV);
       const r = document.getElementById(idR);
       const p = document.getElementById(idProg);
+      const krw = document.getElementById(idV + "Krw");
       
       v.textContent = "$" + fmtInt(profit);
       v.className = "v " + clsPN(profit);
+      if (krw) {
+        const krwValue = Number(profit || 0) * Number(usdToKrw || 0);
+        krw.textContent = `(₩${fmtKrw(krwValue)})`;
+      }
       r.textContent = (roi == null) ? "" : `수익률 ${fmtPct1(roi)}`;
       
       if (p && targetAmt > 0) {
@@ -1180,3 +1187,4 @@
 </script>
 </body>
 </html>
+
