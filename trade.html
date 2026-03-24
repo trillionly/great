@@ -945,6 +945,39 @@
             return datasets;
         }
 
+        function buildMainTrendProfitDataset(dateKeys) {
+            if (!Array.isArray(dateKeys) || !dateKeys.length || !globalData?.length) {
+                return null;
+            }
+
+            const profitByDate = new Map();
+            globalData.forEach(row => {
+                if (row.trade_type !== '매도') return;
+                if (!dateKeys.includes(row.date)) return;
+                const realizedProfit = Number(row.realizedProfit);
+                if (!Number.isFinite(realizedProfit)) return;
+                profitByDate.set(row.date, (profitByDate.get(row.date) || 0) + realizedProfit);
+            });
+
+            if (!profitByDate.size) return null;
+
+            const data = dateKeys.map(dateKey => profitByDate.get(dateKey) || 0);
+            return {
+                type: 'bar',
+                label: '매도수익',
+                data,
+                yAxisID: 'yProfit',
+                backgroundColor: data.map(value => value >= 0 ? 'rgba(21, 101, 192, 0.22)' : 'rgba(211, 47, 47, 0.22)'),
+                borderColor: data.map(value => value >= 0 ? 'rgba(21, 101, 192, 0.65)' : 'rgba(211, 47, 47, 0.65)'),
+                borderWidth: 1,
+                borderRadius: 3,
+                barPercentage: 0.56,
+                categoryPercentage: 0.82,
+                profitBar: true,
+                order: 1
+            };
+        }
+
         function getMainChartTickLimit(days) {
             if (days <= 7) return 7;
             if (days <= 30) return 8;
@@ -1120,6 +1153,7 @@
                 : chartData.map((_, index) => `${index + 1}`);
             const tickLimit = getMainChartTickLimit(currentMainChartRange);
             const ctx = canvas.getContext('2d');
+            const profitDataset = buildMainTrendProfitDataset(safeDateKeys);
             const tradeDatasets = buildMainTrendTradeDatasets(chartLabels, chartData, safeDateKeys);
 
             destroyMainTrendChart();
@@ -1128,14 +1162,17 @@
                 type: 'line',
                 data: {
                     labels: chartLabels,
-                    datasets: [{
+                    datasets: [
+                        ...(profitDataset ? [profitDataset] : []),
+                        {
                         data: chartData,
                         borderColor: '#d32f2f',
                         borderWidth: 1.6,
                         fill: false,
                         pointRadius: 0,
                         pointHoverRadius: 3,
-                        tension: 0
+                        tension: 0,
+                        order: 2
                     }, ...tradeDatasets]
                 },
                 options: {
@@ -1149,7 +1186,7 @@
                             displayColors: false,
                             intersect: false,
                             mode: 'nearest',
-                            filter: (context) => !context.dataset.tradeMarker,
+                            filter: (context) => !context.dataset.tradeMarker && !context.dataset.profitBar,
                             callbacks: {
                                 label: (context) => {
                                     const raw = context.raw || {};
@@ -1185,6 +1222,12 @@
                                 maxTicksLimit: 5,
                                 callback: (value) => Number(value).toLocaleString(undefined, { maximumFractionDigits: 2 })
                             }
+                        },
+                        yProfit: {
+                            position: 'right',
+                            display: false,
+                            grid: { display: false, drawBorder: false },
+                            ticks: { display: false }
                         }
                     }
                 },
