@@ -854,8 +854,9 @@
                         if (!Number.isFinite(value) || value === 0) return;
                         const label = `${value > 0 ? '+$' : '-$'}${Math.abs(Math.round(value)).toLocaleString()}`;
                         const isPositive = value >= 0;
+                        const bottom = Math.max(bar.y, bar.base);
                         ctx.fillStyle = isPositive ? '#1565c0' : '#d32f2f';
-                        ctx.fillText(label, bar.x, isPositive ? bar.y - 9 : bar.y + 9);
+                        ctx.fillText(label, bar.x, bottom - 8);
                     });
 
                     ctx.restore();
@@ -1261,10 +1262,11 @@
                                     if (!Number.isFinite(numeric)) return '';
                                     const sign = numeric < 0 ? '-' : '';
                                     const abs = Math.abs(numeric);
-                                    if (abs >= 1000) {
-                                        const compact = abs % 1000 === 0
-                                            ? `${abs / 1000}k`
-                                            : `${(abs / 1000).toFixed(1)}k`;
+                                    if (abs >= 100) {
+                                        const scaled = abs / 1000;
+                                        const compact = Number.isInteger(scaled)
+                                            ? `${scaled}k`
+                                            : `${scaled.toFixed(1)}k`;
                                         return `${sign}${compact}`;
                                     }
                                     if (abs === 0) return '0';
