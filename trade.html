@@ -794,9 +794,19 @@
                 })
                 .filter(Boolean);
             const filtered = normalizedPoints.filter(point => point.dateKey <= maxDateKey);
-            const safePoints = filtered.length >= 2 ? filtered : normalizedPoints;
+            const candidatePoints = filtered.length >= 2 ? filtered : normalizedPoints;
+            const dedupedPointMap = new Map();
+
+            candidatePoints.forEach(point => {
+                const prev = dedupedPointMap.get(point.dateKey);
+                if (!prev || point.timestamp > prev.timestamp) {
+                    dedupedPointMap.set(point.dateKey, point);
+                }
+            });
+
+            const safePoints = Array.from(dedupedPointMap.values()).sort((a, b) => a.timestamp - b.timestamp);
             return {
-                labels: safePoints.map(point => formatMainTrendLabel(point.dateKey)),
+                labels: safePoints.map(point => point.dateKey),
                 prices: safePoints.map(point => point.price),
                 dateKeys: safePoints.map(point => point.dateKey)
             };
@@ -881,7 +891,7 @@
                     ? (group.profit / tradeAmount) * 100
                     : null;
                 const rawPoint = {
-                    x: group.label,
+                    x: group.date,
                     y: group.tradeType === '매수'
                         ? group.price - (offsetBase * (stackIndex + 1))
                         : group.price + (offsetBase * (stackIndex + 1)),
@@ -1164,7 +1174,8 @@
                                 autoSkip: true,
                                 maxTicksLimit: tickLimit,
                                 maxRotation: 0,
-                                minRotation: 0
+                                minRotation: 0,
+                                callback: (_, index) => formatMainTrendLabel(chartLabels[index])
                             }
                         },
                         y: {
