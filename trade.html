@@ -852,7 +852,7 @@
                     meta.data.forEach((bar, index) => {
                         const value = Number(dataset.data[index]);
                         if (!Number.isFinite(value) || value === 0) return;
-                        const label = `${value > 0 ? '+' : ''}${Math.round(value).toLocaleString()}`;
+                        const label = `${value > 0 ? '+$' : '-$'}${Math.abs(Math.round(value)).toLocaleString()}`;
                         const isPositive = value >= 0;
                         ctx.fillStyle = isPositive ? '#1565c0' : '#d32f2f';
                         ctx.fillText(label, bar.x, isPositive ? bar.y - 9 : bar.y + 9);
@@ -1256,7 +1256,20 @@
                             ticks: {
                                 color: '#94a3b8',
                                 maxTicksLimit: 5,
-                                callback: (value) => `${Number(value).toLocaleString()}`
+                                callback: (value) => {
+                                    const numeric = Number(value);
+                                    if (!Number.isFinite(numeric)) return '';
+                                    const sign = numeric < 0 ? '-' : '';
+                                    const abs = Math.abs(numeric);
+                                    if (abs >= 1000) {
+                                        const compact = abs % 1000 === 0
+                                            ? `${abs / 1000}k`
+                                            : `${(abs / 1000).toFixed(1)}k`;
+                                        return `${sign}${compact}`;
+                                    }
+                                    if (abs === 0) return '0';
+                                    return `${sign}${abs}`;
+                                }
                             }
                         }
                     }
