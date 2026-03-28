@@ -22,6 +22,7 @@ const {
   GH_REPO,
   PORT
 } = process.env;
+const REPORT_ROW_LIMIT = 500;
 
 // ===============================
 // Supabase 연결
@@ -101,7 +102,7 @@ app.get("/report", async (req, res) => {
     .from("daily_records")
     .select("date, raw_message, created_at")
     .order("created_at", { ascending: false })
-    .limit(50);
+    .limit(REPORT_ROW_LIMIT);
 
   if (error) {
     console.error("[SUPABASE] select error:", error);
@@ -139,11 +140,11 @@ app.post("/telegram", async (req, res) => {
     }
 
     // 최신 데이터 조회하여 GitHub에 업데이트
-    const { data: rows, error: selErr } = await supabase
-      .from("daily_records")
-      .select("date, raw_message, created_at")
-      .order("created_at", { ascending: false })
-      .limit(50);
+      const { data: rows, error: selErr } = await supabase
+        .from("daily_records")
+        .select("date, raw_message, created_at")
+        .order("created_at", { ascending: false })
+        .limit(REPORT_ROW_LIMIT);
 
     if (!selErr) {
       const report = { ok: true, rows };
