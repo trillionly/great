@@ -1012,6 +1012,23 @@
             return 12;
         }
 
+        function shouldShowMainTrendTick(dateKeys, index, days) {
+            if (!Array.isArray(dateKeys) || !dateKeys.length) return false;
+            if (index === 0 || index === dateKeys.length - 1) return true;
+
+            const dateKey = dateKeys[index];
+            if (typeof dateKey !== 'string') return false;
+
+            const parts = dateKey.split('-');
+            const day = Number(parts[2]);
+            if (day === 1) return true;
+
+            if (days <= 7) return true;
+
+            const step = days <= 30 ? 4 : (days <= 60 ? 6 : 14);
+            return index % step === 0;
+        }
+
         function buildMainChartPlaceholder(days) {
             const pointCount = days <= 7 ? 7 : (days <= 30 ? 10 : (days <= 60 ? 12 : 16));
             const now = Date.now();
@@ -1235,11 +1252,13 @@
                             grid: { display: false, drawBorder: false },
                             ticks: {
                                 color: '#6c757d',
-                                autoSkip: true,
+                                autoSkip: false,
                                 maxTicksLimit: tickLimit,
                                 maxRotation: 0,
                                 minRotation: 0,
-                                callback: (_, index) => formatMainTrendLabel(chartLabels[index])
+                                callback: (_, index) => shouldShowMainTrendTick(safeDateKeys, index, currentMainChartRange)
+                                    ? formatMainTrendLabel(chartLabels[index])
+                                    : ''
                             }
                         },
                         y: {
