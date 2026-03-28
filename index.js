@@ -87,6 +87,31 @@ async function upsertToGitHub(path, contentText, message) {
   }
 }
 
+async function rebuildReportJson(reason = "manual") {
+  const { data: rows, error } = await supabase
+    .from("daily_records")
+    .select("date, raw_message, created_at")
+    .order("created_at", { ascending: false })
+    .limit(REPORT_ROW_LIMIT);
+
+  if (error) {
+    console.error("[SUPABASE] report rebuild select error:", error);
+    throw error;
+  }
+
+  const latestDate = rows?.[0]?.date || null;
+  console.log("[REPORT] rebuild rows:", rows?.length || 0, "latest:", latestDate, "reason:", reason);
+
+  const report = { ok: true, rows };
+  await upsertToGitHub(
+    "data/report.json",
+    JSON.stringify(report, null, 2),
+    `rebuild report ${latestDate || new Date().toISOString().slice(0, 10)}`
+  );
+
+  return { rowCount: rows?.length || 0, latestDate };
+}
+
 // ===============================
 // 기본 테스트
 // ===============================
@@ -110,6 +135,15 @@ app.get("/report", async (req, res) => {
   }
 
   res.json({ ok: true, rows: data });
+});
+
+app.post("/rebuild-report", async (req, res) => {
+  try {
+    const result = await rebuildReportJson("manual-endpoint");
+    res.json({ ok: true, ...result });
+  } catch (error) {
+    res.status(500).json({ ok: false, error: String(error?.message || error) });
+  }
 });
 
 // ===============================
@@ -140,21 +174,7 @@ app.post("/telegram", async (req, res) => {
     }
 
     // 최신 데이터 조회하여 GitHub에 업데이트
-      const { data: rows, error: selErr } = await supabase
-        .from("daily_records")
-        .select("date, raw_message, created_at")
-        .order("created_at", { ascending: false })
-        .limit(REPORT_ROW_LIMIT);
-
-    if (!selErr) {
-      const report = { ok: true, rows };
-
-      await upsertToGitHub(
-        "data/report.json",
-        JSON.stringify(report, null, 2),
-        `update report ${today}`
-      );
-    }
+    await rebuildReportJson(`telegram:${today}`);
 
     // 텔레그램에는 빨리 200을 주는 게 중요
     res.sendStatus(200);
