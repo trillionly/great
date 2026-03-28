@@ -152,6 +152,17 @@
       border-color: var(--primary);
       color: var(--primary);
     }
+    #archiveNotice {
+      display: none;
+      margin-bottom: 16px;
+      padding: 10px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #f8fafc;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 600;
+    }
     /* 테이블 디자인 */
     .wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
     table { border-collapse: collapse; width: 100%; min-width: 800px; white-space: nowrap; }
@@ -361,6 +372,8 @@
     </div>
   </div>
 
+  <div id="archiveNotice"></div>
+
   <div class="wrap">
     <table>
       <thead id="thead"></thead>
@@ -401,6 +414,80 @@
     if (!nums.length) return null;
     return nums.reduce((a,b)=>a+b,0);
   };
+  const GRID_API_BASE = window.GRID_ARCHIVE_API_BASE || "https://telegram-invest-server.onrender.com";
+  const archiveRowsCache = new Map();
+  let archiveMonthIndex = [];
+
+  function getGridApiUrl(path) {
+    return `${GRID_API_BASE}${path}`;
+  }
+
+  function getMonthKey(year, month) {
+    return `${String(year)}-${String(month).padStart(2, "0")}`;
+  }
+
+  function getLatestRowDate(rows) {
+    return (rows || []).reduce((max, row) => {
+      const date = row?.date || "";
+      return date > max ? date : max;
+    }, "");
+  }
+
+  function dedupeRows(rows) {
+    const unique = new Map();
+    (rows || []).forEach(row => {
+      const key = `${row?.date || ""}|${row?.created_at || ""}|${row?.raw_message || ""}`;
+      if (!unique.has(key)) unique.set(key, row);
+    });
+    return Array.from(unique.values()).sort((a, b) => String(b?.created_at || "").localeCompare(String(a?.created_at || "")));
+  }
+
+  function setArchiveNotice(message = "") {
+    const notice = document.getElementById("archiveNotice");
+    if (!notice) return;
+    notice.textContent = message;
+    notice.style.display = message ? "block" : "none";
+  }
+
+  function getNextMonthSelection(year, month) {
+    const y = Number(year);
+    const m = Number(month);
+    if (!Number.isFinite(y) || !Number.isFinite(m)) return null;
+    if (m === 12) return { year: String(y + 1), month: "01" };
+    return { year: String(y), month: String(m + 1).padStart(2, "0") };
+  }
+
+  async function fetchArchiveIndex() {
+    try {
+      const res = await fetch(getGridApiUrl("/archive-index?t=" + Date.now()), { cache: "no-store" });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return Array.isArray(data?.months) ? data.months : [];
+    } catch (error) {
+      console.warn("archive index fetch failed:", error);
+      return [];
+    }
+  }
+
+  async function loadArchiveRows(monthKey) {
+    if (archiveRowsCache.has(monthKey)) return archiveRowsCache.get(monthKey);
+
+    const promise = (async () => {
+      try {
+        const res = await fetch(`./data/archive/${monthKey}.json?t=${Date.now()}`, { cache: "no-store" });
+        if (res.status === 404) return null;
+        if (!res.ok) throw new Error(`archive fetch failed: ${res.status}`);
+        const json = await res.json();
+        return Array.isArray(json?.rows) ? json.rows : [];
+      } catch (error) {
+        console.warn(`archive load failed for ${monthKey}:`, error);
+        return null;
+      }
+    })();
+
+    archiveRowsCache.set(monthKey, promise);
+    return promise;
+  }
   /* 🔥 미니 스파크라인 그리는 함수 */
   function drawSparkline(canvasId, dataPoints, colorCode) {
     const ctx = document.getElementById(canvasId).getContext('2d');
@@ -997,13 +1084,13 @@
     fetchAndDrawRealSparklines();
 
     try {
-      let reportRows = [];
+      let baseReportRows = [];
 
       try {
         const resHist = await fetch("./data/history.json?t=" + Date.now(), { cache: "no-store" });
         if(resHist.ok) {
           const jHist = await resHist.json();
-          reportRows = reportRows.concat(jHist.rows || []);
+          baseReportRows = baseReportRows.concat(jHist.rows || []);
         }
       } catch(e) {}
 
@@ -1011,45 +1098,37 @@
         const resRep = await fetch("./data/report.json?t=" + Date.now(), { cache: "no-store" });
         if(resRep.ok) {
           const jRep = await resRep.json();
-          reportRows = reportRows.concat(jRep.rows || []);
+          baseReportRows = baseReportRows.concat(jRep.rows || []);
         }
       } catch(e) {}
 
-      count.textContent = String(reportRows.length);
-      latest.textContent = reportRows[reportRows.length-1]?.date || "-";
+      baseReportRows = dedupeRows(baseReportRows);
+      archiveMonthIndex = await fetchArchiveIndex();
 
-      const blocks = extractBlocksFromRows(reportRows);
-      debug.textContent = JSON.stringify(blocks.slice(0, 3), null, 2);
+      const baseBlocks = extractBlocksFromRows(baseReportRows);
+      const baseErrorBlocks = baseBlocks.filter(b => b.isValid === false);
+      const baseErrorDates = new Set(baseErrorBlocks.map(b => b.yyyymmdd));
+      const baseValidBlocks = baseBlocks.filter(b => !baseErrorDates.has(b.yyyymmdd));
 
-      if (!blocks.length) {
+      debug.textContent = JSON.stringify(baseBlocks.slice(0, 3), null, 2);
+
+      if (!baseBlocks.length) {
         status.textContent = "데이터 대기 중";
         return;
       }
 
-      const errorBlocks = blocks.filter(b => b.isValid === false);
-      const errorDates = new Set(errorBlocks.map(b => b.yyyymmdd));
-      const validBlocks = blocks.filter(b => !errorDates.has(b.yyyymmdd));
-
-      if (errorBlocks.length > 0) {
-          status.textContent = "수정 요청 대기중";
-          status.className = "pill err-pill";
-          
-          errorBanner.style.display = "block";
-          errorBanner.innerHTML = "<strong>🚨 데이터 수정 요청 (수량 불일치 감지 - 해당 일자 전체 업데이트 차단됨)</strong>" + 
-                                  errorBlocks.map(b => b.errorMsg).join("<br>");
-      } else {
-          status.textContent = "정상 작동 중";
-          status.className = "pill";
-          errorBanner.style.display = "none";
+      function buildYearOptions(preferredYear = null) {
+        const yearSet = new Set(baseValidBlocks.map(b => b.year));
+        archiveMonthIndex.forEach(key => yearSet.add(key.slice(0, 4)));
+        const allYears = Array.from(yearSet).sort();
+        let yearHtml = `<option value="ALL_YEARS">전체 기간 (모든 연도)</option>`;
+        yearHtml += allYears.map(y => `<option value="${y}">${y}년</option>`).join("");
+        yearSel.innerHTML = yearHtml;
+        if (preferredYear && allYears.includes(preferredYear)) yearSel.value = preferredYear;
+        else yearSel.value = allYears.length ? allYears[allYears.length - 1] : "ALL_YEARS";
       }
 
-      const allYears = [...new Set(validBlocks.map(b => b.year))].sort();
-      let yearHtml = `<option value="ALL_YEARS">전체 기간 (모든 연도)</option>`;
-      yearHtml += allYears.map(y => `<option value="${y}">${y}년</option>`).join("");
-      yearSel.innerHTML = yearHtml;
-      yearSel.value = allYears.length ? allYears[allYears.length - 1] : "ALL_YEARS";
-
-      function updateMonthDropdown() {
+      function updateMonthDropdown(preferredMonth = null) {
         const y = yearSel.value;
         if (y === "ALL_YEARS") {
             monthSel.innerHTML = `<option value="YEARLY_AGG">연도별 요약 보기</option>`;
@@ -1058,8 +1137,11 @@
         }
         
         monthSel.disabled = false;
-        const yearBlocks = validBlocks.filter(b => b.year === y);
-        const months = [...new Set(yearBlocks.map(b => b.month))].sort();
+        const monthSet = new Set(baseValidBlocks.filter(b => b.year === y).map(b => b.month));
+        archiveMonthIndex
+          .filter(key => key.startsWith(`${y}-`))
+          .forEach(key => monthSet.add(key.slice(5, 7)));
+        const months = Array.from(monthSet).sort();
 
         let optionsHtml = `<option value="ALL">연간 요약 (선택 연도 전체)</option>`;
         if (months.length > 1) {
@@ -1067,17 +1149,66 @@
         }
         optionsHtml += months.map(m => `<option value="${m}">${Number(m)}월</option>`).join("");
         monthSel.innerHTML = optionsHtml;
-        if (months.length > 0) monthSel.value = months[months.length - 1];
+        if (preferredMonth && Array.from(monthSel.options).some(option => option.value === preferredMonth)) monthSel.value = preferredMonth;
+        else if (months.length > 0) monthSel.value = months[months.length - 1];
       }
 
-      updateMonthDropdown();
+      async function getRowsForSelection() {
+        const y = yearSel.value;
+        const m = monthSel.value;
+        if (y === "ALL_YEARS") {
+          const archives = await Promise.all(archiveMonthIndex.map(loadArchiveRows));
+          return { rows: dedupeRows(baseReportRows.concat(archives.flat().filter(Boolean))), stateMessage: "" };
+        }
+        const hasBaseMonth = baseValidBlocks.some(b => b.year === y && b.month === m);
+        let archiveKeys = [];
+        if (m === "ALL" || m === "ALL_PREV") {
+          archiveKeys = archiveMonthIndex.filter(key => key.startsWith(`${y}-`));
+        } else {
+          const selectedKey = getMonthKey(y, m);
+          if (archiveMonthIndex.includes(selectedKey)) archiveKeys = [selectedKey];
+        }
 
-      function rerender() {
+        const archives = await Promise.all(archiveKeys.map(loadArchiveRows));
+        const archiveRows = archives.flat().filter(Boolean);
+
+        let stateMessage = "";
+        if (/^\d{2}$/.test(m)) {
+          if (!hasBaseMonth && !archiveRows.length) stateMessage = "해당 월의 보관 데이터가 없습니다.";
+        }
+
+        return { rows: dedupeRows(baseReportRows.concat(archiveRows)), stateMessage };
+      }
+
+      async function rerender(stateOverride = "") {
         const y = yearSel.value;
         const m = monthSel.value;
         const symbols = symbolsSel.value.split(",").map(s => s.trim()).filter(Boolean);
+        const { rows: activeRows, stateMessage } = await getRowsForSelection();
+
+        count.textContent = String(activeRows.length);
+        latest.textContent = getLatestRowDate(activeRows) || "-";
+
+        const blocks = extractBlocksFromRows(activeRows);
+        debug.textContent = JSON.stringify(blocks.slice(0, 3), null, 2);
+
+        const errorBlocks = blocks.filter(b => b.isValid === false);
+        const errorDates = new Set(errorBlocks.map(b => b.yyyymmdd));
+        const validBlocks = blocks.filter(b => !errorDates.has(b.yyyymmdd));
+
+        if (errorBlocks.length > 0) {
+            status.textContent = "수정 요청 대기중";
+            status.className = "pill err-pill";
+            errorBanner.style.display = "block";
+            errorBanner.innerHTML = "<strong>🚨 데이터 수정 요청 (수량 불일치 감지 - 해당 일자 전체 업데이트 차단됨)</strong>" + 
+                                    errorBlocks.map(b => b.errorMsg).join("<br>");
+        } else {
+            status.textContent = "정상 작동 중";
+            status.className = "pill";
+            errorBanner.style.display = "none";
+        }
+
         const allDaily = buildAllDaily(validBlocks, symbols);
-        
         let viewData = [];
         let viewMode = 'DAILY'; 
 
@@ -1178,18 +1309,61 @@
           }
         }
 
+        if (!viewData.length) {
+          const emptyMessage = stateOverride || stateMessage || (/^\d{2}$/.test(m) ? "아직 해당 월의 매매 기록이 없습니다." : "");
+          if (emptyMessage) setArchiveNotice(emptyMessage);
+          else setArchiveNotice("");
+        } else {
+          setArchiveNotice("");
+        }
+
         renderView(viewData, symbols, viewMode, allDaily);
       }
 
-      archiveMonthBtn.addEventListener("click", () => {
+      buildYearOptions();
+      updateMonthDropdown();
+
+      archiveMonthBtn.addEventListener("click", async () => {
         const confirmed = confirm("정말 월 마감을 진행하시겠습니까?\n현재 월의 데이터를 archive에 저장합니다.");
         if (!confirmed) return;
+
+        const year = yearSel.value;
+        const month = monthSel.value;
+        if (!/^\d{4}$/.test(year) || !/^\d{2}$/.test(month)) return;
+
+        try {
+          const res = await fetch(getGridApiUrl("/archive-month"), {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ year, month })
+          });
+          const result = await res.json();
+          if (!res.ok || !result?.ok) throw new Error(result?.error || "archive request failed");
+
+          const archivedMonthKey = getMonthKey(year, month);
+          if (!archiveMonthIndex.includes(archivedMonthKey)) {
+            archiveMonthIndex = [...archiveMonthIndex, archivedMonthKey].sort();
+          }
+          archiveRowsCache.delete(archivedMonthKey);
+
+          const nextSelection = getNextMonthSelection(year, month);
+          if (nextSelection) {
+            buildYearOptions(nextSelection.year);
+            updateMonthDropdown(nextSelection.month);
+            await rerender("아직 해당 월의 매매 기록이 없습니다.");
+          } else {
+            await rerender();
+          }
+        } catch (error) {
+          alert("월 마감에 실패했습니다.");
+          console.error(error);
+        }
       });
 
-      yearSel.addEventListener("change", () => { updateMonthDropdown(); rerender(); });
-      monthSel.addEventListener("change", rerender);
-      symbolsSel.addEventListener("change", rerender);
-      rerender();
+      yearSel.addEventListener("change", async () => { updateMonthDropdown(); await rerender(); });
+      monthSel.addEventListener("change", async () => { await rerender(); });
+      symbolsSel.addEventListener("change", async () => { await rerender(); });
+      await rerender();
     } catch (e) {
       status.textContent = "연결 에러";
       status.classList.add("err-pill");
