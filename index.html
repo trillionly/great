@@ -138,6 +138,20 @@
       outline: none;
     }
     select:focus { border-color: var(--primary); }
+    .control-button {
+      padding: 8px 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #fff;
+      color: var(--text-main);
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    .control-button:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
     /* 테이블 디자인 */
     .wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
     table { border-collapse: collapse; width: 100%; min-width: 800px; white-space: nowrap; }
@@ -340,6 +354,10 @@
         <option value="ETHU">ETHU만</option>
         <option value="TSLL">TSLL만</option>
       </select>
+    </div>
+    <div>
+      <div class="small">월 보관</div>
+      <button id="archiveMonthBtn" type="button" class="control-button">월 마감</button>
     </div>
   </div>
 
@@ -972,6 +990,7 @@
     const yearSel = document.getElementById("yearSel");
     const monthSel = document.getElementById("monthSel");
     const symbolsSel = document.getElementById("symbolsSel");
+    const archiveMonthBtn = document.getElementById("archiveMonthBtn");
     const debug = document.getElementById("debug");
     const errorBanner = document.getElementById("errorBanner");
 
@@ -1161,6 +1180,11 @@
 
         renderView(viewData, symbols, viewMode, allDaily);
       }
+
+      archiveMonthBtn.addEventListener("click", () => {
+        const confirmed = confirm("정말 월 마감을 진행하시겠습니까?\n현재 월의 데이터를 archive에 저장합니다.");
+        if (!confirmed) return;
+      });
 
       yearSel.addEventListener("change", () => { updateMonthDropdown(); rerender(); });
       monthSel.addEventListener("change", rerender);
