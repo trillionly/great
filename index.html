@@ -138,32 +138,6 @@
       outline: none;
     }
     select:focus { border-color: var(--primary); }
-    .action-btn {
-      padding: 8px 14px;
-      border: 1px solid var(--primary);
-      border-radius: 6px;
-      background: var(--surface);
-      color: var(--primary);
-      font-weight: 700;
-      font-size: 14px;
-      cursor: pointer;
-    }
-    .action-btn:hover {
-      background: var(--primary);
-      color: #fff;
-    }
-    #archiveNotice {
-      display: none;
-      margin-bottom: 16px;
-      padding: 10px 12px;
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
-      background: #f8fafc;
-      color: var(--text-muted);
-      font-size: 13px;
-      font-weight: 600;
-    }
-
     /* 테이블 디자인 */
     .wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
     table { border-collapse: collapse; width: 100%; min-width: 800px; white-space: nowrap; }
@@ -367,13 +341,7 @@
         <option value="TSLL">TSLL만</option>
       </select>
     </div>
-    <div>
-      <div class="small">월 보관</div>
-      <button id="archiveMonthBtn" type="button" class="action-btn">월 마감</button>
-    </div>
   </div>
-
-  <div id="archiveNotice"></div>
 
   <div class="wrap">
     <table>
@@ -415,73 +383,6 @@
     if (!nums.length) return null;
     return nums.reduce((a,b)=>a+b,0);
   };
-  const GRID_API_BASE = window.GRID_ARCHIVE_API_BASE || "https://telegram-invest-server.onrender.com";
-  const archiveRowsCache = new Map();
-  let archiveMonthIndex = [];
-
-  function getGridApiUrl(path) {
-    return `${GRID_API_BASE}${path}`;
-  }
-
-  function getMonthKey(year, month) {
-    return `${String(year)}-${String(month).padStart(2, "0")}`;
-  }
-
-  function getLatestRowDate(rows) {
-    return (rows || []).reduce((max, row) => {
-      const date = row?.date || "";
-      return date > max ? date : max;
-    }, "");
-  }
-
-  function dedupeRows(rows) {
-    const unique = new Map();
-    (rows || []).forEach(row => {
-      const key = `${row?.date || ""}|${row?.created_at || ""}|${row?.raw_message || ""}`;
-      if (!unique.has(key)) unique.set(key, row);
-    });
-    return Array.from(unique.values()).sort((a, b) => String(b?.created_at || "").localeCompare(String(a?.created_at || "")));
-  }
-
-  function setArchiveNotice(message = "") {
-    const notice = document.getElementById("archiveNotice");
-    if (!notice) return;
-    notice.textContent = message;
-    notice.style.display = message ? "block" : "none";
-  }
-
-  async function fetchArchiveIndex() {
-    try {
-      const res = await fetch(getGridApiUrl("/archive-index?t=" + Date.now()), { cache: "no-store" });
-      if (!res.ok) return [];
-      const data = await res.json();
-      return Array.isArray(data?.months) ? data.months : [];
-    } catch (error) {
-      console.warn("archive index fetch failed:", error);
-      return [];
-    }
-  }
-
-  async function loadArchiveRows(monthKey) {
-    if (archiveRowsCache.has(monthKey)) return archiveRowsCache.get(monthKey);
-
-    const promise = (async () => {
-      try {
-        const res = await fetch(`./data/archive/${monthKey}.json?t=${Date.now()}`, { cache: "no-store" });
-        if (res.status === 404) return null;
-        if (!res.ok) throw new Error(`archive fetch failed: ${res.status}`);
-        const json = await res.json();
-        return Array.isArray(json?.rows) ? json.rows : [];
-      } catch (error) {
-        console.warn(`archive load failed for ${monthKey}:`, error);
-        return null;
-      }
-    })();
-
-    archiveRowsCache.set(monthKey, promise);
-    return promise;
-  }
-
   /* 🔥 미니 스파크라인 그리는 함수 */
   function drawSparkline(canvasId, dataPoints, colorCode) {
     const ctx = document.getElementById(canvasId).getContext('2d');
@@ -1071,20 +972,19 @@
     const yearSel = document.getElementById("yearSel");
     const monthSel = document.getElementById("monthSel");
     const symbolsSel = document.getElementById("symbolsSel");
-    const archiveMonthBtn = document.getElementById("archiveMonthBtn");
     const debug = document.getElementById("debug");
     const errorBanner = document.getElementById("errorBanner");
 
     fetchAndDrawRealSparklines();
 
     try {
-      let baseReportRows = [];
+      let reportRows = [];
 
       try {
         const resHist = await fetch("./data/history.json?t=" + Date.now(), { cache: "no-store" });
         if(resHist.ok) {
           const jHist = await resHist.json();
-          baseReportRows = baseReportRows.concat(jHist.rows || []);
+          reportRows = reportRows.concat(jHist.rows || []);
         }
       } catch(e) {}
 
@@ -1092,259 +992,180 @@
         const resRep = await fetch("./data/report.json?t=" + Date.now(), { cache: "no-store" });
         if(resRep.ok) {
           const jRep = await resRep.json();
-          baseReportRows = baseReportRows.concat(jRep.rows || []);
+          reportRows = reportRows.concat(jRep.rows || []);
         }
       } catch(e) {}
 
-      baseReportRows = dedupeRows(baseReportRows);
-      archiveMonthIndex = await fetchArchiveIndex();
+      count.textContent = String(reportRows.length);
+      latest.textContent = reportRows[reportRows.length-1]?.date || "-";
 
-      const baseBlocks = extractBlocksFromRows(baseReportRows);
-      const baseErrorBlocks = baseBlocks.filter(b => b.isValid === false);
-      const baseErrorDates = new Set(baseErrorBlocks.map(b => b.yyyymmdd));
-      const baseValidBlocks = baseBlocks.filter(b => !baseErrorDates.has(b.yyyymmdd));
+      const blocks = extractBlocksFromRows(reportRows);
+      debug.textContent = JSON.stringify(blocks.slice(0, 3), null, 2);
 
-      debug.textContent = JSON.stringify(baseBlocks.slice(0, 3), null, 2);
-
-      if (!baseBlocks.length) {
+      if (!blocks.length) {
         status.textContent = "데이터 대기 중";
         return;
       }
 
-      function buildYearOptions() {
-        const yearSet = new Set(baseValidBlocks.map(b => b.year));
-        archiveMonthIndex.forEach(key => yearSet.add(key.slice(0, 4)));
-        const allYears = Array.from(yearSet).sort();
-        let yearHtml = `<option value="ALL_YEARS">전체 기간 (모든 연도)</option>`;
-        yearHtml += allYears.map(y => `<option value="${y}">${y}년</option>`).join("");
-        yearSel.innerHTML = yearHtml;
-        yearSel.value = allYears.length ? allYears[allYears.length - 1] : "ALL_YEARS";
+      const errorBlocks = blocks.filter(b => b.isValid === false);
+      const errorDates = new Set(errorBlocks.map(b => b.yyyymmdd));
+      const validBlocks = blocks.filter(b => !errorDates.has(b.yyyymmdd));
+
+      if (errorBlocks.length > 0) {
+          status.textContent = "수정 요청 대기중";
+          status.className = "pill err-pill";
+          
+          errorBanner.style.display = "block";
+          errorBanner.innerHTML = "<strong>🚨 데이터 수정 요청 (수량 불일치 감지 - 해당 일자 전체 업데이트 차단됨)</strong>" + 
+                                  errorBlocks.map(b => b.errorMsg).join("<br>");
+      } else {
+          status.textContent = "정상 작동 중";
+          status.className = "pill";
+          errorBanner.style.display = "none";
       }
+
+      const allYears = [...new Set(validBlocks.map(b => b.year))].sort();
+      let yearHtml = `<option value="ALL_YEARS">전체 기간 (모든 연도)</option>`;
+      yearHtml += allYears.map(y => `<option value="${y}">${y}년</option>`).join("");
+      yearSel.innerHTML = yearHtml;
+      yearSel.value = allYears.length ? allYears[allYears.length - 1] : "ALL_YEARS";
 
       function updateMonthDropdown() {
         const y = yearSel.value;
         if (y === "ALL_YEARS") {
-          monthSel.innerHTML = `<option value="YEARLY_AGG">연도별 요약 보기</option>`;
-          monthSel.disabled = true;
-          return;
+            monthSel.innerHTML = `<option value="YEARLY_AGG">연도별 요약 보기</option>`;
+            monthSel.disabled = true;
+            return;
         }
-
+        
         monthSel.disabled = false;
-        const monthSet = new Set(baseValidBlocks.filter(b => b.year === y).map(b => b.month));
-        archiveMonthIndex
-          .filter(key => key.startsWith(`${y}-`))
-          .forEach(key => monthSet.add(key.slice(5, 7)));
+        const yearBlocks = validBlocks.filter(b => b.year === y);
+        const months = [...new Set(yearBlocks.map(b => b.month))].sort();
 
-        const months = Array.from(monthSet).sort();
         let optionsHtml = `<option value="ALL">연간 요약 (선택 연도 전체)</option>`;
-        if (months.length > 1) optionsHtml += `<option value="ALL_PREV">연간 요약 (직전월 마감 누계)</option>`;
+        if (months.length > 1) {
+          optionsHtml += `<option value="ALL_PREV">연간 요약 (직전월 마감 누계)</option>`;
+        }
         optionsHtml += months.map(m => `<option value="${m}">${Number(m)}월</option>`).join("");
         monthSel.innerHTML = optionsHtml;
         if (months.length > 0) monthSel.value = months[months.length - 1];
       }
 
-      async function getRowsForSelection() {
-        const y = yearSel.value;
-        const m = monthSel.value;
-        if (y === "ALL_YEARS") {
-          const archives = await Promise.all(archiveMonthIndex.map(loadArchiveRows));
-          return { rows: dedupeRows(baseReportRows.concat(archives.flat().filter(Boolean))), missingArchive: false };
-        }
+      updateMonthDropdown();
 
-        const hasBaseMonth = baseValidBlocks.some(b => b.year === y && b.month === m);
-        let archiveKeys = [];
-        if (m === "ALL" || m === "ALL_PREV") {
-          archiveKeys = archiveMonthIndex.filter(key => key.startsWith(`${y}-`));
-        } else {
-          const selectedKey = getMonthKey(y, m);
-          if (archiveMonthIndex.includes(selectedKey)) archiveKeys = [selectedKey];
-        }
-
-        const archives = await Promise.all(archiveKeys.map(loadArchiveRows));
-        const archiveRows = archives.flat().filter(Boolean);
-        const missingArchive = /^\d{2}$/.test(m) && !hasBaseMonth && !archiveRows.length;
-        return { rows: dedupeRows(baseReportRows.concat(archiveRows)), missingArchive };
-      }
-
-      async function rerender() {
+      function rerender() {
         const y = yearSel.value;
         const m = monthSel.value;
         const symbols = symbolsSel.value.split(",").map(s => s.trim()).filter(Boolean);
-        setArchiveNotice("");
-        const { rows: activeRows, missingArchive } = await getRowsForSelection();
-
-        count.textContent = String(activeRows.length);
-        latest.textContent = getLatestRowDate(activeRows) || "-";
-
-        const blocks = extractBlocksFromRows(activeRows);
-        debug.textContent = JSON.stringify(blocks.slice(0, 3), null, 2);
-
-        if (!blocks.length) {
-          status.textContent = "데이터 대기 중";
-          setArchiveNotice(missingArchive ? "해당 월의 보관 데이터가 없습니다." : "");
-          return;
-        }
-
-        const errorBlocks = blocks.filter(b => b.isValid === false);
-        const errorDates = new Set(errorBlocks.map(b => b.yyyymmdd));
-        const validBlocks = blocks.filter(b => !errorDates.has(b.yyyymmdd));
-
-        if (errorBlocks.length > 0) {
-          status.textContent = "수정 요청 대기중";
-          status.className = "pill err-pill";
-          errorBanner.style.display = "block";
-          errorBanner.innerHTML = "<strong>🚨 데이터 수정 요청 (수량 불일치 감지 - 해당 일자 전체 업데이트 차단됨)</strong>" +
-                                  errorBlocks.map(b => b.errorMsg).join("<br>");
-        } else {
-          status.textContent = "정상 작동 중";
-          status.className = "pill";
-          errorBanner.style.display = "none";
-        }
-
         const allDaily = buildAllDaily(validBlocks, symbols);
+        
         let viewData = [];
-        let viewMode = "DAILY";
+        let viewMode = 'DAILY'; 
 
         if (y === "ALL_YEARS") {
-          viewMode = "YEARLY";
+          viewMode = 'YEARLY';
           const yearsMap = new Map();
-          for (const r of allDaily) {
+          for(const r of allDaily) {
             const yy = r.year;
-            if (!yearsMap.has(yy)) {
+            if(!yearsMap.has(yy)) {
               yearsMap.set(yy, { groupKey: yy, totalDailyProfit: 0 });
-              for (const s of symbols) yearsMap.get(yy)[s] = { profit: 0, sell: 0, tierMax: null };
+              for(const s of symbols) yearsMap.get(yy)[s] = { profit: 0, sell: 0, tierMax: null };
             }
             const row = yearsMap.get(yy);
-            for (const s of symbols) {
+            for(const s of symbols) {
               row[s].profit += r[s].profit || 0;
               row[s].sell += r[s].sell || 0;
-              if (r[s].tierMax != null) row[s].tierMax = Math.max(row[s].tierMax || 0, r[s].tierMax);
+              if(r[s].tierMax != null) row[s].tierMax = Math.max(row[s].tierMax || 0, r[s].tierMax);
             }
             row.totalDailyProfit += r.totalDailyProfit || 0;
           }
 
+          let aggData = Array.from(yearsMap.values()).sort((a,b)=>Number(a.groupKey)-Number(b.groupKey));
           let rollingCum = Object.fromEntries(symbols.map(s => [s, 0]));
-          viewData = Array.from(yearsMap.values()).sort((a, b) => Number(a.groupKey) - Number(b.groupKey)).map(r => {
-            const out = { dateLabel: r.groupKey + "년", totalDailyProfit: r.totalDailyProfit };
-            let rTotalCum = 0;
-            for (const s of symbols) {
-              rollingCum[s] += (r[s].profit || 0);
-              out[s] = { profit: r[s].profit, sell: r[s].sell, cum: rollingCum[s], tierMax: r[s].tierMax };
-              rTotalCum += rollingCum[s];
-            }
-            out.totalCum = rTotalCum;
-            return out;
+          
+          viewData = aggData.map(r => {
+             const out = { dateLabel: r.groupKey + "년", totalDailyProfit: r.totalDailyProfit };
+             let rTotalCum = 0;
+             for(const s of symbols) {
+                rollingCum[s] += (r[s].profit || 0);
+                out[s] = { profit: r[s].profit, sell: r[s].sell, cum: rollingCum[s], tierMax: r[s].tierMax };
+                rTotalCum += rollingCum[s];
+             }
+             out.totalCum = rTotalCum;
+             return out;
           });
         } else {
           const yearDaily = allDaily.filter(r => r.year === y);
 
           if (m === "ALL" || m === "ALL_PREV") {
-            viewMode = "MONTHLY";
+            viewMode = 'MONTHLY';
             let filteredDaily = yearDaily;
             if (m === "ALL_PREV") {
-              const latestM = [...new Set(yearDaily.map(r => r.month))].sort().pop();
-              filteredDaily = yearDaily.filter(r => r.month !== latestM);
+               const latestM = [...new Set(yearDaily.map(r=>r.month))].sort().pop();
+               filteredDaily = yearDaily.filter(r => r.month !== latestM);
             }
 
             const monthsMap = new Map();
-            for (const r of filteredDaily) {
+            for(const r of filteredDaily) {
               const mm = r.month;
-              if (!monthsMap.has(mm)) {
+              if(!monthsMap.has(mm)) {
                 monthsMap.set(mm, { groupKey: mm, totalDailyProfit: 0 });
-                for (const s of symbols) monthsMap.get(mm)[s] = { profit: 0, sell: 0, tierMax: null };
+                for(const s of symbols) monthsMap.get(mm)[s] = { profit: 0, sell: 0, tierMax: null };
               }
               const row = monthsMap.get(mm);
-              for (const s of symbols) {
+              for(const s of symbols) {
                 row[s].profit += r[s].profit || 0;
                 row[s].sell += r[s].sell || 0;
-                if (r[s].tierMax != null) row[s].tierMax = Math.max(row[s].tierMax || 0, r[s].tierMax);
+                if(r[s].tierMax != null) row[s].tierMax = Math.max(row[s].tierMax || 0, r[s].tierMax);
               }
               row.totalDailyProfit += r.totalDailyProfit || 0;
             }
 
+            let aggData = Array.from(monthsMap.values()).sort((a,b)=>Number(a.groupKey)-Number(b.groupKey));
             let rollingCum = Object.fromEntries(symbols.map(s => [s, 0]));
-            viewData = Array.from(monthsMap.values()).sort((a, b) => Number(a.groupKey) - Number(b.groupKey)).map(r => {
-              const out = { dateLabel: r.groupKey + "월", totalDailyProfit: r.totalDailyProfit };
-              let rTotalCum = 0;
-              for (const s of symbols) {
-                rollingCum[s] += (r[s].profit || 0);
-                out[s] = { profit: r[s].profit, sell: r[s].sell, cum: rollingCum[s], tierMax: r[s].tierMax };
-                rTotalCum += rollingCum[s];
-              }
-              out.totalCum = rTotalCum;
-              return out;
+            
+            viewData = aggData.map(r => {
+               const out = { dateLabel: r.groupKey + "월", totalDailyProfit: r.totalDailyProfit };
+               let rTotalCum = 0;
+               for(const s of symbols) {
+                  rollingCum[s] += (r[s].profit || 0);
+                  out[s] = { profit: r[s].profit, sell: r[s].sell, cum: rollingCum[s], tierMax: r[s].tierMax };
+                  rTotalCum += rollingCum[s];
+               }
+               out.totalCum = rTotalCum;
+               return out;
             });
           } else {
             const monthDaily = yearDaily.filter(r => r.month === m);
             let rollingCum = Object.fromEntries(symbols.map(s => [s, 0]));
+            
             viewData = monthDaily.map(r => {
-              const out = { dateLabel: r.mmdd, totalDailyProfit: r.totalDailyProfit, maxDate: r.yyyymmdd };
-              let rTotalCum = 0;
-              for (const s of symbols) {
-                if (r[s].profit != null) rollingCum[s] += r[s].profit;
-                out[s] = {
-                  profit: r[s].profit,
-                  sell: r[s].sell,
-                  cum: (r[s].profit != null || rollingCum[s] !== 0) ? rollingCum[s] : null,
-                  tierNow: r[s].tierNow,
-                  tierMax: r[s].tierMax
-                };
-                if (out[s].cum != null) rTotalCum += out[s].cum;
-              }
-              out.totalCum = rTotalCum === 0 && r.totalDailyProfit == null ? null : rTotalCum;
-              return out;
+               const out = { dateLabel: r.mmdd, totalDailyProfit: r.totalDailyProfit, maxDate: r.yyyymmdd }; 
+               let rTotalCum = 0;
+               for(const s of symbols) {
+                  if (r[s].profit != null) rollingCum[s] += r[s].profit;
+                  out[s] = {
+                     profit: r[s].profit,
+                     sell: r[s].sell,
+                     cum: (r[s].profit != null || rollingCum[s] !== 0) ? rollingCum[s] : null,
+                     tierNow: r[s].tierNow,
+                     tierMax: r[s].tierMax
+                  };
+                  if (out[s].cum != null) rTotalCum += out[s].cum;
+               }
+               out.totalCum = rTotalCum === 0 && r.totalDailyProfit == null ? null : rTotalCum;
+               return out;
             });
-
-            setArchiveNotice(!viewData.length && missingArchive ? "해당 월의 보관 데이터가 없습니다." : "");
           }
         }
 
         renderView(viewData, symbols, viewMode, allDaily);
       }
 
-      async function handleArchiveMonth() {
-        const year = yearSel.value;
-        const month = monthSel.value;
-        if (!/^\d{4}$/.test(year) || !/^\d{2}$/.test(month)) {
-          alert("월 단위가 선택된 상태에서만 월 마감을 실행할 수 있습니다.");
-          return;
-        }
-
-        const confirmed = confirm("정말 월 마감을 진행하시겠습니까?\n현재 월의 데이터를 archive에 저장합니다.");
-        if (!confirmed) return;
-
-        try {
-          const res = await fetch(getGridApiUrl("/archive-month"), {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ year, month })
-          });
-          const result = await res.json();
-          if (!res.ok || !result?.ok) {
-            throw new Error(result?.error || "archive request failed");
-          }
-
-          const monthKey = getMonthKey(year, month);
-          if (!archiveMonthIndex.includes(monthKey)) {
-            archiveMonthIndex = [...archiveMonthIndex, monthKey].sort();
-          }
-          archiveRowsCache.delete(monthKey);
-          alert(`${year}년 ${Number(month)}월 데이터를 보관했습니다.`);
-          await rerender();
-        } catch (error) {
-          alert("월 마감에 실패했습니다.");
-          console.error(error);
-        }
-      }
-
-      buildYearOptions();
-      updateMonthDropdown();
-
-      yearSel.addEventListener("change", async () => { updateMonthDropdown(); await rerender(); });
-      monthSel.addEventListener("change", async () => { await rerender(); });
-      symbolsSel.addEventListener("change", async () => { await rerender(); });
-      archiveMonthBtn.addEventListener("click", handleArchiveMonth);
-      await rerender();
+      yearSel.addEventListener("change", () => { updateMonthDropdown(); rerender(); });
+      monthSel.addEventListener("change", rerender);
+      symbolsSel.addEventListener("change", rerender);
+      rerender();
     } catch (e) {
       status.textContent = "연결 에러";
       status.classList.add("err-pill");
