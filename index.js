@@ -22,7 +22,7 @@ const {
   GH_REPO,
   PORT
 } = process.env;
-const REPORT_ROW_LIMIT = 500;
+const REPORT_ROW_LIMIT = 1000;
 
 // ===============================
 // Supabase 연결
