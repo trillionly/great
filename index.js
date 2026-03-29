@@ -28,7 +28,7 @@ const {
   GH_REPO,
   PORT
 } = process.env;
-const REPORT_ROW_LIMIT = 1000;
+const REPORT_ROW_LIMIT = 500;
 
 // ===============================
 // Supabase ?°ê²°
@@ -311,5 +311,6 @@ const port = PORT || 3000;
 app.listen(port, () => {
   console.log("Server started on port", port);
 });
+
 
 
