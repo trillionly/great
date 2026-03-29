@@ -465,6 +465,7 @@
   const DEFAULT_KRW_RATE = 1300;
   let usdToKrwRate = null;
   let usdToKrwPrevRate = null;
+  let usdToKrwDelta = null;
   let usdToKrwTrend = "same";
   let exchangeRateStatus = "loading";
 
@@ -496,10 +497,15 @@
       if (current < previous) return "down";
       return "same";
     };
+    const calculateExchangeRateDelta = (current, previous) => {
+      if (!Number.isFinite(current) || !Number.isFinite(previous)) return null;
+      return current - previous;
+    };
 
     if (cachedDate === today && Number.isFinite(cachedRate) && cachedRate > 0) {
       usdToKrwRate = cachedRate;
       usdToKrwPrevRate = Number.isFinite(cachedPrevRate) && cachedPrevRate > 0 ? cachedPrevRate : null;
+      usdToKrwDelta = calculateExchangeRateDelta(usdToKrwRate, usdToKrwPrevRate);
       usdToKrwTrend = detectExchangeRateTrend(usdToKrwRate, usdToKrwPrevRate);
       exchangeRateStatus = "ready";
       return usdToKrwRate;
@@ -520,6 +526,7 @@
 
       usdToKrwRate = rate;
       usdToKrwPrevRate = previousRate;
+      usdToKrwDelta = calculateExchangeRateDelta(usdToKrwRate, usdToKrwPrevRate);
       usdToKrwTrend = detectExchangeRateTrend(usdToKrwRate, usdToKrwPrevRate);
       exchangeRateStatus = "ready";
       localStorage.setItem("exchange_rate", String(rate));
@@ -533,6 +540,7 @@
       }
       usdToKrwRate = DEFAULT_KRW_RATE;
       usdToKrwPrevRate = previousRate;
+      usdToKrwDelta = calculateExchangeRateDelta(usdToKrwRate, usdToKrwPrevRate);
       usdToKrwTrend = detectExchangeRateTrend(usdToKrwRate, usdToKrwPrevRate);
       exchangeRateStatus = "ready";
       localStorage.setItem("exchange_rate", String(DEFAULT_KRW_RATE));
