@@ -171,7 +171,6 @@
     .krw-tooltip {
       position: fixed;
       z-index: 2000;
-      display: none;
       min-width: 210px;
       max-width: 260px;
       padding: 10px 12px;
@@ -184,9 +183,30 @@
       line-height: 1.45;
       pointer-events: none;
       white-space: nowrap;
+      opacity: 0;
+      transform: translateY(-8px);
+      transition: opacity 180ms ease-out, transform 180ms ease-out;
+      visibility: hidden;
+    }
+    .krw-tooltip.is-visible {
+      opacity: 1;
+      transform: translateY(0);
+      visibility: visible;
     }
     .krw-tooltip-row + .krw-tooltip-row {
       margin-top: 4px;
+    }
+    .krw-trend {
+      font-weight: 700;
+    }
+    .krw-trend.up {
+      color: #22c55e;
+    }
+    .krw-trend.down {
+      color: #ef4444;
+    }
+    .krw-trend.same {
+      color: #94a3b8;
     }
     /* 테이블 디자인 */
     .wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
@@ -641,7 +661,7 @@
   function hideKrwTooltip() {
     const tooltip = document.getElementById("krwTooltip");
     if (!tooltip) return;
-    tooltip.style.display = "none";
+    tooltip.classList.remove("is-visible");
     tooltip.innerHTML = "";
     tooltip.removeAttribute("data-open-for");
   }
@@ -651,10 +671,9 @@
       return `<div class="krw-tooltip-row">환율 불러오는 중...</div>`;
     }
     const krwValue = convertUsdToKrw(usdValue, usdToKrwRate);
-    const trendLabel = usdToKrwTrend === "up" ? "상승" : (usdToKrwTrend === "down" ? "하락" : "변동없음");
+    const trendArrow = usdToKrwTrend === "up" ? "↑" : (usdToKrwTrend === "down" ? "↓" : "-");
     return `
-      <div class="krw-tooltip-row">현재 환율: 1 USD = ${fmtKrw(usdToKrwRate)} KRW</div>
-      <div class="krw-tooltip-row">전일 대비: ${trendLabel}</div>
+      <div class="krw-tooltip-row">현재 환율: 1 USD = ${fmtKrw(usdToKrwRate)} KRW <span class="krw-trend ${usdToKrwTrend}">(${trendArrow})</span></div>
       <div class="krw-tooltip-row">원화 환산: ₩ ${fmtKrw(Math.round(krwValue || 0))}</div>
     `;
   }
@@ -666,9 +685,11 @@
     if (!Number.isFinite(usdValue)) return;
 
     tooltip.innerHTML = renderKrwTooltipContent(usdValue);
-    tooltip.style.display = "block";
     tooltip.dataset.openFor = String(usdValue);
     positionKrwTooltip(target);
+    requestAnimationFrame(() => {
+      tooltip.classList.add("is-visible");
+    });
   }
 
   function bindUsdKrwTooltips(root = document) {
@@ -687,7 +708,7 @@
       trigger.addEventListener("click", (event) => {
         event.stopPropagation();
         const tooltip = document.getElementById("krwTooltip");
-        if (tooltip && tooltip.style.display === "block" && tooltip.dataset.openFor === String(trigger.dataset.usdValue)) {
+        if (tooltip && tooltip.classList.contains("is-visible") && tooltip.dataset.openFor === String(trigger.dataset.usdValue)) {
           hideKrwTooltip();
           return;
         }
