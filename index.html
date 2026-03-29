@@ -679,9 +679,15 @@
       return `<div class="krw-tooltip-row">환율 불러오는 중...</div>`;
     }
     const krwValue = convertUsdToKrw(usdValue, usdToKrwRate);
+    const roundedDelta = Number.isFinite(usdToKrwDelta) ? Math.round(usdToKrwDelta) : 0;
     const trendArrow = usdToKrwTrend === "up" ? "↑" : (usdToKrwTrend === "down" ? "↓" : "-");
+    const trendDeltaText = usdToKrwTrend === "up"
+      ? `+${fmtKrw(Math.abs(roundedDelta))}`
+      : usdToKrwTrend === "down"
+        ? `-${fmtKrw(Math.abs(roundedDelta))}`
+        : "0";
     return `
-      <div class="krw-tooltip-row">현재 환율: 1 USD = ${fmtKrw(usdToKrwRate)} KRW <span class="krw-trend ${usdToKrwTrend}">(${trendArrow})</span></div>
+      <div class="krw-tooltip-row">현재 환율: 1 USD = ${fmtKrw(usdToKrwRate)} KRW <span class="krw-trend ${usdToKrwTrend}">(${trendArrow} ${trendDeltaText})</span></div>
       <div class="krw-tooltip-row">원화 환산: ₩ ${fmtKrw(Math.round(krwValue || 0))}</div>
     `;
   }
