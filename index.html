@@ -414,6 +414,59 @@
     if (!nums.length) return null;
     return nums.reduce((a,b)=>a+b,0);
   };
+  const DEFAULT_KRW_RATE = 1300;
+  let usdToKrwRate = null;
+  let exchangeRateStatus = "loading";
+
+  function getTodayDateKey() {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Seoul",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit"
+    }).formatToParts(new Date());
+    const map = {};
+    parts.forEach(part => {
+      if (part.type !== "literal") map[part.type] = part.value;
+    });
+    return `${map.year}-${map.month}-${map.day}`;
+  }
+
+  async function loadUsdKrwExchangeRate() {
+    if (exchangeRateStatus === "ready" && Number.isFinite(usdToKrwRate)) return usdToKrwRate;
+
+    const today = getTodayDateKey();
+    const cachedDate = localStorage.getItem("exchange_rate_date");
+    const cachedRate = Number(localStorage.getItem("exchange_rate"));
+
+    if (cachedDate === today && Number.isFinite(cachedRate) && cachedRate > 0) {
+      usdToKrwRate = cachedRate;
+      exchangeRateStatus = "ready";
+      return usdToKrwRate;
+    }
+
+    exchangeRateStatus = "loading";
+    try {
+      const res = await fetch("https://open.er-api.com/v6/latest/USD", { cache: "no-store" });
+      if (!res.ok) throw new Error(`exchange rate fetch failed: ${res.status}`);
+      const data = await res.json();
+      const rate = Number(data?.rates?.KRW);
+      if (!Number.isFinite(rate) || rate <= 0) throw new Error("invalid KRW rate");
+
+      usdToKrwRate = rate;
+      exchangeRateStatus = "ready";
+      localStorage.setItem("exchange_rate", String(rate));
+      localStorage.setItem("exchange_rate_date", today);
+      return usdToKrwRate;
+    } catch (error) {
+      console.warn("exchange rate fallback applied:", error);
+      usdToKrwRate = DEFAULT_KRW_RATE;
+      exchangeRateStatus = "ready";
+      return usdToKrwRate;
+    } finally {
+      if (window.__comboChart) window.__comboChart.update();
+    }
+  }
   const GRID_API_BASE = window.GRID_ARCHIVE_API_BASE || "https://telegram-invest-server.onrender.com";
   const archiveRowsCache = new Map();
   let archiveMonthIndex = [];
@@ -984,10 +1037,18 @@
                       sum += item.raw;
                     }
                   });
+                  const footerLines = [];
                   if (isBarHovered) {
-                    return '\n▶ 수익 합계: $' + new Intl.NumberFormat('en-US').format(sum);
+                    footerLines.push('');
+                    footerLines.push('▶ 수익 합계: $' + new Intl.NumberFormat('en-US').format(sum));
+                    if (exchangeRateStatus !== "ready" || !Number.isFinite(usdToKrwRate)) {
+                      footerLines.push('환율 불러오는 중...');
+                    } else {
+                      const krwValue = Math.round(sum * usdToKrwRate);
+                      footerLines.push('▶ 원화 환산: ₩' + new Intl.NumberFormat('ko-KR').format(krwValue));
+                    }
                   }
-                  return null;
+                  return footerLines.length ? footerLines : null;
                 }
               }
             }
@@ -1082,6 +1143,7 @@
     const errorBanner = document.getElementById("errorBanner");
 
     fetchAndDrawRealSparklines();
+    loadUsdKrwExchangeRate();
 
     try {
       let baseReportRows = [];
