@@ -163,6 +163,31 @@
       font-size: 13px;
       font-weight: 600;
     }
+    .usd-krw-trigger {
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+    }
+    .krw-tooltip {
+      position: fixed;
+      z-index: 2000;
+      display: none;
+      min-width: 210px;
+      max-width: 260px;
+      padding: 10px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.96);
+      color: #f8fafc;
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.22);
+      font-size: 12px;
+      line-height: 1.45;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    .krw-tooltip-row + .krw-tooltip-row {
+      margin-top: 4px;
+    }
     /* 테이블 디자인 */
     .wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
     table { border-collapse: collapse; width: 100%; min-width: 800px; white-space: nowrap; }
@@ -394,6 +419,8 @@
     <pre class="mono" id="debug" style="white-space:pre-wrap; font-size:11px; background:#f8fafc; padding:10px; border:1px solid #e2e8f0; border-radius:6px; margin-top:8px;"></pre>
   </details>
 
+  <div id="krwTooltip" class="krw-tooltip"></div>
+
 <script>
   const SEEDS = { TQQQ: 140000, ETHU: 40000, TSLL: 32000 };
   const MAX_TIERS = { TQQQ: 140, ETHU: 100, TSLL: 90 };
@@ -409,6 +436,7 @@
   const fmtFloat1 = (n) => n == null ? "" : Number(n).toFixed(1);
   const fmtPct1 = (x) => (x == null || !Number.isFinite(x)) ? "" : (x * 100).toFixed(1) + "%";
   const clsPN = (n) => (n == null) ? "" : (n < 0 ? "neg" : (n > 0 ? "pos" : ""));
+  const fmtKrw = (n) => n == null ? "" : new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 0 }).format(n);
   const sumOrNull = (arr) => {
     const nums = arr.filter(v => typeof v === "number" && Number.isFinite(v));
     if (!nums.length) return null;
@@ -467,12 +495,33 @@
       if (window.__comboChart) window.__comboChart.update();
     }
   }
+
+  document.addEventListener("click", (event) => {
+    if (!event.target.closest(".usd-krw-trigger") && !event.target.closest("#krwTooltip")) {
+      hideKrwTooltip();
+    }
+  });
+  window.addEventListener("scroll", hideKrwTooltip, true);
+  window.addEventListener("resize", hideKrwTooltip);
   const GRID_API_BASE = window.GRID_ARCHIVE_API_BASE || "https://telegram-invest-server.onrender.com";
   const archiveRowsCache = new Map();
   let archiveMonthIndex = [];
 
   function getGridApiUrl(path) {
     return `${GRID_API_BASE}${path}`;
+  }
+
+  function convertUsdToKrw(usd, rate) {
+    const usdNumber = Number(usd);
+    const rateNumber = Number(rate);
+    if (!Number.isFinite(usdNumber) || !Number.isFinite(rateNumber)) return null;
+    return usdNumber * rateNumber;
+  }
+
+  function buildUsdDisplayHtml(usd) {
+    if (usd == null || !Number.isFinite(Number(usd))) return "";
+    const numeric = Number(usd);
+    return `<span class="usd-krw-trigger" data-usd-value="${numeric}">$${fmtInt(numeric)}</span>`;
   }
 
   function getMonthKey(year, month) {
@@ -540,6 +589,82 @@
 
     archiveRowsCache.set(monthKey, promise);
     return promise;
+  }
+
+  function positionKrwTooltip(target) {
+    const tooltip = document.getElementById("krwTooltip");
+    if (!tooltip || !target) return;
+    const rect = target.getBoundingClientRect();
+    const tooltipRect = tooltip.getBoundingClientRect();
+    let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+    let top = rect.top - tooltipRect.height - 10;
+
+    if (left < 8) left = 8;
+    if (left + tooltipRect.width > window.innerWidth - 8) {
+      left = window.innerWidth - tooltipRect.width - 8;
+    }
+    if (top < 8) {
+      top = rect.bottom + 10;
+    }
+
+    tooltip.style.left = `${left}px`;
+    tooltip.style.top = `${top}px`;
+  }
+
+  function hideKrwTooltip() {
+    const tooltip = document.getElementById("krwTooltip");
+    if (!tooltip) return;
+    tooltip.style.display = "none";
+    tooltip.innerHTML = "";
+    tooltip.removeAttribute("data-open-for");
+  }
+
+  function renderKrwTooltipContent(usdValue) {
+    if (exchangeRateStatus !== "ready" || !Number.isFinite(usdToKrwRate)) {
+      return `<div class="krw-tooltip-row">환율 불러오는 중...</div>`;
+    }
+    const krwValue = convertUsdToKrw(usdValue, usdToKrwRate);
+    return `
+      <div class="krw-tooltip-row">현재 환율: 1 USD = ${fmtKrw(usdToKrwRate)} KRW</div>
+      <div class="krw-tooltip-row">원화 환산: ₩ ${fmtKrw(Math.round(krwValue || 0))}</div>
+    `;
+  }
+
+  function showKrwTooltip(target) {
+    const tooltip = document.getElementById("krwTooltip");
+    if (!tooltip || !target) return;
+    const usdValue = Number(target.dataset.usdValue);
+    if (!Number.isFinite(usdValue)) return;
+
+    tooltip.innerHTML = renderKrwTooltipContent(usdValue);
+    tooltip.style.display = "block";
+    tooltip.dataset.openFor = String(usdValue);
+    positionKrwTooltip(target);
+  }
+
+  function bindUsdKrwTooltips(root = document) {
+    const triggers = root.querySelectorAll(".usd-krw-trigger");
+    const hoverSupported = window.matchMedia("(hover: hover)").matches;
+
+    triggers.forEach(trigger => {
+      if (trigger.dataset.krwTooltipBound === "1") return;
+      trigger.dataset.krwTooltipBound = "1";
+
+      if (hoverSupported) {
+        trigger.addEventListener("mouseenter", () => showKrwTooltip(trigger));
+        trigger.addEventListener("mouseleave", () => hideKrwTooltip());
+      }
+
+      trigger.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const tooltip = document.getElementById("krwTooltip");
+        if (tooltip && tooltip.style.display === "block" && tooltip.dataset.openFor === String(trigger.dataset.usdValue)) {
+          hideKrwTooltip();
+          return;
+        }
+        showKrwTooltip(trigger);
+      });
+    });
   }
   /* 🔥 미니 스파크라인 그리는 함수 */
   function drawSparkline(canvasId, dataPoints, colorCode) {
@@ -863,18 +988,18 @@
         <tr>
           <td class="center br" style="font-weight:600;">${esc(r.dateLabel)}</td>
           ${symbols.map(sym => {
-            return `
-              <td class="center">${r[sym].sell || r[sym].sell === 0 ? r[sym].sell : ""}</td>
-              <td class="right ${clsPN(r[sym].profit)}">${r[sym].profit == null ? "" : "$" + fmtInt(r[sym].profit)}</td>
-              <td class="right br">${r[sym].cum == null ? "" : "$" + fmtInt(r[sym].cum)}</td>
-            `;
-          }).join("")}
-          <td class="center br">${fmtInt(totalSell)}</td>
-          <td class="right ${clsPN(rowDaily)}">${rowDaily == null ? "" : "$" + fmtInt(rowDaily)}</td>
-          <td class="right">${rowCum == null ? "" : "$" + fmtInt(rowCum)}</td>
-        </tr>
-      `;
-    }).join("") || `<tr><td colspan="${4 + symbols.length*3}" class="muted">데이터 없음</td></tr>`;
+              return `
+                <td class="center">${r[sym].sell || r[sym].sell === 0 ? r[sym].sell : ""}</td>
+                <td class="right ${clsPN(r[sym].profit)}">${buildUsdDisplayHtml(r[sym].profit)}</td>
+                <td class="right br">${buildUsdDisplayHtml(r[sym].cum)}</td>
+              `;
+            }).join("")}
+            <td class="center br">${fmtInt(totalSell)}</td>
+            <td class="right ${clsPN(rowDaily)}">${buildUsdDisplayHtml(rowDaily)}</td>
+            <td class="right">${buildUsdDisplayHtml(rowCum)}</td>
+          </tr>
+        `;
+      }).join("") || `<tr><td colspan="${4 + symbols.length*3}" class="muted">데이터 없음</td></tr>`;
 
     const sumSellBySym = Object.fromEntries(symbols.map(s => [s, sumOrNull(viewData.map(r => r[s].sell))]));
     const sumProfitBySym = Object.fromEntries(symbols.map(s => [s, sumOrNull(viewData.map(r => r[s].profit))]));
@@ -897,12 +1022,12 @@
       <tr class="avg">
         <td class="center br">${avgLabel}</td>
         ${symbols.map(sym => `
-          <td class="center">${fmtFloat1(avgSellBySym[sym])}</td>
-          <td class="right ${clsPN(avgProfitBySym[sym])}">$${fmtInt(avgProfitBySym[sym])}</td>
+        <td class="center">${fmtFloat1(avgSellBySym[sym])}</td>
+          <td class="right ${clsPN(avgProfitBySym[sym])}">${buildUsdDisplayHtml(avgProfitBySym[sym])}</td>
           <td class="right br">-</td>
         `).join("")}
         <td class="center br">${fmtFloat1(avgTotalSellAll)}</td>
-        <td class="right ${clsPN(avgTotalProfitAll)}">$${fmtInt(avgTotalProfitAll)}</td>
+        <td class="right ${clsPN(avgTotalProfitAll)}">${buildUsdDisplayHtml(avgTotalProfitAll)}</td>
         <td class="right">-</td>
       </tr>
       <tr class="tot">
@@ -914,7 +1039,7 @@
             <td class="center">${sumSellBySym[sym] ?? ""}</td>
             <td class="right">-</td>
             <td class="right br">
-              <div>$${fmtInt(lastCumBySym[sym])}</div>
+              <div>${buildUsdDisplayHtml(lastCumBySym[sym])}</div>
               ${roiCum != null ? `<div style="color:#2563eb; font-size:14px; font-weight:700;">(${fmtPct1(roiCum)})</div>` : ""}
             </td>
           `;
@@ -922,7 +1047,7 @@
         <td class="center br">${fmtInt(totalSellAll)}</td>
         <td class="right">-</td>
         <td class="right">
-          <div>${lastCumAll == null ? "" : "$" + fmtInt(lastCumAll)}</div>
+          <div>${buildUsdDisplayHtml(lastCumAll)}</div>
           ${currentSeedTotal > 0 ? `<div style="color:#2563eb; font-size:14px; font-weight:700;">(${fmtPct1(lastCumAll / currentSeedTotal)})</div>` : ""}
         </td>
       </tr>
@@ -933,7 +1058,7 @@
       const r = document.getElementById(idR);
       const p = document.getElementById(idProg);
       
-      v.textContent = "$" + fmtInt(profit);
+      v.innerHTML = buildUsdDisplayHtml(profit);
       v.className = "v " + clsPN(profit);
       r.textContent = (roi == null) ? "" : `수익률 ${fmtPct1(roi)}`;
       
@@ -969,6 +1094,8 @@
       const targetAmt = SEEDS[sym] ? SEEDS[sym] * 0.015 * finalMultiplier : 0;
       setCard("monthProfit"+sym, "monthRoi"+sym, "prog"+sym, cumVal, roi, targetAmt);
     }
+
+    bindUsdKrwTooltips(document);
 
     const labels = viewData.map(r => r.dateLabel);
     const bgColors = {
