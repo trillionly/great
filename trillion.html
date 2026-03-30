@@ -360,31 +360,73 @@
         const labels = chartData.map(row => formatShortDate(row.record_date));
         const totalAssets = chartData.map(row => row.total_asset);
         const principals = chartData.map(row => row.principal);
+        const growthCtx = document.getElementById('growthChart').getContext('2d');
+        const growthGlowPlugin = {
+            id: 'growthGlowPlugin',
+            beforeDatasetDraw(chart, args) {
+                if (args.index !== 0) return;
+                const { ctx } = chart;
+                ctx.save();
+                ctx.shadowColor = 'rgba(59, 130, 246, 0.35)';
+                ctx.shadowBlur = 12;
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 0;
+            },
+            afterDatasetDraw(chart, args) {
+                if (args.index !== 0) return;
+                chart.ctx.restore();
+            }
+        };
 
         if(growthChartInstance) growthChartInstance.destroy();
-        growthChartInstance = new Chart(document.getElementById('growthChart').getContext('2d'), {
+        growthChartInstance = new Chart(growthCtx, {
             type: 'line',
+            plugins: [growthGlowPlugin],
             data: {
                 labels: labels,
                 datasets: [
-                    { label: 'ì´??ì‚°', data: totalAssets, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderWidth: 1.5, fill: false, tension: 0.1, pointRadius: 0, pointHoverRadius: 0 },
-                    { label: '?¬ìž ?ê¸ˆ', data: principals, borderColor: '#94a3b8', borderDash: [5, 5], borderWidth: 1.5, fill: false, tension: 0.1, pointRadius: 0, pointHoverRadius: 0 }
+                    {
+                        label: 'ÃÑ ÀÚ»ê',
+                        data: totalAssets,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.10)',
+                        borderWidth: 3,
+                        fill: { target: 1, above: 'rgba(34, 197, 94, 0.16)', below: 'rgba(239, 68, 68, 0.16)' },
+                        tension: 0.1,
+                        pointRadius: 2.5,
+                        pointHoverRadius: 6,
+                        pointHoverBorderWidth: 2,
+                        pointBackgroundColor: '#60a5fa',
+                        pointHoverBackgroundColor: '#bfdbfe',
+                        pointHoverBorderColor: '#3b82f6'
+                    },
+                    {
+                        label: 'ÅõÀÚ ¿ø±Ý',
+                        data: principals,
+                        borderColor: 'rgba(148, 163, 184, 0.55)',
+                        borderDash: [6, 6],
+                        borderWidth: 1.5,
+                        fill: false,
+                        tension: 0.1,
+                        pointRadius: 0,
+                        pointHoverRadius: 0
+                    }
                 ]
             },
-            options: { 
-                responsive: true, maintainAspectRatio: false, 
-                plugins: { 
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
                     legend: { labels: { color: '#cbd5e1' } },
                     tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: $${(ctx.raw/1000).toFixed(1)}K` } }
-                }, 
-                scales: { 
-                    x: { ticks: { color: '#94a3b8', maxTicksLimit: 12 }, grid: { display: false } }, 
-                    y: { ticks: { color: '#94a3b8', callback: (val) => '$' + (val/1000).toFixed(0) + 'K' }, grid: { color: '#334155' } } 
-                } 
+                },
+                scales: {
+                    x: { ticks: { color: '#94a3b8', maxTicksLimit: 12 }, grid: { display: false } },
+                    y: { ticks: { color: '#94a3b8', callback: (val) => '$' + (val/1000).toFixed(0) + 'K' }, grid: { color: 'rgba(51, 65, 85, 0.35)' } }
+                }
             }
         });
     }
-
     async function loadTradeHistory() {
         const { data } = await db.from('long_term_trade').select('*').order('created_at', { ascending: false }).limit(30);
         const tbody = document.getElementById('trade-history-body');
@@ -444,4 +486,6 @@
     </script>
 </body>
 </html>
+
+
 
