@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
@@ -349,17 +349,6 @@
         const totalAssets = chartData.map(row => row.total_asset);
         const principals = chartData.map(row => row.principal);
         const growthCtx = document.getElementById('growthChart').getContext('2d');
-        const eventIndices = [];
-
-        for (let i = 1; i < principals.length; i++) {
-            const prev = Number(principals[i - 1]);
-            const curr = Number(principals[i]);
-            if (!Number.isFinite(prev) || !Number.isFinite(curr)) continue;
-            const delta = curr - prev;
-            const threshold = Math.max(100, prev * 0.03);
-            if (delta > threshold) eventIndices.push(i);
-        }
-
         const growthEnhancePlugin = {
             id: 'growthEnhancePlugin',
             beforeDatasetDraw(chart, args) {
@@ -381,24 +370,6 @@
                 if (!totalMeta || !totalMeta.data?.length) return;
 
                 ctx.save();
-                eventIndices.forEach(index => {
-                    const point = totalMeta.data[index];
-                    if (!point) return;
-                    const x = point.x;
-                    ctx.strokeStyle = 'rgba(96, 165, 250, 0.28)';
-                    ctx.setLineDash([4, 5]);
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    ctx.moveTo(x, chartArea.top + 6);
-                    ctx.lineTo(x, chartArea.bottom);
-                    ctx.stroke();
-                    ctx.setLineDash([]);
-
-                    ctx.fillStyle = '#93c5fd';
-                    ctx.beginPath();
-                    ctx.arc(x, chartArea.top + 10, 3.5, 0, Math.PI * 2);
-                    ctx.fill();
-                });
 
                 const lastPoint = totalMeta.data[totalMeta.data.length - 1];
                 if (lastPoint) {
