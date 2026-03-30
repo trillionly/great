@@ -161,8 +161,7 @@
                     const diff = Math.abs(data.t[i] - target1Mo);
                     if (diff < minDiff) { minDiff = diff; closestIdx = i; }
                 }
-                const price1Mo = data.c[closestIdx];
-                return { mo: price1Mo, yr: price1Yr };
+                return { mo: data.c[closestIdx], yr: price1Yr };
             }
         } catch (e) {
             console.error(`${symbol} 차트 히스토리 불러오기 실패`, e);
@@ -365,28 +364,26 @@
                 chart.ctx.restore();
             },
             afterDatasetsDraw(chart) {
-                const { ctx, chartArea } = chart;
+                const { ctx } = chart;
                 const totalMeta = chart.getDatasetMeta(0);
                 if (!totalMeta || !totalMeta.data?.length) return;
+                const lastPoint = totalMeta.data[totalMeta.data.length - 1];
+                if (!lastPoint) return;
 
                 ctx.save();
-
-                const lastPoint = totalMeta.data[totalMeta.data.length - 1];
-                if (lastPoint) {
-                    ctx.fillStyle = 'rgba(96, 165, 250, 0.18)';
-                    ctx.beginPath();
-                    ctx.arc(lastPoint.x, lastPoint.y, 11, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.fillStyle = '#bfdbfe';
-                    ctx.beginPath();
-                    ctx.arc(lastPoint.x, lastPoint.y, 5.5, 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.strokeStyle = '#3b82f6';
-                    ctx.lineWidth = 2;
-                    ctx.beginPath();
-                    ctx.arc(lastPoint.x, lastPoint.y, 5.5, 0, Math.PI * 2);
-                    ctx.stroke();
-                }
+                ctx.fillStyle = 'rgba(96, 165, 250, 0.18)';
+                ctx.beginPath();
+                ctx.arc(lastPoint.x, lastPoint.y, 11, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#bfdbfe';
+                ctx.beginPath();
+                ctx.arc(lastPoint.x, lastPoint.y, 5.5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#3b82f6';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(lastPoint.x, lastPoint.y, 5.5, 0, Math.PI * 2);
+                ctx.stroke();
                 ctx.restore();
             }
         };
@@ -432,19 +429,11 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 interaction: { mode: 'index', intersect: false },
-                animation: {
-                    duration: 900,
-                    easing: 'easeOutQuart'
-                },
+                animation: { duration: 900, easing: 'easeOutQuart' },
                 plugins: {
                     legend: {
                         position: 'top',
-                        labels: {
-                            color: '#cbd5e1',
-                            boxWidth: 14,
-                            boxHeight: 2,
-                            padding: 16
-                        }
+                        labels: { color: '#cbd5e1', boxWidth: 14, boxHeight: 2, padding: 16 }
                     },
                     tooltip: {
                         callbacks: {
@@ -463,20 +452,11 @@
                         }
                     }
                 },
-                layout: {
-                    padding: { top: 12, right: 16, bottom: 8, left: 8 }
-                },
+                layout: { padding: { top: 12, right: 16, bottom: 8, left: 8 } },
                 scales: {
-                    x: {
-                        ticks: { color: '#94a3b8', maxTicksLimit: 12, padding: 8 },
-                        grid: { display: false }
-                    },
+                    x: { ticks: { color: '#94a3b8', maxTicksLimit: 12, padding: 8 }, grid: { display: false } },
                     y: {
-                        ticks: {
-                            color: '#94a3b8',
-                            padding: 10,
-                            callback: (val) => '$' + (val / 1000).toFixed(0) + 'K'
-                        },
+                        ticks: { color: '#94a3b8', padding: 10, callback: (val) => '$' + (val / 1000).toFixed(0) + 'K' },
                         grid: { color: 'rgba(51, 65, 85, 0.18)' }
                     }
                 }
