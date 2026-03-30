@@ -361,8 +361,21 @@
         const totalAssets = chartData.map(row => row.total_asset);
         const principals = chartData.map(row => row.principal);
         const growthCtx = document.getElementById('growthChart').getContext('2d');
-        const growthGlowPlugin = {
-            id: 'growthGlowPlugin',
+        const eventIndices = [];
+
+        for (let i = 1; i < principals.length; i++) {
+            const prev = Number(principals[i - 1]);
+            const curr = Number(principals[i]);
+            if (!Number.isFinite(prev) || !Number.isFinite(curr)) continue;
+            const delta = curr - prev;
+            const threshold = Math.max(100, prev * 0.03);
+            if (delta > threshold) {
+                eventIndices.push(i);
+            }
+        }
+
+        const growthEnhancePlugin = {
+            id: 'growthEnhancePlugin',
             beforeDatasetDraw(chart, args) {
                 if (args.index !== 0) return;
                 const { ctx } = chart;
@@ -375,13 +388,58 @@
             afterDatasetDraw(chart, args) {
                 if (args.index !== 0) return;
                 chart.ctx.restore();
+            },
+            afterDatasetsDraw(chart) {
+                const { ctx, chartArea } = chart;
+                const totalMeta = chart.getDatasetMeta(0);
+                if (!totalMeta || !totalMeta.data?.length) return;
+
+                ctx.save();
+                eventIndices.forEach(index => {
+                    const point = totalMeta.data[index];
+                    if (!point) return;
+                    const x = point.x;
+                    ctx.strokeStyle = 'rgba(96, 165, 250, 0.28)';
+                    ctx.setLineDash([4, 5]);
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(x, chartArea.top + 6);
+                    ctx.lineTo(x, chartArea.bottom);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    ctx.fillStyle = '#93c5fd';
+                    ctx.beginPath();
+                    ctx.arc(x, chartArea.top + 10, 3.5, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+
+                const lastPoint = totalMeta.data[totalMeta.data.length - 1];
+                if (lastPoint) {
+                    ctx.fillStyle = 'rgba(96, 165, 250, 0.18)';
+                    ctx.beginPath();
+                    ctx.arc(lastPoint.x, lastPoint.y, 11, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#bfdbfe';
+                    ctx.beginPath();
+                    ctx.arc(lastPoint.x, lastPoint.y, 5.5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.strokeStyle = '#3b82f6';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(lastPoint.x, lastPoint.y, 5.5, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+                ctx.restore();
             }
         };
 
         if(growthChartInstance) growthChartInstance.destroy();
         growthChartInstance = new Chart(growthCtx, {
             type: 'line',
-            plugins: [growthGlowPlugin],
+            plugins: [growthEnhancePlugin],
             data: {
                 labels: labels,
                 datasets: [
@@ -392,13 +450,14 @@
                         backgroundColor: 'rgba(59, 130, 246, 0.10)',
                         borderWidth: 3,
                         fill: { target: 1, above: 'rgba(34, 197, 94, 0.16)', below: 'rgba(239, 68, 68, 0.16)' },
-                        tension: 0.1,
-                        pointRadius: 2.5,
-                        pointHoverRadius: 6,
+                        tension: 0.18,
+                        pointRadius: (ctx) => ctx.dataIndex === totalAssets.length - 1 ? 5.5 : 0,
+                        pointHoverRadius: (ctx) => ctx.dataIndex === totalAssets.length - 1 ? 7.5 : 5,
                         pointHoverBorderWidth: 2,
-                        pointBackgroundColor: '#60a5fa',
-                        pointHoverBackgroundColor: '#bfdbfe',
-                        pointHoverBorderColor: '#3b82f6'
+                        pointBackgroundColor: (ctx) => ctx.dataIndex === totalAssets.length - 1 ? '#bfdbfe' : '#60a5fa',
+                        pointHoverBackgroundColor: '#dbeafe',
+                        pointHoverBorderColor: '#3b82f6',
+                        pointHitRadius: 14
                     },
                     {
                         label: '투자 원금',
@@ -409,16 +468,37 @@
                         fill: false,
                         tension: 0.1,
                         pointRadius: 0,
-                        pointHoverRadius: 0
+                        pointHoverRadius: 0,
+                        pointHitRadius: 10
                     }
                 ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                animation: {
+                    duration: 900,
+                    easing: 'easeOutQuart'
+                },
                 plugins: {
                     legend: { labels: { color: '#cbd5e1' } },
-                    tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: $${(ctx.raw/1000).toFixed(1)}K` } }
+                    tooltip: {
+                        callbacks: {
+                            label: (ctx) => {
+                                if (ctx.datasetIndex === 0) return `Total Asset (USD): $${fmtKrw(ctx.raw)}`;
+                                if (ctx.datasetIndex === 1) return `Invested Principal (USD): $${fmtKrw(ctx.raw)}`;
+                                return '';
+                            },
+                            afterBody: (items) => {
+                                const total = items.find(item => item.datasetIndex === 0)?.raw;
+                                const principal = items.find(item => item.datasetIndex === 1)?.raw;
+                                if (!Number.isFinite(total) || !Number.isFinite(principal)) return [];
+                                const profit = total - principal;
+                                return [`Profit (USD): $${fmtKrw(profit)}`, 'KRW: 준비용'];
+                            }
+                        }
+                    }
                 },
                 scales: {
                     x: { ticks: { color: '#94a3b8', maxTicksLimit: 12 }, grid: { display: false } },
@@ -486,6 +566,7 @@
     </script>
 </body>
 </html>
+
 
 
 
