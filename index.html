@@ -560,6 +560,7 @@
   window.addEventListener("resize", hideKrwTooltip);
   const GRID_API_BASE = window.GRID_ARCHIVE_API_BASE || "https://telegram-invest-server.onrender.com";
   const archiveRowsCache = new Map();
+  const archiveBlocksCache = new Map();
   let archiveMonthIndex = [];
 
   function getGridApiUrl(path) {
@@ -597,6 +598,28 @@
       if (!unique.has(key)) unique.set(key, row);
     });
     return Array.from(unique.values()).sort((a, b) => String(b?.created_at || "").localeCompare(String(a?.created_at || "")));
+  }
+
+  function dedupeBlocks(blocks) {
+    const unique = new Map();
+    (blocks || []).forEach(block => {
+      const key = `${block?.yyyymmdd || ""}|${block?.symbol || ""}|${block?.time || ""}|${block?.raw || ""}`;
+      if (!unique.has(key)) unique.set(key, block);
+    });
+    return Array.from(unique.values()).sort((a, b) => {
+      const dateCompare = String(a?.yyyymmdd || "").localeCompare(String(b?.yyyymmdd || ""));
+      if (dateCompare !== 0) return dateCompare;
+      const symbolCompare = String(a?.symbol || "").localeCompare(String(b?.symbol || ""));
+      if (symbolCompare !== 0) return symbolCompare;
+      return String(a?.time || "").localeCompare(String(b?.time || ""));
+    });
+  }
+
+  function splitBlocksByValidity(blocks) {
+    const errorBlocks = (blocks || []).filter(b => b.isValid === false);
+    const errorDates = new Set(errorBlocks.map(b => b.yyyymmdd));
+    const validBlocks = (blocks || []).filter(b => !errorDates.has(b.yyyymmdd));
+    return { errorBlocks, errorDates, validBlocks };
   }
 
   function setArchiveNotice(message = "") {
@@ -643,6 +666,19 @@
     })();
 
     archiveRowsCache.set(monthKey, promise);
+    return promise;
+  }
+
+  async function loadArchiveBlocks(monthKey) {
+    if (archiveBlocksCache.has(monthKey)) return archiveBlocksCache.get(monthKey);
+
+    const promise = (async () => {
+      const rows = await loadArchiveRows(monthKey);
+      if (!Array.isArray(rows)) return null;
+      return extractBlocksFromRows(rows);
+    })();
+
+    archiveBlocksCache.set(monthKey, promise);
     return promise;
   }
 
@@ -1303,23 +1339,18 @@
       { symbol: 'TSLL', canvasId: 'sparkTSLL', loaderId: 'loader_TSLL', errorId: 'error_TSLL', color: '#64748b' }
     ];
 
-    for (const config of chartConfigs) {
+    await Promise.all(chartConfigs.map(async (config) => {
       try {
-        // 무조건 가져올 때까지 3중 로직 대기
         const prices = await fetchHistoricalPrices(config.symbol);
-        
-        // 성공: 빙글빙글 로더 숨기고 차트 노출
         document.getElementById(config.loaderId).style.display = 'none';
         document.getElementById(config.canvasId).style.display = 'block';
         drawSparkline(config.canvasId, prices, config.color);
-        
       } catch (error) {
         console.error(`[최종 에러] ${config.symbol}:`, error);
-        // 실패: 로더 숨기고 에러 텍스트 노출
         document.getElementById(config.loaderId).style.display = 'none';
         document.getElementById(config.errorId).style.display = 'block';
       }
-    }
+    }));
   }
 
   async function main() {
@@ -1337,31 +1368,35 @@
     loadUsdKrwExchangeRate();
 
     try {
-      let baseReportRows = [];
+      const [histRows, repRows, fetchedArchiveMonthIndex] = await Promise.all([
+        (async () => {
+          try {
+            const resHist = await fetch("./data/history.json?t=" + Date.now(), { cache: "no-store" });
+            if (!resHist.ok) return [];
+            const jHist = await resHist.json();
+            return jHist.rows || [];
+          } catch (e) {
+            return [];
+          }
+        })(),
+        (async () => {
+          try {
+            const resRep = await fetch("./data/report.json?t=" + Date.now(), { cache: "no-store" });
+            if (!resRep.ok) return [];
+            const jRep = await resRep.json();
+            return jRep.rows || [];
+          } catch (e) {
+            return [];
+          }
+        })(),
+        fetchArchiveIndex()
+      ]);
 
-      try {
-        const resHist = await fetch("./data/history.json?t=" + Date.now(), { cache: "no-store" });
-        if(resHist.ok) {
-          const jHist = await resHist.json();
-          baseReportRows = baseReportRows.concat(jHist.rows || []);
-        }
-      } catch(e) {}
-
-      try {
-        const resRep = await fetch("./data/report.json?t=" + Date.now(), { cache: "no-store" });
-        if(resRep.ok) {
-          const jRep = await resRep.json();
-          baseReportRows = baseReportRows.concat(jRep.rows || []);
-        }
-      } catch(e) {}
-
-      baseReportRows = dedupeRows(baseReportRows);
-      archiveMonthIndex = await fetchArchiveIndex();
+      const baseReportRows = dedupeRows([].concat(histRows, repRows));
+      archiveMonthIndex = fetchedArchiveMonthIndex;
 
       const baseBlocks = extractBlocksFromRows(baseReportRows);
-      const baseErrorBlocks = baseBlocks.filter(b => b.isValid === false);
-      const baseErrorDates = new Set(baseErrorBlocks.map(b => b.yyyymmdd));
-      const baseValidBlocks = baseBlocks.filter(b => !baseErrorDates.has(b.yyyymmdd));
+      const { errorBlocks: baseErrorBlocks, validBlocks: baseValidBlocks } = splitBlocksByValidity(baseBlocks);
 
       debug.textContent = JSON.stringify(baseBlocks.slice(0, 3), null, 2);
 
@@ -1406,12 +1441,19 @@
         else if (months.length > 0) monthSel.value = months[months.length - 1];
       }
 
-      async function getRowsForSelection() {
+      async function getSelectionData() {
         const y = yearSel.value;
         const m = monthSel.value;
         if (y === "ALL_YEARS") {
-          const archives = await Promise.all(archiveMonthIndex.map(loadArchiveRows));
-          return { rows: dedupeRows(baseReportRows.concat(archives.flat().filter(Boolean))), stateMessage: "" };
+          const archives = await Promise.all(archiveMonthIndex.map(async (monthKey) => {
+            const [rows, blocks] = await Promise.all([loadArchiveRows(monthKey), loadArchiveBlocks(monthKey)]);
+            return { rows, blocks };
+          }));
+          return {
+            rows: dedupeRows(baseReportRows.concat(archives.flatMap(item => Array.isArray(item.rows) ? item.rows : []))),
+            blocks: dedupeBlocks(baseBlocks.concat(archives.flatMap(item => Array.isArray(item.blocks) ? item.blocks : []))),
+            stateMessage: ""
+          };
         }
         const hasBaseMonth = baseValidBlocks.some(b => b.year === y && b.month === m);
         let archiveKeys = [];
@@ -1422,32 +1464,37 @@
           if (archiveMonthIndex.includes(selectedKey)) archiveKeys = [selectedKey];
         }
 
-        const archives = await Promise.all(archiveKeys.map(loadArchiveRows));
-        const archiveRows = archives.flat().filter(Boolean);
+        const archives = await Promise.all(archiveKeys.map(async (monthKey) => {
+          const [rows, blocks] = await Promise.all([loadArchiveRows(monthKey), loadArchiveBlocks(monthKey)]);
+          return { rows, blocks };
+        }));
+        const archiveRows = archives.flatMap(item => Array.isArray(item.rows) ? item.rows : []);
+        const archiveBlocks = archives.flatMap(item => Array.isArray(item.blocks) ? item.blocks : []);
 
         let stateMessage = "";
         if (/^\d{2}$/.test(m)) {
           if (!hasBaseMonth && !archiveRows.length) stateMessage = "해당 월의 보관 데이터가 없습니다.";
         }
 
-        return { rows: dedupeRows(baseReportRows.concat(archiveRows)), stateMessage };
+        return {
+          rows: dedupeRows(baseReportRows.concat(archiveRows)),
+          blocks: dedupeBlocks(baseBlocks.concat(archiveBlocks)),
+          stateMessage
+        };
       }
 
       async function rerender(stateOverride = "") {
         const y = yearSel.value;
         const m = monthSel.value;
         const symbols = symbolsSel.value.split(",").map(s => s.trim()).filter(Boolean);
-        const { rows: activeRows, stateMessage } = await getRowsForSelection();
+        const { rows: activeRows, blocks: activeBlocks, stateMessage } = await getSelectionData();
 
         count.textContent = String(activeRows.length);
         latest.textContent = getLatestRowDate(activeRows) || "-";
 
-        const blocks = extractBlocksFromRows(activeRows);
-        debug.textContent = JSON.stringify(blocks.slice(0, 3), null, 2);
+        debug.textContent = JSON.stringify(activeBlocks.slice(0, 3), null, 2);
 
-        const errorBlocks = blocks.filter(b => b.isValid === false);
-        const errorDates = new Set(errorBlocks.map(b => b.yyyymmdd));
-        const validBlocks = blocks.filter(b => !errorDates.has(b.yyyymmdd));
+        const { errorBlocks, validBlocks } = splitBlocksByValidity(activeBlocks);
 
         if (errorBlocks.length > 0) {
             status.textContent = "수정 요청 대기중";
