@@ -109,7 +109,9 @@ function extractRowMonthKey(row) {
   const rawDateMatch = raw.match(/(\d{2})\/(\d{2})일\s+(\d{2}:\d{2})/);
   const baseYear = String(row?.date || "").slice(0, 4);
   if (rawDateMatch && /^\d{4}$/.test(baseYear)) {
-    return `${baseYear}-${rawDateMatch[1]}`;
+    const d = new Date(Number(baseYear), Number(rawDateMatch[1]) - 1, Number(rawDateMatch[2]));
+    d.setDate(d.getDate() - 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   }
   const rowDate = String(row?.date || "");
   return /^\d{4}-\d{2}/.test(rowDate) ? rowDate.slice(0, 7) : null;
