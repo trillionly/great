@@ -845,8 +845,56 @@
       return linesInfo;
   }
 
+  function buildRowMonthDayKey(row) {
+      const raw = row?.raw_message || "";
+      const dtM = raw.match(/(\d{2})\/(\d{2})일\s+(\d{2}:\d{2})/);
+      if (!dtM) return null;
+      const year = row?.date ? row.date.split("-")[0] : String(new Date().getFullYear());
+      return {
+          year,
+          month: dtM[1],
+          day: dtM[2],
+          time: dtM[3],
+          yyyymmdd: `${year}/${dtM[1]}/${dtM[2]}`
+      };
+  }
+
+  function buildRowSymbolKey(row) {
+      const raw = row?.raw_message || "";
+      const symM = raw.match(/([A-Z]{2,6})\s*최대필요\s*:/) || raw.match(/([A-Z]{2,6})\s*평가금액\s*:/);
+      return symM ? symM[1] : null;
+  }
+
+  function keepLatestRowsByDateSymbol(reportRows) {
+      const latestRows = new Map();
+      (reportRows || []).forEach(row => {
+          const dateInfo = buildRowMonthDayKey(row);
+          const symbol = buildRowSymbolKey(row);
+          if (!dateInfo || !symbol) return;
+
+          const key = `${dateInfo.yyyymmdd}|${symbol}`;
+          const prev = latestRows.get(key);
+          const currentCreatedAt = String(row?.created_at || "");
+          const prevCreatedAt = String(prev?.created_at || "");
+
+          if (!prev || currentCreatedAt > prevCreatedAt) {
+              latestRows.set(key, row);
+          }
+      });
+
+      const preservedRows = (reportRows || []).filter(row => {
+          const dateInfo = buildRowMonthDayKey(row);
+          const symbol = buildRowSymbolKey(row);
+          if (!dateInfo || !symbol) return true;
+          return latestRows.get(`${dateInfo.yyyymmdd}|${symbol}`) === row;
+      });
+
+      return preservedRows.sort((a, b) => String(b?.created_at || "").localeCompare(String(a?.created_at || "")));
+  }
+
   function extractBlocksFromRows(reportRows) {
-      const linesInfo = getLinesWithYear(reportRows);
+      const latestRows = keepLatestRowsByDateSymbol(reportRows);
+      const linesInfo = getLinesWithYear(latestRows);
       const recordsMap = new Map();
       let currentKey = null;
       let globalDate = null;
@@ -880,11 +928,6 @@
                       symbol: symbol,
                       raw: line + "\n"
                   });
-              } else {
-                  recordsMap.get(currentKey).raw += line + "\n";
-                  if (globalTime > recordsMap.get(currentKey).time) {
-                      recordsMap.get(currentKey).time = globalTime;
-                  }
               }
               continue; 
           }
