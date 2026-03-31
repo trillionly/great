@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
@@ -639,7 +639,7 @@
 
   async function fetchArchiveIndex() {
     try {
-      const res = await fetch(getGridApiUrl("/archive-index?t=" + Date.now()), { cache: "no-store" });
+      const res = await fetch("./data/archive-index.json?t=" + Date.now(), { cache: "no-store" });
       if (!res.ok) return [];
       const data = await res.json();
       return Array.isArray(data?.months) ? data.months : [];
