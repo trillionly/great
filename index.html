@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>그리드매매 시스템</title>
+  <title>?잙갭梨???類싰섶嶺???戮?츩??/title>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
-    /* 🔥 금융 앱 스타일의 전문적인 컬러 팔레트 */
+    /* ????ル??????????源녿꺄 ?熬곣뱭??⑤챷逾???롫맩????븐뼚???*/
     :root {
       --primary: #1e3a8a;
       --primary-hover: #172a6b;
@@ -28,7 +28,7 @@
       color: var(--text-main);
     }
 
-    /* 🔥 상단 헤더 영역 */
+    /* ?????⑤８堉????녹맠 ??⑤챶??*/
     .header-container {
       padding-bottom: 16px;
       margin-bottom: 20px;
@@ -52,7 +52,7 @@
       white-space: nowrap; 
     }
 
-    /* 2개의 링크 버튼을 나란히 담는 컨테이너 */
+    /* 2?띠룇裕??嶺뚮씧?긷칰??뺢퀗?????????????????쳜??????*/
     .nav-buttons {
       display: flex;
       gap: 12px;
@@ -68,7 +68,7 @@
       line-height: 1.4;
     }
 
-    /* 미니멀 텍스트 링크 */
+    /* 亦껋꼶梨??먯춺? ???⑸츩??嶺뚮씧?긷칰?*/
     .nav-link { 
         font-weight: 600; 
         font-size: 14px; 
@@ -82,7 +82,7 @@
         color: var(--primary); 
     }
 
-    /* 에러 알림 배너 */
+    /* ????????逾??꾩룄?←몭?*/
     #errorBanner {
       background-color: #fef2f2;
       border: 1px solid #f87171;
@@ -100,7 +100,7 @@
     .pill { display:inline-block; padding:3px 12px; border-radius:4px; background:#e0e7ff; color: #3730a3; font-size:12px; font-weight: 600;}
     .err-pill { background:#fee2e2 !important; color:#991b1b !important; }
 
-    /* 카드형 레이아웃 통일 (position: relative 추가하여 내부 요소 절대위치 지정 가능하게 함) */
+    /* ?곸궠?獄?????깅턄?熬곣뫗?????逾?(position: relative ?怨뺣뼺???琉우뿰 ???? ??븐슜爰?????熬곣뫚??嶺뚯솘????띠럾??繞③뇡?移??? */
     .card { 
       background: var(--surface); 
       border: 1px solid var(--border); 
@@ -108,7 +108,7 @@
       padding: 14px 16px; 
       box-shadow: 0 1px 3px rgba(0,0,0,0.04); 
       display: flex; flex-direction: column; height: 100%; box-sizing: border-box; min-width: 0;
-      position: relative; /* 중요: 우측 상단 미니 차트 고정을 위한 기준점 */
+      position: relative; /* 繞벿살탳?? ??⑥? ??⑤８堉?亦껋꼶梨??嶺뚢뼰維????μ쪠????熬곥굥由??リ옇????*/
     }
     
     .summary-grid {
@@ -124,7 +124,7 @@
     .summary-profit-card .v { margin-top: 0; padding-top: 0; }
     .summary-profit-card .small { display: block; margin-top: 6px; margin-bottom: 6px !important; }
     
-    /* 컨트롤러 (드롭다운) 영역 */
+    /* ???쳜?猿낆뿉??댁몠 (??類싲뙓???깅뮧) ??⑤챶??*/
     .controls { display: flex; gap: 12px; justify-content: flex-end; margin-bottom: 16px; flex-wrap: wrap; }
     .controls .small { font-size: 12px; color: var(--text-muted); font-weight: 600; margin-bottom: 4px; }
     select { 
@@ -208,7 +208,7 @@
     .krw-trend.same {
       color: #94a3b8;
     }
-    /* 테이블 디자인 */
+    /* ???逾????븐슦???*/
     .wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
     table { border-collapse: collapse; width: 100%; min-width: 800px; white-space: nowrap; }
 
@@ -249,7 +249,7 @@
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
     .wide { min-width: 100%; margin-top: 15px; }
 
-    /* 🔥 스파크라인 컨테이너 (PC, 폴드 펼쳤을 때 - 우측 상단 고정) */
+    /* ??????덉냱????????쳜??????(PC, ???獄???源?????- ??⑥? ??⑤８堉???μ쪠?? */
     .sparkline-container {
       position: absolute;
       top: 10px;
@@ -274,7 +274,7 @@
       white-space: nowrap;
     }
 
-    /* 🔥 폴드 접었을 때(모바일) 차트 하단 가로 모드 자동 전환 */
+    /* ??????獄???얜??????嶺뚮ㅄ維??? 嶺뚢뼰維????濡ル펺 ?띠럾???嶺뚮ㅄ維獄????吏??熬곥굦??*/
     @media (max-width: 768px) {
       .sparkline-container {
         position: relative; 
@@ -291,7 +291,7 @@
       }
     }
 
-    /* 🔥 빙글빙글 로딩 스피너 애니메이션 */
+    /* ??????????? ?β돦裕녽????덈룛????ル봾鍮띸춯濡ル뾼???*/
     .spinner {
       width: 16px;
       height: 16px;
@@ -305,7 +305,7 @@
       100% { transform: rotate(360deg); } 
     }
     
-    /* 조회 실패 텍스트 */
+    /* ?브퀗??????덉넮 ???⑸츩??*/
     .fetch-error-text {
       font-size: 11px;
       color: #ef4444;
@@ -317,35 +317,35 @@
   
   <div class="header-container">
     <div class="title-row">
-      <h1>그리드매매 시스템</h1>
+      <h1>?잙갭梨???類싰섶嶺???戮?츩??/h1>
       <div class="nav-buttons">
-        <a href="https://trillionly.github.io/great/trade.html?v=1" class="nav-link">떨사오팔 센터</a>
-        <a href="https://trillionly.github.io/great/trillion.html" class="nav-link">장투리밸런싱 시스템</a>
+        <a href="https://trillionly.github.io/great/trade.html?v=1" class="nav-link">??觀????덉냻 ???좎댉</a>
+        <a href="https://trillionly.github.io/great/trillion.html" class="nav-link">?繞??묐뎨?揶??⑥ル폆 ??戮?츩??/a>
       </div>
     </div>
-    <div class="sub">텔레그램 봇 연동 자동화 대시보드 (TQQQ/ETHU/TSLL)</div>
+    <div class="sub">??븐뼚?욕윜諛몄굡??????⑤베吏????吏??????類ｊ텠??(TQQQ/ETHU/TSLL)</div>
   </div>
 
   <div id="errorBanner"></div>
 
   <div class="summary-grid">
     <div class="card">
-      <div class="k">연동 상태</div>
-      <div class="v"><span id="status" class="pill">로딩 중…</span></div>
+      <div class="k">??⑤베吏???⑤객臾?/div>
+      <div class="v"><span id="status" class="pill">?β돦裕녽?繞벿살탟??/span></div>
     </div>
     <div class="card">
-      <div class="k">데이터 파싱 일자</div>
-      <div class="v" style="font-size: 16px; margin-top: auto; padding-top: 6px;"><span id="count">-</span>건 / <span class="muted" id="latest">-</span></div>
+      <div class="k">??⑥щ턄?????堉???源놁겱</div>
+      <div class="v" style="font-size: 16px; margin-top: auto; padding-top: 6px;"><span id="count">-</span>濾?/ <span class="muted" id="latest">-</span></div>
     </div>
     <div class="card summary-profit-card">
-      <div class="k">총 누적 수익 (합계)</div>
+      <div class="k">???熬곣뫗????瑜곷덧 (??猷뼘?</div>
       <div class="v" id="monthProfitAll">-</div>
       <div class="small muted" id="monthRoiAll" style="margin-bottom: 6px;">-</div>
       <div id="progAll" style="width:100%; margin-top:auto;"></div>
     </div>
 
     <div class="card summary-profit-card">
-      <div class="k">TQQQ 누적 수익</div>
+      <div class="k">TQQQ ?熬곣뫗????瑜곷덧</div>
       <div class="v" id="monthProfitTQQQ">-</div>
       <div class="small muted" id="monthRoiTQQQ" style="margin-bottom: 6px;">-</div>
       <div id="progTQQQ" style="width:100%; margin-top:auto;"></div>
@@ -353,15 +353,15 @@
       <div class="sparkline-container">
         <div class="sparkline-canvas-wrap">
           <div id="loader_TQQQ" class="spinner"></div>
-          <div id="error_TQQQ" class="fetch-error-text" style="display:none;">조회 실패</div>
+          <div id="error_TQQQ" class="fetch-error-text" style="display:none;">?브퀗??????덉넮</div>
           <canvas id="sparkTQQQ" style="display:none;"></canvas>
         </div>
-        <div class="sparkline-title">최근 6개월 주가추이</div>
+        <div class="sparkline-title">嶺뚣끉裕??6?띠룇裕???낅슣???怨뺣뾼??/div>
       </div>
     </div>
 
     <div class="card summary-profit-card">
-      <div class="k">ETHU 누적 수익</div>
+      <div class="k">ETHU ?熬곣뫗????瑜곷덧</div>
       <div class="v" id="monthProfitETHU">-</div>
       <div class="small muted" id="monthRoiETHU" style="margin-bottom: 6px;">-</div>
       <div id="progETHU" style="width:100%; margin-top:auto;"></div>
@@ -369,15 +369,15 @@
       <div class="sparkline-container">
         <div class="sparkline-canvas-wrap">
           <div id="loader_ETHU" class="spinner"></div>
-          <div id="error_ETHU" class="fetch-error-text" style="display:none;">조회 실패</div>
+          <div id="error_ETHU" class="fetch-error-text" style="display:none;">?브퀗??????덉넮</div>
           <canvas id="sparkETHU" style="display:none;"></canvas>
         </div>
-        <div class="sparkline-title">최근 6개월 주가추이</div>
+        <div class="sparkline-title">嶺뚣끉裕??6?띠룇裕???낅슣???怨뺣뾼??/div>
       </div>
     </div>
 
     <div class="card summary-profit-card">
-      <div class="k">TSLL 누적 수익</div>
+      <div class="k">TSLL ?熬곣뫗????瑜곷덧</div>
       <div class="v" id="monthProfitTSLL">-</div>
       <div class="small muted" id="monthRoiTSLL" style="margin-bottom: 6px;">-</div>
       <div id="progTSLL" style="width:100%; margin-top:auto;"></div>
@@ -385,35 +385,35 @@
       <div class="sparkline-container">
         <div class="sparkline-canvas-wrap">
           <div id="loader_TSLL" class="spinner"></div>
-          <div id="error_TSLL" class="fetch-error-text" style="display:none;">조회 실패</div>
+          <div id="error_TSLL" class="fetch-error-text" style="display:none;">?브퀗??????덉넮</div>
           <canvas id="sparkTSLL" style="display:none;"></canvas>
         </div>
-        <div class="sparkline-title">최근 6개월 주가추이</div>
+        <div class="sparkline-title">嶺뚣끉裕??6?띠룇裕???낅슣???怨뺣뾼??/div>
       </div>
     </div>
   </div>
 
   <div class="controls">
     <div>
-      <div class="small">조회 연도</div>
+      <div class="small">?브퀗?????⑤베利?/div>
       <select id="yearSel"></select>
     </div>
     <div>
-      <div class="small">조회 기간</div>
+      <div class="small">?브퀗????リ옇?쀨?/div>
       <select id="monthSel"></select>
     </div>
     <div>
-      <div class="small">표시 종목</div>
+      <div class="small">??戮?뻣 ??リ턁??/div>
       <select id="symbolsSel">
-        <option value="TQQQ,ETHU,TSLL" selected>3종목 전체</option>
-        <option value="TQQQ">TQQQ만</option>
-        <option value="ETHU">ETHU만</option>
-        <option value="TSLL">TSLL만</option>
+        <option value="TQQQ,ETHU,TSLL" selected>3??リ턁???熬곣뫕??/option>
+        <option value="TQQQ">TQQQ嶺?/option>
+        <option value="ETHU">ETHU嶺?/option>
+        <option value="TSLL">TSLL嶺?/option>
       </select>
     </div>
     <div>
-      <div class="small">월 보관</div>
-      <button id="archiveMonthBtn" type="button" class="control-button">월 마감</button>
+      <div class="small">???곌랜??</div>
+      <button id="archiveMonthBtn" type="button" class="control-button">??嶺뚮씭?껇?/button>
     </div>
   </div>
 
@@ -428,14 +428,14 @@
   </div>
 
   <div class="card wide">
-    <div class="k" style="margin-bottom: 12px;">📊 수익 콤보 차트 (막대=수익 합산 / 선=누적 / 점선=누적 목표)</div>
+    <div class="k" style="margin-bottom: 12px;">?獄???瑜곷덧 ?袁좊걞??嶺뚢뼰維??(嶺뚮씭留?=??瑜곷덧 ??諛댄뀰 / ???熬곣뫗??/ ??????熬곣뫗??嶺뚮ㅄ維싷쭗?</div>
     <div style="position: relative; height: 300px; width: 100%;">
       <canvas id="comboChart"></canvas>
     </div>
   </div>
 
   <details style="margin-top:20px">
-    <summary class="small" style="color: #64748b; cursor: pointer;">디버그 보기(최근 블록 파싱)</summary>
+    <summary class="small" style="color: #64748b; cursor: pointer;">??븐뼚?붷윜??곌랜??뵳?嶺뚣끉裕????곕?餓????堉?</summary>
     <pre class="mono" id="debug" style="white-space:pre-wrap; font-size:11px; background:#f8fafc; padding:10px; border:1px solid #e2e8f0; border-radius:6px; margin-top:8px;"></pre>
   </details>
 
@@ -448,7 +448,7 @@
   const esc = (s) => (s ?? "").toString().replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
   const num = (s) => {
     if (s == null) return null;
-    const x = (s+"").replace(/[,원$주\s]/g, "");
+    const x = (s+"").replace(/[,????s]/g, "");
     const n = Number(x);
     return Number.isFinite(n) ? n : null;
   };
@@ -712,19 +712,19 @@
 
   function renderKrwTooltipContent(usdValue) {
     if (exchangeRateStatus !== "ready" || !Number.isFinite(usdToKrwRate)) {
-      return `<div class="krw-tooltip-row">환율 불러오는 중...</div>`;
+      return `<div class="krw-tooltip-row">??瑜곷첎 ?釉띾쐞????노츎 繞?..</div>`;
     }
     const krwValue = convertUsdToKrw(usdValue, usdToKrwRate);
     const roundedDelta = Number.isFinite(usdToKrwDelta) ? Math.round(usdToKrwDelta) : 0;
-    const trendArrow = usdToKrwTrend === "up" ? "↑" : (usdToKrwTrend === "down" ? "↓" : "-");
+    const trendArrow = usdToKrwTrend === "up" ? "?? : (usdToKrwTrend === "down" ? "?? : "-");
     const trendDeltaText = usdToKrwTrend === "up"
       ? `+${fmtKrw(Math.abs(roundedDelta))}`
       : usdToKrwTrend === "down"
         ? `-${fmtKrw(Math.abs(roundedDelta))}`
         : "0";
     return `
-      <div class="krw-tooltip-row">현재 환율: 1 USD = ${fmtKrw(usdToKrwRate)} KRW <span class="krw-trend ${usdToKrwTrend}">(${trendArrow} ${trendDeltaText})</span></div>
-      <div class="krw-tooltip-row">원화 환산: ₩ ${fmtKrw(Math.round(krwValue || 0))}</div>
+      <div class="krw-tooltip-row">?熬곣뫗????瑜곷첎: 1 USD = ${fmtKrw(usdToKrwRate)} KRW <span class="krw-trend ${usdToKrwTrend}">(${trendArrow} ${trendDeltaText})</span></div>
+      <div class="krw-tooltip-row">??믨퀣????琉얩뀰: ??${fmtKrw(Math.round(krwValue || 0))}</div>
     `;
   }
 
@@ -766,7 +766,7 @@
       });
     });
   }
-  /* 🔥 미니 스파크라인 그리는 함수 */
+  /* ???亦껋꼶梨?????덉냱??????잙갭梨?????貫??*/
   function drawSparkline(canvasId, dataPoints, colorCode) {
     const ctx = document.getElementById(canvasId).getContext('2d');
     if (window["chart_" + canvasId]) {
@@ -836,7 +836,7 @@
       const linesInfo = [];
       for (const r of chronos) {
           const y = r.date ? r.date.split("-")[0] : String(new Date().getFullYear());
-          const msg = (r.raw_message || "").replace(/주문가능-최대필요:\s*2066/g, "주문가능-최대필요: 66");
+          const msg = (r.raw_message || "").replace(/?낅슣?뽪룇?띠럾???嶺뚣끉裕??熬곣뫗??\s*2066/g, "?낅슣?뽪룇?띠럾???嶺뚣끉裕??熬곣뫗?? 66");
           const lines = msg.split('\n');
           for (const l of lines) {
               linesInfo.push({ text: l.trim(), year: y });
@@ -847,21 +847,26 @@
 
   function buildRowMonthDayKey(row) {
       const raw = row?.raw_message || "";
-      const dtM = raw.match(/(\d{2})\/(\d{2})일\s+(\d{2}:\d{2})/);
+      const dtM = raw.match(/(\d{2})\/(\d{2})\D+(\d{2}:\d{2})/);
       if (!dtM) return null;
-      const year = row?.date ? row.date.split("-")[0] : String(new Date().getFullYear());
+      const year = Number(row?.date ? row.date.split("-")[0] : new Date().getFullYear());
+      const d = new Date(year, Number(dtM[1]) - 1, Number(dtM[2]));
+      d.setDate(d.getDate() - 1);
+      const adjustedYear = String(d.getFullYear());
+      const adjustedMonth = (d.getMonth() + 1).toString().padStart(2, "0");
+      const adjustedDay = d.getDate().toString().padStart(2, "0");
       return {
-          year,
-          month: dtM[1],
-          day: dtM[2],
+          year: adjustedYear,
+          month: adjustedMonth,
+          day: adjustedDay,
           time: dtM[3],
-          yyyymmdd: `${year}/${dtM[1]}/${dtM[2]}`
+          yyyymmdd: `${adjustedYear}/${adjustedMonth}/${adjustedDay}`
       };
   }
 
   function buildRowSymbolKey(row) {
       const raw = row?.raw_message || "";
-      const symM = raw.match(/([A-Z]{2,6})\s*최대필요\s*:/) || raw.match(/([A-Z]{2,6})\s*평가금액\s*:/);
+      const symM = raw.match(/([A-Z]{2,6})\s*嶺뚣끉裕??熬곣뫗??s*:/) || raw.match(/([A-Z]{2,6})\s*????ル?녽뇡?s*:/);
       return symM ? symM[1] : null;
   }
 
@@ -899,21 +904,26 @@
       let currentKey = null;
       let globalDate = null;
       let globalTime = null;
-      let globalYear = null;
-
-      for (const item of linesInfo) {
-          const line = item.text;
-          if (!line) continue;
-
-          const dtM = line.match(/(\d{2})\/(\d{2})일\s+(\d{2}:\d{2})/);
+          const dtM = line.match(/(\d{2})\/(\d{2})??s+(\d{2}:\d{2})/);
+          if (dtM) {
+              const baseYear = Number(item.year || new Date().getFullYear());
+              const d = new Date(baseYear, Number(dtM[1]) - 1, Number(dtM[2]));
+              d.setDate(d.getDate() - 1);
+              const adjustedYear = String(d.getFullYear());
+              const adjustedMonth = (d.getMonth() + 1).toString().padStart(2, "0");
+              const adjustedDay = d.getDate().toString().padStart(2, "0");
+              globalDate = `${adjustedMonth}/${adjustedDay}`;
+              globalTime = dtM[3];
+              globalYear = adjustedYear;
+          }
           if (dtM) {
               globalDate = `${dtM[1]}/${dtM[2]}`;
               globalTime = dtM[3];
               globalYear = item.year;
           }
 
-          let symM = line.match(/([A-Z]{2,6})\s*최대필요\s*:/);
-          if (!symM) symM = line.match(/([A-Z]{2,6})\s*평가금액\s*:/);
+          let symM = line.match(/([A-Z]{2,6})\s*嶺뚣끉裕??熬곣뫗??s*:/);
+          if (!symM) symM = line.match(/([A-Z]{2,6})\s*????ル?녽뇡?s*:/);
           
           if (symM && globalDate) {
               const symbol = symM[1];
@@ -938,20 +948,20 @@
       }
 
       return Array.from(recordsMap.values()).map(r => {
-          const cumM = r.raw.match(/주문가능-최대필요\s*:\s*([-\d,]+(?:\.\d+)?)/);
+          const cumM = r.raw.match(/?낅슣?뽪룇?띠럾???嶺뚣끉裕??熬곣뫗??s*:\s*([-\d,]+(?:\.\d+)?)/);
           r.cum = cumM ? num(cumM[1]) : null;
 
-          const sCnt = r.raw.match(/(?:S|매도)\s*[:\-]?\s*([-\d.,]+)\s*회/i);
+          const sCnt = r.raw.match(/(?:S|嶺뚮씞?뉒뙴?\s*[:\-]?\s*([-\d.,]+)\s*??i);
           r.sellCount = sCnt ? num(sCnt[1]) : null;
 
           const { tierNow, tierMax } = parseGridTier(r.raw);
           r.tierNow = tierNow;
           r.tierMax = tierMax;
 
-          const holdM = r.raw.match(/보유수량:\s*([-\d.,]+)주/);
+          const holdM = r.raw.match(/?곌랜?????濡?럸:\s*([-\d.,]+)??);
           const holdQty = holdM ? num(holdM[1]) : null;
 
-          const invM = r.raw.match(/테이블\s*총재고\s*:\s*([-\d.,]+)/);
+          const invM = r.raw.match(/???逾??s*?關鍮?湲맞?s*:\s*([-\d.,]+)/);
           const invQty = invM ? num(invM[1]) : null;
 
           r.isValid = true;
@@ -960,7 +970,7 @@
           if (holdQty !== null && invQty !== null) {
               if (holdQty !== invQty) {
                   r.isValid = false;
-                  r.errorMsg = `[${r.mmdd} ${r.time}] <b>${r.symbol}</b> 수량 불일치 (입력: ${holdQty}주 vs 표: ${invQty})`;
+                  r.errorMsg = `[${r.mmdd} ${r.time}] <b>${r.symbol}</b> ??濡?럸 ?釉띾쐠??뉎럦?(???놁졑: ${holdQty}??vs ?? ${invQty})`;
               }
           }
 
@@ -968,7 +978,237 @@
       });
   }
 
+  function getAdjustedTelegramMarketDate(baseYear, month, day) {
+    const d = new Date(Number(baseYear), Number(month) - 1, Number(day));
+    d.setDate(d.getDate() - 1);
+    const year = String(d.getFullYear());
+    const monthStr = (d.getMonth() + 1).toString().padStart(2, "0");
+    const dayStr = d.getDate().toString().padStart(2, "0");
+    return {
+      year,
+      month: monthStr,
+      day: dayStr,
+      mmdd: `${monthStr}/${dayStr}`,
+      yyyymmdd: `${year}/${monthStr}/${dayStr}`
+    };
+  }
+
+  function buildRowMonthDayKey(row) {
+    const raw = row?.raw_message || "";
+    const dtM = raw.match(/(\d{2})\/(\d{2})\D+(\d{2}:\d{2})/);
+    if (!dtM) return null;
+    const year = Number(row?.date ? row.date.split("-")[0] : new Date().getFullYear());
+    const adjusted = getAdjustedTelegramMarketDate(year, dtM[1], dtM[2]);
+    return {
+      year: adjusted.year,
+      month: adjusted.month,
+      day: adjusted.day,
+      time: dtM[3],
+      yyyymmdd: adjusted.yyyymmdd
+    };
+  }
+
+  function buildRowSymbolKey(row) {
+    const raw = row?.raw_message || "";
+    const symM =
+      raw.match(/\bGrid\d+\s+([A-Z]{2,6})\b/i) ||
+      raw.match(/\b(TQQQ|ETHU|TSLL)\b/i) ||
+      raw.match(/\b([A-Z]{2,6})(?=[^\n:]{0,40}:)/);
+    return symM ? String(symM[1]).toUpperCase() : null;
+  }
+
+  function extractBlocksFromRows(reportRows) {
+    const latestRows = keepLatestRowsByDateSymbol(reportRows);
+    const linesInfo = getLinesWithYear(latestRows);
+    const recordsMap = new Map();
+    let currentKey = null;
+    let globalDate = null;
+    let globalTime = null;
+    let globalYear = null;
+
+    for (const item of linesInfo) {
+      const line = item.text || "";
+      const dtM = line.match(/(\d{2})\/(\d{2})\D+(\d{2}:\d{2})/);
+      if (dtM) {
+        const adjusted = getAdjustedTelegramMarketDate(item.year || new Date().getFullYear(), dtM[1], dtM[2]);
+        globalDate = adjusted.mmdd;
+        globalTime = dtM[3];
+        globalYear = adjusted.year;
+      }
+
+      let symM = line.match(/\bGrid\d+\s+([A-Z]{2,6})\b/i);
+      if (!symM) symM = line.match(/\b(TQQQ|ETHU|TSLL)\b(?=[^\n:]{0,40}:)/i);
+      if (!symM) symM = line.match(/\b([A-Z]{2,6})(?=[^\n:]{0,40}:)/);
+
+      if (symM && globalDate && globalYear) {
+        const symbol = String(symM[1]).toUpperCase();
+        currentKey = `${globalYear}/${globalDate}|${symbol}`;
+        if (!recordsMap.has(currentKey)) {
+          recordsMap.set(currentKey, {
+            year: globalYear,
+            month: globalDate.split("/")[0],
+            mmdd: globalDate,
+            yyyymmdd: `${globalYear}/${globalDate}`,
+            time: globalTime,
+            symbol,
+            raw: line + "\n"
+          });
+        }
+        continue;
+      }
+
+      if (currentKey && recordsMap.has(currentKey)) {
+        recordsMap.get(currentKey).raw += line + "\n";
+      }
+    }
+
+    return Array.from(recordsMap.values()).map(r => {
+      const cumM = r.raw.match(/???녿뮝?筌믡굥利??醫딆쓧????꿔꺂????쭍?????썹땟??s*:\s*([-\d,]+(?:\.\d+)?)/);
+      r.cum = cumM ? num(cumM[1]) : null;
+
+      const sCnt = r.raw.match(/(?:S|?꿔꺂????誘⑹??\s*[:\-]?\s*([-\d.,]+)\s*??i);
+      r.sellCount = sCnt ? num(sCnt[1]) : null;
+
+      const { tierNow, tierMax } = parseGridTier(r.raw);
+      r.tierNow = tierNow;
+      r.tierMax = tierMax;
+
+      const holdM = r.raw.match(/??⑤슢??????????\s*([-\d.,]+)??);
+      const holdQty = holdM ? num(holdM[1]) : null;
+
+      const invM = r.raw.match(/??????s*???믩쑏??ル彛??s*:\s*([-\d.,]+)/);
+      const invQty = invM ? num(invM[1]) : null;
+
+      r.isValid = true;
+      r.errorMsg = "";
+
+      if (holdQty !== null && invQty !== null) {
+        if (holdQty !== invQty) {
+          r.isValid = false;
+          r.errorMsg = `[${r.mmdd} ${r.time}] <b>${r.symbol}</b> ?????????곗뵯????濡レ쑆?(????怨몄７: ${holdQty}??vs ?? ${invQty})`;
+        }
+      }
+
+      return r;
+    });
+  }
+
   function buildAllDaily(blocks, symbols) {
+  function getAdjustedTelegramMarketDate(baseYear, month, day) {
+    const d = new Date(Number(baseYear), Number(month) - 1, Number(day));
+    d.setDate(d.getDate() - 1);
+    const year = String(d.getFullYear());
+    const monthStr = (d.getMonth() + 1).toString().padStart(2, "0");
+    const dayStr = d.getDate().toString().padStart(2, "0");
+    return {
+      year,
+      month: monthStr,
+      day: dayStr,
+      mmdd: `${monthStr}/${dayStr}`,
+      yyyymmdd: `${year}/${monthStr}/${dayStr}`
+    };
+  }
+
+  function buildRowMonthDayKey(row) {
+    const raw = row?.raw_message || "";
+    const dtM = raw.match(/(\d{2})\/(\d{2})\D+(\d{2}:\d{2})/);
+    if (!dtM) return null;
+    const year = Number(row?.date ? row.date.split("-")[0] : new Date().getFullYear());
+    const adjusted = getAdjustedTelegramMarketDate(year, dtM[1], dtM[2]);
+    return {
+      year: adjusted.year,
+      month: adjusted.month,
+      day: adjusted.day,
+      time: dtM[3],
+      yyyymmdd: adjusted.yyyymmdd
+    };
+  }
+
+  function buildRowSymbolKey(row) {
+    const raw = row?.raw_message || "";
+    const symM =
+      raw.match(/\bGrid\d+\s+([A-Z]{2,6})\b/i) ||
+      raw.match(/\b(TQQQ|ETHU|TSLL)\b/i) ||
+      raw.match(/\b([A-Z]{2,6})(?=[^\n:]{0,40}:)/);
+    return symM ? String(symM[1]).toUpperCase() : null;
+  }
+
+  function extractBlocksFromRows(reportRows) {
+    const latestRows = keepLatestRowsByDateSymbol(reportRows);
+    const linesInfo = getLinesWithYear(latestRows);
+    const recordsMap = new Map();
+    let currentKey = null;
+    let globalDate = null;
+    let globalTime = null;
+    let globalYear = null;
+
+    for (const item of linesInfo) {
+      const line = item.text || "";
+      const dtM = line.match(/(\d{2})\/(\d{2})\D+(\d{2}:\d{2})/);
+      if (dtM) {
+        const adjusted = getAdjustedTelegramMarketDate(item.year || new Date().getFullYear(), dtM[1], dtM[2]);
+        globalDate = adjusted.mmdd;
+        globalTime = dtM[3];
+        globalYear = adjusted.year;
+      }
+
+      let symM = line.match(/\bGrid\d+\s+([A-Z]{2,6})\b/i);
+      if (!symM) symM = line.match(/\b(TQQQ|ETHU|TSLL)\b(?=[^\n:]{0,40}:)/i);
+      if (!symM) symM = line.match(/\b([A-Z]{2,6})(?=[^\n:]{0,40}:)/);
+
+      if (symM && globalDate && globalYear) {
+        const symbol = String(symM[1]).toUpperCase();
+        currentKey = `${globalYear}/${globalDate}|${symbol}`;
+        if (!recordsMap.has(currentKey)) {
+          recordsMap.set(currentKey, {
+            year: globalYear,
+            month: globalDate.split("/")[0],
+            mmdd: globalDate,
+            yyyymmdd: `${globalYear}/${globalDate}`,
+            time: globalTime,
+            symbol,
+            raw: line + "\n"
+          });
+        }
+        continue;
+      }
+
+      if (currentKey && recordsMap.has(currentKey)) {
+        recordsMap.get(currentKey).raw += line + "\n";
+      }
+    }
+
+    return Array.from(recordsMap.values()).map(r => {
+      const cumM = r.raw.match(/??낆뒩?戮る즵??좊읈???癲ル슔?됭짆???ш끽維??s*:\s*([-\d,]+(?:\.\d+)?)/);
+      r.cum = cumM ? num(cumM[1]) : null;
+
+      const sCnt = r.raw.match(/(?:S|癲ル슢???믩쇀?\s*[:\-]?\s*([-\d.,]+)\s*??i);
+      r.sellCount = sCnt ? num(sCnt[1]) : null;
+
+      const { tierNow, tierMax } = parseGridTier(r.raw);
+      r.tierNow = tierNow;
+      r.tierMax = tierMax;
+
+      const holdM = r.raw.match(/?怨뚮옖?????嚥???\s*([-\d.,]+)??);
+      const holdQty = holdM ? num(holdM[1]) : null;
+
+      const invM = r.raw.match(/??????s*??쒒뜮?疫뀀쭪??s*:\s*([-\d.,]+)/);
+      const invQty = invM ? num(invM[1]) : null;
+
+      r.isValid = true;
+      r.errorMsg = "";
+
+      if (holdQty !== null && invQty !== null) {
+        if (holdQty !== invQty) {
+          r.isValid = false;
+          r.errorMsg = `[${r.mmdd} ${r.time}] <b>${r.symbol}</b> ??嚥?????됰씭????롫윦?(????곸죷: ${holdQty}??vs ?? ${invQty})`;
+        }
+      }
+
+      return r;
+    });
+  }
+
     const byKey = new Map();
     for (const r of blocks) {
       if (!symbols.includes(r.symbol)) continue;
@@ -1060,29 +1300,29 @@
     const symLabel = (sym) => `${sym} (${fmtInt(SEEDS[sym])})`;
     const currentSeedTotal = symbols.reduce((a,s) => a + (SEEDS[s] || 0), 0);
     
-    let dateColName = "날짜";
-    let avgLabel = "일평균";
-    if (viewMode === 'YEARLY') { dateColName = "연도"; avgLabel = "연평균"; }
-    else if (viewMode === 'MONTHLY') { dateColName = "월 (Month)"; avgLabel = "월평균"; }
+    let dateColName = "??ル‘?";
+    let avgLabel = "???몄┯??;
+    if (viewMode === 'YEARLY') { dateColName = "??⑤베利?; avgLabel = "??⑥쥓利멨윜?; }
+    else if (viewMode === 'MONTHLY') { dateColName = "??(Month)"; avgLabel = "??됀?룸???; }
 
     thead.innerHTML = `
       <tr class="head2">
         <th rowspan="2" class="center br" style="width:70px">${dateColName}</th>
         ${symbols.map(sym => `<th class="center br" colspan="3">${esc(symLabel(sym))}<div class="small muted" id="tier_${sym}"></div></th>`).join("")}
-        <th rowspan="2" class="center br" style="width:80px">총 매도</th>
+        <th rowspan="2" class="center br" style="width:80px">??嶺뚮씞?뉒뙴?/th>
         <th colspan="2" class="center" style="width:160px">
-          총합 수익
+          ?關鍮쒒뜮? ??瑜곷덧
           <div class="small muted" style="font-weight:normal;">(${fmtInt(currentSeedTotal)})</div>
         </th>
       </tr>
       <tr>
         ${symbols.map(_ => `
-          <th class="center" style="width:50px">매도</th>
-          <th class="right" style="width:70px">수익</th>
-          <th class="right br" style="width:80px">누적수익</th>
+          <th class="center" style="width:50px">嶺뚮씞?뉒뙴?/th>
+          <th class="right" style="width:70px">??瑜곷덧</th>
+          <th class="right br" style="width:80px">?熬곣뫗???瑜곷덧</th>
         `).join("")}
-        <th class="center" style="width:80px">${viewMode !== 'DAILY' ? "합계" : "일"}</th>
-        <th class="center" style="width:80px">누계</th>
+        <th class="center" style="width:80px">${viewMode !== 'DAILY' ? "??猷뼘? : "??}</th>
+        <th class="center" style="width:80px">?熬곥룊??/th>
       </tr>
     `;
 
@@ -1142,7 +1382,7 @@
             <td class="right">${buildUsdDisplayHtml(rowCum)}</td>
           </tr>
         `;
-      }).join("") || `<tr><td colspan="${4 + symbols.length*3}" class="muted">데이터 없음</td></tr>`;
+      }).join("") || `<tr><td colspan="${4 + symbols.length*3}" class="muted">??⑥щ턄????怨몃쾳</td></tr>`;
 
     const sumSellBySym = Object.fromEntries(symbols.map(s => [s, sumOrNull(viewData.map(r => r[s].sell))]));
     const sumProfitBySym = Object.fromEntries(symbols.map(s => [s, sumOrNull(viewData.map(r => r[s].profit))]));
@@ -1174,7 +1414,7 @@
         <td class="right">-</td>
       </tr>
       <tr class="tot">
-        <td class="center br">합계</td>
+        <td class="center br">??猷뼘?/td>
         ${symbols.map(sym => {
           const seed = SEEDS[sym] || null;
           const roiCum = (seed && lastCumBySym[sym] != null) ? (lastCumBySym[sym] / seed) : null;
@@ -1203,7 +1443,7 @@
       
       v.innerHTML = buildUsdDisplayHtml(profit);
       v.className = "v " + clsPN(profit);
-      r.textContent = (roi == null) ? "" : `수익률 ${fmtPct1(roi)}`;
+      r.textContent = (roi == null) ? "" : `??瑜곷덧??${fmtPct1(roi)}`;
       
       if (p && targetAmt > 0) {
         const pct = Math.max(0, (profit / targetAmt) * 100);
@@ -1212,7 +1452,7 @@
         
         p.innerHTML = `
           <div style="display:flex; justify-content:space-between; font-size:11px; color:#64748b; margin-bottom:5px;">
-            <span>목표 $${fmtInt(targetAmt)}</span>
+            <span>嶺뚮ㅄ維싷쭗?$${fmtInt(targetAmt)}</span>
             <span style="font-weight:700; color:${color}">${fmtFloat1(pct)}%</span>
           </div>
           <div style="background:#e2e8f0; border-radius:999px; height:6px; width:100%; overflow:hidden;">
@@ -1254,7 +1494,7 @@
 
     const datasets = symbols.map(sym => ({
       type: "bar",
-      label: `${sym} 수익 ($)`,
+      label: `${sym} ??瑜곷덧 ($)`,
       data: viewData.map(r => r[sym].profit),
       backgroundColor: bgColors[sym],
       borderColor: borderColors[sym],
@@ -1265,7 +1505,7 @@
     }));
 
     datasets.push({
-      type: "line", label: "총 누적 수익 ($)", data: viewData.map(r => r.totalCum),
+      type: "line", label: "???熬곣뫗????瑜곷덧 ($)", data: viewData.map(r => r.totalCum),
       borderColor: '#ef4444', tension: 0.2, borderWidth: 2, pointRadius: 3, fill: false, spanGaps: true, yAxisID: "y1"
     });
 
@@ -1277,7 +1517,7 @@
     }
 
     datasets.push({
-      type: "line", label: viewMode !== 'DAILY' ? "누적 목표액" : "월 목표 (1.5%)", data: targetLineData,
+      type: "line", label: viewMode !== 'DAILY' ? "?熬곣뫗??嶺뚮ㅄ維싷쭗?? : "??嶺뚮ㅄ維싷쭗?(1.5%)", data: targetLineData,
       borderColor: '#10b981', borderDash: [5, 5], borderWidth: 2, pointRadius: 0, fill: false, yAxisID: "y1"
     });
 
@@ -1310,12 +1550,12 @@
                   const footerLines = [];
                   if (isBarHovered) {
                     footerLines.push('');
-                    footerLines.push('▶ 수익 합계: $' + new Intl.NumberFormat('en-US').format(sum));
+                    footerLines.push('????瑜곷덧 ??猷뼘? $' + new Intl.NumberFormat('en-US').format(sum));
                     if (exchangeRateStatus !== "ready" || !Number.isFinite(usdToKrwRate)) {
-                      footerLines.push('환율 불러오는 중...');
+                      footerLines.push('??瑜곷첎 ?釉띾쐞????노츎 繞?..');
                     } else {
                       const krwValue = Math.round(sum * usdToKrwRate);
-                      footerLines.push('▶ 원화 환산: ₩' + new Intl.NumberFormat('ko-KR').format(krwValue));
+                      footerLines.push('????믨퀣????琉얩뀰: ?? + new Intl.NumberFormat('ko-KR').format(krwValue));
                     }
                   }
                   return footerLines.length ? footerLines : null;
@@ -1333,31 +1573,31 @@
     }
   }
 
-  // 🔥 3중 철통 방어망: 주가 가져오기 핵심 함수
+  // ???3繞?嶺뚳퐣伊???꾩렮維쀥젆源띿춹? ?낅슣?? ?띠럾??筌뤾쑴沅롧뼨????堉???貫??
   async function fetchHistoricalPrices(symbol) {
     const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=6mo`;
     
-    // 1순위: 가장 빠르고 안정적인 corsproxy 통신
+    // 1??戮곕쭊: ?띠럾?????伊??뗏????깆젧??⑤챷逾?corsproxy ???六?
     try {
       const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(targetUrl)}`);
       const data = await res.json();
       const prices = data.chart.result[0].indicators.quote[0].close.filter(p => p !== null);
       if (prices && prices.length > 0) return prices;
     } catch (e) {
-      console.warn(`[1순위 실패] ${symbol}: corsproxy.io 연결 지연`);
+      console.warn(`[1??戮곕쭊 ???덉넮] ${symbol}: corsproxy.io ??⑤슡??嶺뚯솘???);
     }
 
-    // 2순위: 기존 allorigins 우회 통신 (1순위 실패 시 즉각 투입)
+    // 2??戮곕쭊: ?リ옇???allorigins ??⑥쥙?????六?(1??戮곕쭊 ???덉넮 ??嶺뚯빖留??????
     try {
       const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`);
       const data = await res.json();
       const prices = data.chart.result[0].indicators.quote[0].close.filter(p => p !== null);
       if (prices && prices.length > 0) return prices;
     } catch (e) {
-      console.warn(`[2순위 실패] ${symbol}: allorigins.win 연결 지연`);
+      console.warn(`[2??戮곕쭊 ???덉넮] ${symbol}: allorigins.win ??⑤슡??嶺뚯솘???);
     }
 
-    // 3순위: 회원님 전용 Finnhub API 멱살잡고 가져오기 (최후의 보루)
+    // 3??戮곕쭊: ???????熬곣뫗??Finnhub API 嶺뚮―??쾮??酉???띠럾??筌뤾쑴沅롧뼨?(嶺뚣끉裕????곌랜?塋?
     try {
       const API_KEY = 'd6om8dpr01qi5kh3g1cgd6om8dpr01qi5kh3g1d0';
       const endTs = Math.floor(Date.now() / 1000);
@@ -1368,13 +1608,13 @@
       const data = await res.json();
       if (data.s === 'ok' && data.c && data.c.length > 0) return data.c;
     } catch (e) {
-      console.warn(`[3순위 실패] ${symbol}: Finnhub API마저 막힘`);
+      console.warn(`[3??戮곕쭊 ???덉넮] ${symbol}: Finnhub API嶺뚮씭?? 嶺뚮씭留??);
     }
 
-    throw new Error('모든 조회 경로 차단됨');
+    throw new Error('嶺뚮ㅄ維獄??브퀗????롪퍔?δ빳?嶺뚢뼰維???);
   }
 
-  // 🔥 3중 방어망을 통해 가져온 데이터를 차트에 그리는 실행부
+  // ???3繞??꾩렮維쀥젆源띿춹?諭諭???????띠럾??筌뤾쑴沅???⑥щ턄??? 嶺뚢뼰維????잙갭梨??????덈뺄?遊붋
   async function fetchAndDrawRealSparklines() {
     const chartConfigs = [
       { symbol: 'TQQQ', canvasId: 'sparkTQQQ', loaderId: 'loader_TQQQ', errorId: 'error_TQQQ', color: '#1e3a8a' },
@@ -1389,7 +1629,7 @@
         document.getElementById(config.canvasId).style.display = 'block';
         drawSparkline(config.canvasId, prices, config.color);
       } catch (error) {
-        console.error(`[최종 에러] ${config.symbol}:`, error);
+        console.error(`[嶺뚣끉裕뉏펺?????? ${config.symbol}:`, error);
         document.getElementById(config.loaderId).style.display = 'none';
         document.getElementById(config.errorId).style.display = 'block';
       }
@@ -1444,7 +1684,7 @@
       debug.textContent = JSON.stringify(baseBlocks.slice(0, 3), null, 2);
 
       if (!baseBlocks.length) {
-        status.textContent = "데이터 대기 중";
+        status.textContent = "??⑥щ턄??????繞?;
         return;
       }
 
@@ -1452,8 +1692,8 @@
         const yearSet = new Set(baseValidBlocks.map(b => b.year));
         archiveMonthIndex.forEach(key => yearSet.add(key.slice(0, 4)));
         const allYears = Array.from(yearSet).sort();
-        let yearHtml = `<option value="ALL_YEARS">전체 기간 (모든 연도)</option>`;
-        yearHtml += allYears.map(y => `<option value="${y}">${y}년</option>`).join("");
+        let yearHtml = `<option value="ALL_YEARS">?熬곣뫕???リ옇?쀨?(嶺뚮ㅄ維獄???⑤베利?</option>`;
+        yearHtml += allYears.map(y => `<option value="${y}">${y}??/option>`).join("");
         yearSel.innerHTML = yearHtml;
         if (preferredYear && allYears.includes(preferredYear)) yearSel.value = preferredYear;
         else yearSel.value = allYears.length ? allYears[allYears.length - 1] : "ALL_YEARS";
@@ -1462,7 +1702,7 @@
       function updateMonthDropdown(preferredMonth = null) {
         const y = yearSel.value;
         if (y === "ALL_YEARS") {
-            monthSel.innerHTML = `<option value="YEARLY_AGG">연도별 요약 보기</option>`;
+            monthSel.innerHTML = `<option value="YEARLY_AGG">??⑤베利꿰솻???븐슜???곌랜??뵳?/option>`;
             monthSel.disabled = true;
             return;
         }
@@ -1474,11 +1714,11 @@
           .forEach(key => monthSet.add(key.slice(5, 7)));
         const months = Array.from(monthSet).sort();
 
-        let optionsHtml = `<option value="ALL">연간 요약 (선택 연도 전체)</option>`;
+        let optionsHtml = `<option value="ALL">??⑤슣????븐슜??(??ルㅎ臾???⑤베利??熬곣뫕??</option>`;
         if (months.length > 1) {
-          optionsHtml += `<option value="ALL_PREV">연간 요약 (직전월 마감 누계)</option>`;
+          optionsHtml += `<option value="ALL_PREV">??⑤슣????븐슜??(嶺뚯쉳????嶺뚮씭?껇??熬곥룊??</option>`;
         }
-        optionsHtml += months.map(m => `<option value="${m}">${Number(m)}월</option>`).join("");
+        optionsHtml += months.map(m => `<option value="${m}">${Number(m)}??/option>`).join("");
         monthSel.innerHTML = optionsHtml;
         if (preferredMonth && Array.from(monthSel.options).some(option => option.value === preferredMonth)) monthSel.value = preferredMonth;
         else if (months.length > 0) monthSel.value = months[months.length - 1];
@@ -1516,7 +1756,7 @@
 
         let stateMessage = "";
         if (/^\d{2}$/.test(m)) {
-          if (!hasBaseMonth && !archiveRows.length) stateMessage = "해당 월의 보관 데이터가 없습니다.";
+          if (!hasBaseMonth && !archiveRows.length) stateMessage = "???????븐슦踰??곌랜?? ??⑥щ턄??? ??怨룸????덈펲.";
         }
 
         return {
@@ -1540,13 +1780,13 @@
         const { errorBlocks, validBlocks } = splitBlocksByValidity(activeBlocks);
 
         if (errorBlocks.length > 0) {
-            status.textContent = "수정 요청 대기중";
+            status.textContent = "??瑜곸젧 ??븐슙?????リ옇?ｅㅇ?;
             status.className = "pill err-pill";
             errorBanner.style.display = "block";
-            errorBanner.innerHTML = "<strong>🚨 데이터 수정 요청 (수량 불일치 감지 - 해당 일자 전체 업데이트 차단됨)</strong>" + 
+            errorBanner.innerHTML = "<strong>?????⑥щ턄????瑜곸젧 ??븐슙??(??濡?럸 ?釉띾쐠??뉎럦??띠룆흮? - ???????源놁겱 ?熬곣뫕?????낆몥??袁⑤콦 嶺뚢뼰維???</strong>" + 
                                     errorBlocks.map(b => b.errorMsg).join("<br>");
         } else {
-            status.textContent = "정상 작동 중";
+            status.textContent = "?筌먦끆留???얜Ŧ吏?繞?;
             status.className = "pill";
             errorBanner.style.display = "none";
         }
@@ -1577,7 +1817,7 @@
           let rollingCum = Object.fromEntries(symbols.map(s => [s, 0]));
           
           viewData = aggData.map(r => {
-             const out = { dateLabel: r.groupKey + "년", totalDailyProfit: r.totalDailyProfit };
+             const out = { dateLabel: r.groupKey + "??, totalDailyProfit: r.totalDailyProfit };
              let rTotalCum = 0;
              for(const s of symbols) {
                 rollingCum[s] += (r[s].profit || 0);
@@ -1618,7 +1858,7 @@
             let rollingCum = Object.fromEntries(symbols.map(s => [s, 0]));
             
             viewData = aggData.map(r => {
-               const out = { dateLabel: r.groupKey + "월", totalDailyProfit: r.totalDailyProfit };
+               const out = { dateLabel: r.groupKey + "??, totalDailyProfit: r.totalDailyProfit };
                let rTotalCum = 0;
                for(const s of symbols) {
                   rollingCum[s] += (r[s].profit || 0);
@@ -1653,7 +1893,7 @@
         }
 
         if (!viewData.length) {
-          const emptyMessage = stateOverride || stateMessage || (/^\d{2}$/.test(m) ? "아직 해당 월의 매매 기록이 없습니다." : "");
+          const emptyMessage = stateOverride || stateMessage || (/^\d{2}$/.test(m) ? "?熬곣뫗異????????븐슦踰?嶺뚮씞????リ옇?▽빳????怨룸????덈펲." : "");
           if (emptyMessage) setArchiveNotice(emptyMessage);
           else setArchiveNotice("");
         } else {
@@ -1667,7 +1907,7 @@
       updateMonthDropdown();
 
       archiveMonthBtn.addEventListener("click", async () => {
-        const confirmed = confirm("정말 월 마감을 진행하시겠습니까?\n현재 월의 데이터를 archive에 저장합니다.");
+        const confirmed = confirm("?筌먲퐣異???嶺뚮씭?껇??嶺뚯쉳?듸쭛??琉용뻣?롪퍔伊????숇뤀?\n?熬곣뫗????븐슦踰???⑥щ턄??? archive?????繞③뜮????덈펲.");
         if (!confirmed) return;
 
         const year = yearSel.value;
@@ -1693,12 +1933,13 @@
           if (nextSelection) {
             buildYearOptions(nextSelection.year);
             updateMonthDropdown(nextSelection.month);
-            await rerender("아직 해당 월의 매매 기록이 없습니다.");
+            await rerender("?熬곣뫗異????????븐슦踰?嶺뚮씞????リ옇?▽빳????怨룸????덈펲.");
           } else {
             await rerender();
           }
+          alert("\uC6D4 \uB9C8\uAC10\uC774 \uC131\uACF5\uC801\uC73C\uB85C \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
         } catch (error) {
-          alert("월 마감에 실패했습니다.");
+          alert("??嶺뚮씭?껇?????덉넮???곕????덈펲.");
           console.error(error);
         }
       });
@@ -1708,7 +1949,7 @@
       symbolsSel.addEventListener("change", async () => { await rerender(); });
       await rerender();
     } catch (e) {
-      status.textContent = "연결 에러";
+      status.textContent = "??⑤슡???????;
       status.classList.add("err-pill");
       console.error(e);
     }
