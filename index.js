@@ -183,6 +183,24 @@ async function fetchArchiveIndexFromGitHub() {
     .sort();
 }
 
+async function doesGitHubFileExist(path) {
+  if (!GH_TOKEN || !GH_OWNER || !GH_REPO) return false;
+
+  const api = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${path}`;
+  const headers = {
+    Authorization: `Bearer ${GH_TOKEN}`,
+    Accept: "application/vnd.github+json",
+    "User-Agent": "telegram-invest-server"
+  };
+
+  const res = await fetch(api, { headers });
+  if (res.status === 200) return true;
+  if (res.status === 404) return false;
+
+  const text = await res.text();
+  throw new Error(`[GH] file exists check failed: ${res.status} ${text}`);
+}
+
 async function rebuildReportJson(reason = "manual") {
   const rows = await fetchDailyRecordRows(REPORT_ROW_LIMIT);
 
@@ -236,7 +254,7 @@ app.get("/archive-index", async (req, res) => {
 });
 
 app.post("/archive-month", async (req, res) => {
-  const { year, month } = req.body || {};
+  const { year, month, overwrite } = req.body || {};
 
   try {
     const monthKey = normalizeMonthKey(year, month);
@@ -255,6 +273,17 @@ app.post("/archive-month", async (req, res) => {
     };
 
     const archivePath = `data/archive/${monthKey}.json`;
+    const alreadyExists = await doesGitHubFileExist(archivePath);
+    if (alreadyExists && !overwrite) {
+      return res.status(409).json({
+        ok: false,
+        exists: true,
+        month: monthKey,
+        path: archivePath,
+        error: "archive already exists"
+      });
+    }
+
     await upsertToGitHub(
       archivePath,
       JSON.stringify(archivePayload, null, 2),
@@ -270,7 +299,7 @@ app.post("/archive-month", async (req, res) => {
     );
 
     console.log("ARCHIVE_MONTH_UPLOAD_OK", monthKey, archivePath);
-    res.json({ ok: true, month: monthKey, rowCount: targetRows.length, path: archivePath });
+    res.json({ ok: true, month: monthKey, rowCount: targetRows.length, path: archivePath, overwritten: alreadyExists });
   } catch (error) {
     console.error("ARCHIVE_MONTH_UPLOAD_FAIL", year, month, error);
     res.status(500).json({ ok: false, error: String(error?.message || error) });

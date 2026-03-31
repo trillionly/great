@@ -1913,21 +1913,38 @@
         const year = yearSel.value;
         const month = monthSel.value;
         if (!/^\d{4}$/.test(year) || !/^\d{2}$/.test(month)) return;
+        const archiveMonthKey = getMonthKey(year, month);
+        let overwrite = false;
+        if (archiveMonthIndex.includes(archiveMonthKey)) {
+          overwrite = confirm("\uC774\uBBF8 \uC800\uC7A5\uC774 \uB418\uC5B4\uC788\uC2B5\uB2C8\uB2E4. \uB36E\uC5B4\uC4F8\uAE4C\uC694?");
+          if (!overwrite) return;
+        }
 
         try {
           const res = await fetch(getGridApiUrl("/archive-month"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ year, month })
+            body: JSON.stringify({ year, month, overwrite })
           });
           const result = await res.json();
-          if (!res.ok || !result?.ok) throw new Error(result?.error || "archive request failed");
-
-          const archivedMonthKey = getMonthKey(year, month);
-          if (!archiveMonthIndex.includes(archivedMonthKey)) {
-            archiveMonthIndex = [...archiveMonthIndex, archivedMonthKey].sort();
+          if (res.status === 409 && result?.exists) {
+            const retryOverwrite = confirm("\uC774\uBBF8 \uC800\uC7A5\uC774 \uB418\uC5B4\uC788\uC2B5\uB2C8\uB2E4. \uB36E\uC5B4\uC4F8\uAE4C\uC694?");
+            if (!retryOverwrite) return;
+            const retryRes = await fetch(getGridApiUrl("/archive-month"), {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ year, month, overwrite: true })
+            });
+            const retryResult = await retryRes.json();
+            if (!retryRes.ok || !retryResult?.ok) throw new Error(retryResult?.error || "archive request failed");
+          } else if (!res.ok || !result?.ok) {
+            throw new Error(result?.error || "archive request failed");
           }
-          archiveRowsCache.delete(archivedMonthKey);
+
+          if (!archiveMonthIndex.includes(archiveMonthKey)) {
+            archiveMonthIndex = [...archiveMonthIndex, archiveMonthKey].sort();
+          }
+          archiveRowsCache.delete(archiveMonthKey);
 
           const nextSelection = getNextMonthSelection(year, month);
           if (nextSelection) {
