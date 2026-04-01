@@ -320,7 +320,7 @@
       <h1>그리드 매매 시스템</h1>
       <div class="nav-buttons">
         <a href="https://trillionly.github.io/great/trade.html?v=1" class="nav-link">떨사오팔 센터</a>
-        <a href="https://trillionly.github.io/great/trillion.html" class="nav-link">장투 리밸런싱 시스템</a>
+        <a href="https://trillionly.github.io/great/trillion.html" class="nav-link">장투리밸런싱 시스템</a>
       </div>
     </div>
     <div class="sub">TQQQ / ETHU / TSLL 그리드 매매 현황과 누적 수익을 확인합니다.</div>
@@ -403,15 +403,6 @@
       <select id="monthSel"></select>
     </div>
     <div>
-      <div class="small">표시종목</div>
-      <select id="symbolsSel">
-        <option value="TQQQ,ETHU,TSLL" selected>3종목 전체 보기</option>
-        <option value="TQQQ">TQQQ만</option>
-        <option value="ETHU">ETHU만</option>
-        <option value="TSLL">TSLL만</option>
-      </select>
-    </div>
-    <div>
       <div class="small">월 마감</div>
       <button id="archiveMonthBtn" type="button" class="control-button">월 마감</button>
     </div>
@@ -444,6 +435,7 @@
 <script>
   const SEEDS = { TQQQ: 140000, ETHU: 40000, TSLL: 32000 };
   const MAX_TIERS = { TQQQ: 140, ETHU: 100, TSLL: 90 };
+  const DEFAULT_SYMBOLS = ["TQQQ", "ETHU", "TSLL"];
 
   const esc = (s) => (s ?? "").toString().replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
   const num = (s) => {
@@ -1481,7 +1473,6 @@
     const latest = document.getElementById("latest");
     const yearSel = document.getElementById("yearSel");
     const monthSel = document.getElementById("monthSel");
-    const symbolsSel = document.getElementById("symbolsSel");
     const archiveMonthBtn = document.getElementById("archiveMonthBtn");
     const debug = document.getElementById("debug");
     const errorBanner = document.getElementById("errorBanner");
@@ -1634,7 +1625,7 @@
       async function rerender(stateOverride = "") {
         const y = yearSel.value;
         const m = monthSel.value;
-        const symbols = symbolsSel.value.split(",").map(s => s.trim()).filter(Boolean);
+        const symbols = DEFAULT_SYMBOLS;
         const { rows: activeRows, blocks: activeBlocks, stateMessage } = await getSelectionData();
 
         count.textContent = String(activeRows.length);
@@ -1818,7 +1809,6 @@
 
       yearSel.addEventListener("change", async () => { updateMonthDropdown(); await rerender(); });
       monthSel.addEventListener("change", async () => { await rerender(); });
-      symbolsSel.addEventListener("change", async () => { await rerender(); });
       await rerender();
     } catch (e) {
       status.textContent = "로딩 실패";
