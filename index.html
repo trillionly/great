@@ -1484,6 +1484,9 @@
     const archiveMonthBtn = document.getElementById("archiveMonthBtn");
     const debug = document.getElementById("debug");
     const errorBanner = document.getElementById("errorBanner");
+    const thead = document.getElementById("thead");
+    const tbody = document.getElementById("tbody");
+    const tfoot = document.getElementById("tfoot");
 
     fetchAndDrawRealSparklines();
     loadUsdKrwExchangeRate();
@@ -1534,6 +1537,12 @@
 
       if (!baseBlocks.length) {
         status.textContent = "데이터가 없습니다.";
+        count.textContent = "0";
+        latest.textContent = "-";
+        setArchiveNotice("아직 해당 월의 매매 기록이 없습니다.");
+        if (thead) thead.innerHTML = "";
+        if (tbody) tbody.innerHTML = `<tr><td class="muted">아직 해당 월의 매매 기록이 없습니다.</td></tr>`;
+        if (tfoot) tfoot.innerHTML = "";
         return;
       }
 
@@ -1576,6 +1585,15 @@
       async function getSelectionData() {
         const y = yearSel.value;
         const m = monthSel.value;
+
+        if (y === "2026" && m === "03") {
+          return {
+            rows: [],
+            blocks: [],
+            stateMessage: "아직 해당 월의 매매 기록이 없습니다."
+          };
+        }
+
         if (y === "ALL_YEARS") {
           const archives = await Promise.all(archiveMonthIndex.map(async (monthKey) => {
             const [rows, blocks] = await Promise.all([loadArchiveRows(monthKey), loadArchiveBlocks(monthKey)]);
