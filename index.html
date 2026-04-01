@@ -846,6 +846,7 @@
   }
   function getAdjustedTelegramMarketDate(baseYear, month, day) {
     const d = new Date(Number(baseYear), Number(month) - 1, Number(day));
+    d.setDate(d.getDate() - 1);
     const year = String(d.getFullYear());
     const monthStr = String(d.getMonth() + 1).padStart(2, "0");
     const dayStr = String(d.getDate()).padStart(2, "0");
@@ -950,10 +951,10 @@
       const line = item.text || "";
       const dtM = line.match(/(\d{2})\/(\d{2})\D+(\d{2}:\d{2})/);
       if (dtM) {
-        const originalDate = getAdjustedTelegramMarketDate(item.year || new Date().getFullYear(), dtM[1], dtM[2]);
-        globalDate = originalDate.mmdd;
+        const adjusted = getAdjustedTelegramMarketDate(item.year || new Date().getFullYear(), dtM[1], dtM[2]);
+        globalDate = adjusted.mmdd;
         globalTime = dtM[3];
-        globalYear = originalDate.year;
+        globalYear = adjusted.year;
       }
 
       let symM = line.match(/\bGrid\d+\s+([A-Z]{2,6})\b/i);
@@ -1749,7 +1750,7 @@
           } else {
             await rerender();
           }
-          alert("\uC6D4 \uB9C8\uAC10\uC774 \uC131\uACF5\uC801\uC73C\uB85C \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
+          alert("월 마감이 성공적으로 완료되었습니다.");
         } catch (error) {
           alert("월 마감 저장에 실패했습니다.");
           console.error(error);
