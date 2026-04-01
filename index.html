@@ -843,150 +843,13 @@
           }
       }
       return linesInfo;
-  }
-
-  function buildRowMonthDayKey(row) {
-      const raw = row?.raw_message || "";
-      const dtM = raw.match(/(\d{2})\/(\d{2})\D+(\d{2}:\d{2})/);
-      if (!dtM) return null;
-      const year = Number(row?.date ? row.date.split("-")[0] : new Date().getFullYear());
-      const d = new Date(year, Number(dtM[1]) - 1, Number(dtM[2]));
-      d.setDate(d.getDate() - 1);
-      const adjustedYear = String(d.getFullYear());
-      const adjustedMonth = (d.getMonth() + 1).toString().padStart(2, "0");
-      const adjustedDay = d.getDate().toString().padStart(2, "0");
-      return {
-          year: adjustedYear,
-          month: adjustedMonth,
-          day: adjustedDay,
-          time: dtM[3],
-          yyyymmdd: `${adjustedYear}/${adjustedMonth}/${adjustedDay}`
-      };
-  }
-
-  function buildRowSymbolKey(row) {
-      const raw = row?.raw_message || "";
-      const symM =
-        raw.match(/\bGrid\d+\s+([A-Z]{2,6})\b/i) ||
-        raw.match(/\b(TQQQ|ETHU|TSLL)\b/i) ||
-        raw.match(/\b([A-Z]{2,6})(?=[^\n:]{0,40}:)/);
-      return symM ? symM[1] : null;
-  }
-
-  function keepLatestRowsByDateSymbol(reportRows) {
-      const latestRows = new Map();
-      (reportRows || []).forEach(row => {
-          const dateInfo = buildRowMonthDayKey(row);
-          const symbol = buildRowSymbolKey(row);
-          if (!dateInfo || !symbol) return;
-
-          const key = `${dateInfo.yyyymmdd}|${symbol}`;
-          const prev = latestRows.get(key);
-          const currentCreatedAt = String(row?.created_at || "");
-          const prevCreatedAt = String(prev?.created_at || "");
-
-          if (!prev || currentCreatedAt > prevCreatedAt) {
-              latestRows.set(key, row);
-          }
-      });
-
-      const preservedRows = (reportRows || []).filter(row => {
-          const dateInfo = buildRowMonthDayKey(row);
-          const symbol = buildRowSymbolKey(row);
-          if (!dateInfo || !symbol) return true;
-          return latestRows.get(`${dateInfo.yyyymmdd}|${symbol}`) === row;
-      });
-
-      return preservedRows.sort((a, b) => String(b?.created_at || "").localeCompare(String(a?.created_at || "")));
-  }
-
-  function extractBlocksFromRows(reportRows) {
-      const latestRows = keepLatestRowsByDateSymbol(reportRows);
-      const linesInfo = getLinesWithYear(latestRows);
-      const recordsMap = new Map();
-      let currentKey = null;
-      let globalDate = null;
-      let globalTime = null;
-      let globalYear = null;
-
-      for (const item of linesInfo) {
-          const line = item.text || "";
-          const dtM = line.match(/(\d{2})\/(\d{2})\D+(\d{2}:\d{2})/);
-          if (dtM) {
-              const baseYear = Number(item.year || new Date().getFullYear());
-              const d = new Date(baseYear, Number(dtM[1]) - 1, Number(dtM[2]));
-              d.setDate(d.getDate() - 1);
-              const adjustedYear = String(d.getFullYear());
-              const adjustedMonth = (d.getMonth() + 1).toString().padStart(2, "0");
-              const adjustedDay = d.getDate().toString().padStart(2, "0");
-              globalDate = `${adjustedMonth}/${adjustedDay}`;
-              globalTime = dtM[3];
-              globalYear = adjustedYear;
-          }
-
-          let symM = line.match(/\bGrid\d+\s+([A-Z]{2,6})\b/i);
-          if (!symM) symM = line.match(/\b(TQQQ|ETHU|TSLL)\b(?=[^\n:]{0,40}:)/i);
-          if (!symM) symM = line.match(/\b([A-Z]{2,6})(?=[^\n:]{0,40}:)/);
-
-          if (symM && globalDate && globalYear) {
-              const symbol = String(symM[1]).toUpperCase();
-              currentKey = `${globalYear}/${globalDate}|${symbol}`;
-              if (!recordsMap.has(currentKey)) {
-                  recordsMap.set(currentKey, {
-                      year: globalYear,
-                      month: globalDate.split("/")[0],
-                      mmdd: globalDate,
-                      yyyymmdd: `${globalYear}/${globalDate}`,
-                      time: globalTime,
-                      symbol,
-                      raw: line + "\n"
-                  });
-              }
-              continue;
-          }
-
-          if (currentKey && recordsMap.has(currentKey)) {
-              recordsMap.get(currentKey).raw += line + "\n";
-          }
-      }
-
-      return Array.from(recordsMap.values()).map(r => {
-          const cumM = r.raw.match(/총평가손익\$\s*:\s*([-\d,]+(?:\.\d+)?)/);
-          r.cum = cumM ? num(cumM[1]) : null;
-
-          const sCnt = r.raw.match(/\bS\s*([\-\d.,]+)/i);
-          r.sellCount = sCnt ? num(sCnt[1]) : null;
-
-          const { tierNow, tierMax } = parseGridTier(r.raw);
-          r.tierNow = tierNow;
-          r.tierMax = tierMax;
-
-          const holdM = r.raw.match(/보유수량\s*:\s*([-\d.,]+)/);
-          const holdQty = holdM ? num(holdM[1]) : null;
-
-          const invM = r.raw.match(/테이블 총재고\s*:\s*([-\d.,]+)/);
-          const invQty = invM ? num(invM[1]) : null;
-
-          r.isValid = true;
-          r.errorMsg = "";
-
-          if (holdQty !== null && invQty !== null) {
-              if (holdQty !== invQty) {
-                  r.isValid = false;
-                  r.errorMsg = `[${r.mmdd} ${r.time}] <b>${r.symbol}</b> ?????????怨쀫뎐????嚥▲꺃??(?????⑤챷竊? ${holdQty}??vs ?? ${invQty})`;
-              }
-          }
-
-          return r;
-      });
-  }
-
+  }
   function getAdjustedTelegramMarketDate(baseYear, month, day) {
     const d = new Date(Number(baseYear), Number(month) - 1, Number(day));
     d.setDate(d.getDate() - 1);
     const year = String(d.getFullYear());
-    const monthStr = (d.getMonth() + 1).toString().padStart(2, "0");
-    const dayStr = d.getDate().toString().padStart(2, "0");
+    const monthStr = String(d.getMonth() + 1).padStart(2, "0");
+    const dayStr = String(d.getDate()).padStart(2, "0");
     return {
       year,
       month: monthStr,
@@ -1018,6 +881,61 @@
       raw.match(/\b(TQQQ|ETHU|TSLL)\b/i) ||
       raw.match(/\b([A-Z]{2,6})(?=[^\n:]{0,40}:)/);
     return symM ? String(symM[1]).toUpperCase() : null;
+  }
+
+  function keepLatestRowsByDateSymbol(reportRows) {
+    const latestRows = new Map();
+    (reportRows || []).forEach(row => {
+      const dateInfo = buildRowMonthDayKey(row);
+      const symbol = buildRowSymbolKey(row);
+      if (!dateInfo || !symbol) return;
+      const key = `${dateInfo.yyyymmdd}|${symbol}`;
+      const prev = latestRows.get(key);
+      const currentCreatedAt = String(row?.created_at || "");
+      const prevCreatedAt = String(prev?.created_at || "");
+      if (!prev || currentCreatedAt > prevCreatedAt) latestRows.set(key, row);
+    });
+
+    const preservedRows = (reportRows || []).filter(row => {
+      const dateInfo = buildRowMonthDayKey(row);
+      const symbol = buildRowSymbolKey(row);
+      if (!dateInfo || !symbol) return true;
+      return latestRows.get(`${dateInfo.yyyymmdd}|${symbol}`) === row;
+    });
+
+    return preservedRows.sort((a, b) => String(b?.created_at || "").localeCompare(String(a?.created_at || "")));
+  }
+
+  function extractLastDollarColonValue(raw) {
+    const matches = [...String(raw || "").matchAll(/\$\s*:\s*([-\d,]+(?:\.\d+)?)/g)];
+    if (!matches.length) return null;
+    return num(matches[matches.length - 1][1]);
+  }
+
+  function extractHoldQty(raw, symbol) {
+    const text = String(raw || "");
+    const patterns = [
+      /보유수량\s*:\s*([-\d.,]+)/,
+      new RegExp(`(?:\\d+)?${symbol}[^\\n:]*:\\s*([\\-\\d.,]+)\\s*[A-Za-z\\u3131-\\u318E\\uAC00-\\uD7A3\\u4E00-\\u9FFF?]+`, "i")
+    ];
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match) return num(match[1]);
+    }
+    return null;
+  }
+
+  function extractInventoryQty(raw) {
+    const text = String(raw || "");
+    const patterns = [
+      /테이블 총재고\s*:\s*([-\d.,]+)/,
+      /:\s*([-\d.,]+)\s*\n\s*\nB\s*[\d?.,-]+/i
+    ];
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match) return num(match[1]);
+    }
+    return null;
   }
 
   function extractBlocksFromRows(reportRows) {
@@ -1066,8 +984,7 @@
     }
 
     return Array.from(recordsMap.values()).map(r => {
-      const cumM = r.raw.match(/총평가손익\$\s*:\s*([-\d,]+(?:\.\d+)?)/);
-      r.cum = cumM ? num(cumM[1]) : null;
+      r.cum = extractLastDollarColonValue(r.raw);
 
       const sCnt = r.raw.match(/\bS\s*([\-\d.,]+)/i);
       r.sellCount = sCnt ? num(sCnt[1]) : null;
@@ -1076,20 +993,15 @@
       r.tierNow = tierNow;
       r.tierMax = tierMax;
 
-      const holdM = r.raw.match(/보유수량\s*:\s*([-\d.,]+)/);
-      const holdQty = holdM ? num(holdM[1]) : null;
-
-      const invM = r.raw.match(/테이블 총재고\s*:\s*([-\d.,]+)/);
-      const invQty = invM ? num(invM[1]) : null;
+      const holdQty = extractHoldQty(r.raw, r.symbol);
+      const invQty = extractInventoryQty(r.raw);
 
       r.isValid = true;
       r.errorMsg = "";
 
-      if (holdQty !== null && invQty !== null) {
-        if (holdQty !== invQty) {
-          r.isValid = false;
-          r.errorMsg = `[${r.mmdd} ${r.time}] <b>${r.symbol}</b> ?????????怨쀫뎐????嚥▲꺃??(?????⑤챷竊? ${holdQty}??vs ?? ${invQty})`;
-        }
+      if (holdQty !== null && invQty !== null && holdQty !== invQty) {
+        r.isValid = false;
+        r.errorMsg = `[${r.mmdd} ${r.time}] <b>${r.symbol}</b> 수량 불일치가 감지되었습니다. (보유수량: ${holdQty} vs 총재고: ${invQty})`;
       }
 
       return r;
@@ -1097,121 +1009,6 @@
   }
 
   function buildAllDaily(blocks, symbols) {
-  function getAdjustedTelegramMarketDate(baseYear, month, day) {
-    const d = new Date(Number(baseYear), Number(month) - 1, Number(day));
-    d.setDate(d.getDate() - 1);
-    const year = String(d.getFullYear());
-    const monthStr = (d.getMonth() + 1).toString().padStart(2, "0");
-    const dayStr = d.getDate().toString().padStart(2, "0");
-    return {
-      year,
-      month: monthStr,
-      day: dayStr,
-      mmdd: `${monthStr}/${dayStr}`,
-      yyyymmdd: `${year}/${monthStr}/${dayStr}`
-    };
-  }
-
-  function buildRowMonthDayKey(row) {
-    const raw = row?.raw_message || "";
-    const dtM = raw.match(/(\d{2})\/(\d{2})\D+(\d{2}:\d{2})/);
-    if (!dtM) return null;
-    const year = Number(row?.date ? row.date.split("-")[0] : new Date().getFullYear());
-    const adjusted = getAdjustedTelegramMarketDate(year, dtM[1], dtM[2]);
-    return {
-      year: adjusted.year,
-      month: adjusted.month,
-      day: adjusted.day,
-      time: dtM[3],
-      yyyymmdd: adjusted.yyyymmdd
-    };
-  }
-
-  function buildRowSymbolKey(row) {
-    const raw = row?.raw_message || "";
-    const symM =
-      raw.match(/\bGrid\d+\s+([A-Z]{2,6})\b/i) ||
-      raw.match(/\b(TQQQ|ETHU|TSLL)\b/i) ||
-      raw.match(/\b([A-Z]{2,6})(?=[^\n:]{0,40}:)/);
-    return symM ? String(symM[1]).toUpperCase() : null;
-  }
-
-  function extractBlocksFromRows(reportRows) {
-    const latestRows = keepLatestRowsByDateSymbol(reportRows);
-    const linesInfo = getLinesWithYear(latestRows);
-    const recordsMap = new Map();
-    let currentKey = null;
-    let globalDate = null;
-    let globalTime = null;
-    let globalYear = null;
-
-    for (const item of linesInfo) {
-      const line = item.text || "";
-      const dtM = line.match(/(\d{2})\/(\d{2})\D+(\d{2}:\d{2})/);
-      if (dtM) {
-        const adjusted = getAdjustedTelegramMarketDate(item.year || new Date().getFullYear(), dtM[1], dtM[2]);
-        globalDate = adjusted.mmdd;
-        globalTime = dtM[3];
-        globalYear = adjusted.year;
-      }
-
-      let symM = line.match(/\bGrid\d+\s+([A-Z]{2,6})\b/i);
-      if (!symM) symM = line.match(/\b(TQQQ|ETHU|TSLL)\b(?=[^\n:]{0,40}:)/i);
-      if (!symM) symM = line.match(/\b([A-Z]{2,6})(?=[^\n:]{0,40}:)/);
-
-      if (symM && globalDate && globalYear) {
-        const symbol = String(symM[1]).toUpperCase();
-        currentKey = `${globalYear}/${globalDate}|${symbol}`;
-        if (!recordsMap.has(currentKey)) {
-          recordsMap.set(currentKey, {
-            year: globalYear,
-            month: globalDate.split("/")[0],
-            mmdd: globalDate,
-            yyyymmdd: `${globalYear}/${globalDate}`,
-            time: globalTime,
-            symbol,
-            raw: line + "\n"
-          });
-        }
-        continue;
-      }
-
-      if (currentKey && recordsMap.has(currentKey)) {
-        recordsMap.get(currentKey).raw += line + "\n";
-      }
-    }
-
-    return Array.from(recordsMap.values()).map(r => {
-      const cumM = r.raw.match(/???녿뮝?筌믡굥利??醫딆쓧????꿔꺂????쭍?????썹땟??s*:\s*([-\d,]+(?:\.\d+)?)/);
-      r.cum = cumM ? num(cumM[1]) : null;
-
-          const sCnt = r.raw.match(/\bS\s*([\-\d.,]+)/i);
-      r.sellCount = sCnt ? num(sCnt[1]) : null;
-
-      const { tierNow, tierMax } = parseGridTier(r.raw);
-      r.tierNow = tierNow;
-      r.tierMax = tierMax;
-
-      const holdM = r.raw.match(/??⑤슢??????????\s*([-\d.,]+)??);
-      const holdQty = holdM ? num(holdM[1]) : null;
-
-      const invM = r.raw.match(/??????s*???믩쑏??ル彛??s*:\s*([-\d.,]+)/);
-      const invQty = invM ? num(invM[1]) : null;
-
-      r.isValid = true;
-      r.errorMsg = "";
-
-      if (holdQty !== null && invQty !== null) {
-        if (holdQty !== invQty) {
-          r.isValid = false;
-          r.errorMsg = `[${r.mmdd} ${r.time}] <b>${r.symbol}</b> ?????????곗뵯????濡レ쑆?(????怨몄７: ${holdQty}??vs ?? ${invQty})`;
-        }
-      }
-
-      return r;
-    });
-  }
-
     const byKey = new Map();
     for (const r of blocks) {
       if (!symbols.includes(r.symbol)) continue;
@@ -1221,7 +1018,6 @@
     }
 
     const dates = [...new Set([...byKey.keys()].map(k => k.split("|")[0]))].sort();
-
     const table = dates.map(yyyymmdd => {
       const [y, m, d] = yyyymmdd.split("/");
       const row = { yyyymmdd, year: y, month: m, mmdd: `${m}/${d}` };
@@ -1229,29 +1025,26 @@
         const rec = byKey.get(`${yyyymmdd}|${sym}`) || null;
         row[sym] = rec
           ? { sell: rec.sellCount, rawCum: rec.cum, tierNow: rec.tierNow, tierMax: rec.tierMax }
-          : { sell:null, rawCum:null, tierNow:null, tierMax:null };
+          : { sell: null, rawCum: null, tierNow: null, tierMax: null };
       }
       return row;
     });
 
     const prevRawCum = Object.fromEntries(symbols.map(s => [s, null]));
-
     for (const r of table) {
       for (const sym of symbols) {
         const rawCum = r[sym].rawCum;
         let profit = null;
-
         if (rawCum != null) {
           if (prevRawCum[sym] != null) {
-            let diff = rawCum - prevRawCum[sym];
-            if (diff < -500) profit = rawCum; 
-            else profit = diff;
+            const diff = rawCum - prevRawCum[sym];
+            profit = diff < -500 ? rawCum : diff;
           } else {
-            profit = rawCum; 
+            profit = rawCum;
           }
           prevRawCum[sym] = rawCum;
         }
-        r[sym].profit = profit; 
+        r[sym].profit = profit;
       }
       r.totalDailyProfit = sumOrNull(symbols.map(s => r[s].profit));
     }
@@ -1979,4 +1772,6 @@
 </script>
 </body>
 </html>
+
+
 
