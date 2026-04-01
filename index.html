@@ -846,7 +846,6 @@
   }
   function getAdjustedTelegramMarketDate(baseYear, month, day) {
     const d = new Date(Number(baseYear), Number(month) - 1, Number(day));
-    d.setDate(d.getDate() - 1);
     const year = String(d.getFullYear());
     const monthStr = String(d.getMonth() + 1).padStart(2, "0");
     const dayStr = String(d.getDate()).padStart(2, "0");
@@ -951,10 +950,10 @@
       const line = item.text || "";
       const dtM = line.match(/(\d{2})\/(\d{2})\D+(\d{2}:\d{2})/);
       if (dtM) {
-        const adjusted = getAdjustedTelegramMarketDate(item.year || new Date().getFullYear(), dtM[1], dtM[2]);
-        globalDate = adjusted.mmdd;
+        const originalDate = getAdjustedTelegramMarketDate(item.year || new Date().getFullYear(), dtM[1], dtM[2]);
+        globalDate = originalDate.mmdd;
         globalTime = dtM[3];
-        globalYear = adjusted.year;
+        globalYear = originalDate.year;
       }
 
       let symM = line.match(/\bGrid\d+\s+([A-Z]{2,6})\b/i);
