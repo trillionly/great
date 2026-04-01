@@ -1059,17 +1059,21 @@
     });
 
     const prevRawCum = Object.fromEntries(symbols.map(s => [s, null]));
+    const prevMonthKey = Object.fromEntries(symbols.map(s => [s, null]));
     for (const r of table) {
+      const currentMonthKey = `${r.year}-${r.month}`;
       for (const sym of symbols) {
         const rawCum = r[sym].rawCum;
         let profit = null;
         if (rawCum != null) {
-          if (prevRawCum[sym] != null) {
+          const isFirstEntryOfMonth = prevMonthKey[sym] !== currentMonthKey;
+          if (!isFirstEntryOfMonth && prevRawCum[sym] != null) {
             profit = rawCum - prevRawCum[sym];
           } else {
             profit = rawCum;
           }
           prevRawCum[sym] = rawCum;
+          prevMonthKey[sym] = currentMonthKey;
         }
         r[sym].profit = profit;
         r[sym].cum = rawCum;
@@ -1567,8 +1571,15 @@
           .filter(m => /^\d{2}$/.test(m))
           .sort();
         if (existingMonths.length) {
-          const lastMonthNum = Number(existingMonths[existingMonths.length - 1]);
-          if (Number.isFinite(lastMonthNum) && lastMonthNum >= 1 && lastMonthNum < 12) {
+          const lastMonth = existingMonths[existingMonths.length - 1];
+          const lastMonthNum = Number(lastMonth);
+          const lastMonthKey = getMonthKey(y, lastMonth);
+          if (
+            archiveMonthIndex.includes(lastMonthKey) &&
+            Number.isFinite(lastMonthNum) &&
+            lastMonthNum >= 1 &&
+            lastMonthNum < 12
+          ) {
             monthSet.add(String(lastMonthNum + 1).padStart(2, "0"));
           }
         }
