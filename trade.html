@@ -917,15 +917,25 @@
                 const profitRate = group.tradeType === '매도' && tradeAmount > 0
                     ? (group.profit / tradeAmount) * 100
                     : null;
+                let labelOffsetY = group.tradeType === '매수'
+                    ? 12 + (stackIndex * 12)
+                    : -12 - (stackIndex * 12);
+
+                // Fine-tune specific sell labels requested by the user.
+                if (group.tradeType === '매도' && group.date === '2026-03-31' && labelPrefix === '5') {
+                    labelOffsetY += 5;
+                }
+                if (group.tradeType === '매도' && group.date === '2026-04-01' && labelPrefix === '3') {
+                    labelOffsetY -= 2;
+                }
+
                 const rawPoint = {
                     x: group.date,
                     y: group.tradeType === '매수'
                         ? group.price - (offsetBase * (stackIndex + 1))
                         : group.price + (offsetBase * (stackIndex + 1)),
                     tradeLabel: `${labelPrefix}${group.tradeType}`,
-                    labelOffsetY: group.tradeType === '매수'
-                        ? 12 + (stackIndex * 12)
-                        : -12 - (stackIndex * 12),
+                    labelOffsetY,
                     quantity: group.quantity,
                     amount: tradeAmount,
                     profit: group.profit,
