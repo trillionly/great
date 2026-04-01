@@ -1779,15 +1779,17 @@
         const month = monthSel.value;
         if (!/^\d{4}$/.test(year) || !/^\d{2}$/.test(month)) return;
         const archivedMonthKey = getMonthKey(year, month);
+        let overwrite = false;
         if (archiveMonthIndex.includes(archivedMonthKey)) {
           const overwriteConfirmed = confirm("이미 저장되어 있습니다.\n덮어씌울까요?");
           if (!overwriteConfirmed) return;
+          overwrite = true;
         }
         try {
           const res = await fetch(getGridApiUrl("/archive-month"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ year, month })
+            body: JSON.stringify({ year, month, overwrite })
           });
           const result = await res.json();
           if (!res.ok || !result?.ok) {
