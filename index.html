@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>그리드 매매 시스템</title>
+  <title>그리드매매 시스템</title>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -1709,38 +1709,22 @@
         const year = yearSel.value;
         const month = monthSel.value;
         if (!/^\d{4}$/.test(year) || !/^\d{2}$/.test(month)) return;
-        const archiveMonthKey = getMonthKey(year, month);
-        let overwrite = false;
-        if (archiveMonthIndex.includes(archiveMonthKey)) {
-          overwrite = confirm("이미 저장되어 있습니다. 덮어쓸까요?");
-          if (!overwrite) return;
-        }
-
         try {
           const res = await fetch(getGridApiUrl("/archive-month"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ year, month, overwrite })
+            body: JSON.stringify({ year, month })
           });
           const result = await res.json();
-          if (res.status === 409 && result?.exists) {
-            const retryOverwrite = confirm("이미 저장되어 있습니다. 덮어쓸까요?");
-            if (!retryOverwrite) return;
-            const retryRes = await fetch(getGridApiUrl("/archive-month"), {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ year, month, overwrite: true })
-            });
-            const retryResult = await retryRes.json();
-            if (!retryRes.ok || !retryResult?.ok) throw new Error(retryResult?.error || "archive request failed");
-          } else if (!res.ok || !result?.ok) {
+          if (!res.ok || !result?.ok) {
             throw new Error(result?.error || "archive request failed");
           }
 
-          if (!archiveMonthIndex.includes(archiveMonthKey)) {
-            archiveMonthIndex = [...archiveMonthIndex, archiveMonthKey].sort();
+          const archivedMonthKey = getMonthKey(year, month);
+          if (!archiveMonthIndex.includes(archivedMonthKey)) {
+            archiveMonthIndex = [...archiveMonthIndex, archivedMonthKey].sort();
           }
-          archiveRowsCache.delete(archiveMonthKey);
+          archiveRowsCache.delete(archivedMonthKey);
 
           const nextSelection = getNextMonthSelection(year, month);
           if (nextSelection) {
