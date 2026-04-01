@@ -1620,7 +1620,20 @@
           archiveKeys = archiveMonthIndex.filter(key => key.startsWith(`${y}-`));
         } else {
           const selectedKey = getMonthKey(y, m);
-          if (archiveMonthIndex.includes(selectedKey)) archiveKeys = [selectedKey];
+          if (archiveMonthIndex.includes(selectedKey)) {
+            archiveKeys = [selectedKey];
+            const archives = await Promise.all(archiveKeys.map(async (monthKey) => {
+              const [rows, blocks] = await Promise.all([loadArchiveRows(monthKey), loadArchiveBlocks(monthKey)]);
+              return { rows, blocks };
+            }));
+            const archiveRows = archives.flatMap(item => Array.isArray(item.rows) ? item.rows : []);
+            const archiveBlocks = archives.flatMap(item => Array.isArray(item.blocks) ? item.blocks : []);
+            return {
+              rows: dedupeRows(archiveRows),
+              blocks: dedupeBlocks(archiveBlocks),
+              stateMessage: ""
+            };
+          }
         }
 
         const archives = await Promise.all(archiveKeys.map(async (monthKey) => {
