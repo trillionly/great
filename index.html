@@ -1073,7 +1073,7 @@
         let profit = null;
         if (rawCum != null) {
           if (prevRawCum[sym] != null) {
-            profit = prevRawCum[sym] - rawCum;
+            profit = rawCum - prevRawCum[sym];
           } else {
             profit = rawCum;
           }
