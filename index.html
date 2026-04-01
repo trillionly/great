@@ -837,7 +837,7 @@
       const linesInfo = [];
       for (const r of chronos) {
           const y = r.date ? r.date.split("-")[0] : String(new Date().getFullYear());
-          const msg = (r.raw_message || "").replace(/주문가능-최대필요\s*:?\s*2066/g, "주문가능-최대필요: 66");
+          const msg = (r.raw_message || "");
           const lines = msg.split('\n');
           for (const l of lines) {
               linesInfo.push({ text: l.trim(), year: y });
@@ -942,10 +942,10 @@
     return preservedRows.sort((a, b) => String(b?.created_at || "").localeCompare(String(a?.created_at || "")));
   }
 
-  function extractLastDollarColonValue(raw) {
-    const matches = [...String(raw || "").matchAll(/\$\s*:\s*([-\d,]+(?:\.\d+)?)/g)];
-    if (!matches.length) return null;
-    return num(matches[matches.length - 1][1]);
+  function extractOrderableGap(raw) {
+    const text = String(raw || "");
+    const match = text.match(/주문가능-최대필요\s*:?\s*\$?\s*([-\d.,]+)/);
+    return match ? num(match[1]) : null;
   }
 
   function extractHoldQty(raw, symbol) {
@@ -1020,7 +1020,7 @@
     }
 
     return Array.from(recordsMap.values()).map(r => {
-      r.cum = extractLastDollarColonValue(r.raw);
+      r.cum = extractOrderableGap(r.raw);
 
       const sCnt = r.raw.match(/\bS\s*([\-\d.,]+)/i);
       r.sellCount = sCnt ? num(sCnt[1]) : null;
@@ -1073,16 +1073,17 @@
         let profit = null;
         if (rawCum != null) {
           if (prevRawCum[sym] != null) {
-            const diff = rawCum - prevRawCum[sym];
-            profit = diff < -500 ? rawCum : diff;
+            profit = prevRawCum[sym] - rawCum;
           } else {
             profit = rawCum;
           }
           prevRawCum[sym] = rawCum;
         }
         r[sym].profit = profit;
+        r[sym].cum = rawCum;
       }
       r.totalDailyProfit = sumOrNull(symbols.map(s => r[s].profit));
+      r.totalCum = sumOrNull(symbols.map(s => r[s].cum));
     }
     return table;
   }
@@ -1661,27 +1662,26 @@
             const yy = r.year;
             if(!yearsMap.has(yy)) {
               yearsMap.set(yy, { groupKey: yy, totalDailyProfit: 0 });
-              for(const s of symbols) yearsMap.get(yy)[s] = { profit: 0, sell: 0, tierMax: null };
+              for(const s of symbols) yearsMap.get(yy)[s] = { profit: 0, sell: 0, cum: null, tierMax: null };
             }
             const row = yearsMap.get(yy);
             for(const s of symbols) {
               row[s].profit += r[s].profit || 0;
               row[s].sell += r[s].sell || 0;
+              if (r[s].cum != null) row[s].cum = r[s].cum;
               if(r[s].tierMax != null) row[s].tierMax = Math.max(row[s].tierMax || 0, r[s].tierMax);
             }
             row.totalDailyProfit += r.totalDailyProfit || 0;
           }
 
           let aggData = Array.from(yearsMap.values()).sort((a,b)=>Number(a.groupKey)-Number(b.groupKey));
-          let rollingCum = Object.fromEntries(symbols.map(s => [s, 0]));
           
           viewData = aggData.map(r => {
              const out = { dateLabel: r.groupKey + "년", totalDailyProfit: r.totalDailyProfit };
-             let rTotalCum = 0;
+             let rTotalCum = null;
              for(const s of symbols) {
-                rollingCum[s] += (r[s].profit || 0);
-                out[s] = { profit: r[s].profit, sell: r[s].sell, cum: rollingCum[s], tierMax: r[s].tierMax };
-                rTotalCum += rollingCum[s];
+                out[s] = { profit: r[s].profit, sell: r[s].sell, cum: r[s].cum, tierMax: r[s].tierMax };
+                if (r[s].cum != null) rTotalCum = (rTotalCum || 0) + r[s].cum;
              }
              out.totalCum = rTotalCum;
              return out;
@@ -1702,27 +1702,26 @@
               const mm = r.month;
               if(!monthsMap.has(mm)) {
                 monthsMap.set(mm, { groupKey: mm, totalDailyProfit: 0 });
-                for(const s of symbols) monthsMap.get(mm)[s] = { profit: 0, sell: 0, tierMax: null };
+                for(const s of symbols) monthsMap.get(mm)[s] = { profit: 0, sell: 0, cum: null, tierMax: null };
               }
               const row = monthsMap.get(mm);
               for(const s of symbols) {
                 row[s].profit += r[s].profit || 0;
                 row[s].sell += r[s].sell || 0;
+                if (r[s].cum != null) row[s].cum = r[s].cum;
                 if(r[s].tierMax != null) row[s].tierMax = Math.max(row[s].tierMax || 0, r[s].tierMax);
               }
               row.totalDailyProfit += r.totalDailyProfit || 0;
             }
 
             let aggData = Array.from(monthsMap.values()).sort((a,b)=>Number(a.groupKey)-Number(b.groupKey));
-            let rollingCum = Object.fromEntries(symbols.map(s => [s, 0]));
             
             viewData = aggData.map(r => {
               const out = { dateLabel: r.groupKey + "월", totalDailyProfit: r.totalDailyProfit };
-               let rTotalCum = 0;
+               let rTotalCum = null;
                for(const s of symbols) {
-                  rollingCum[s] += (r[s].profit || 0);
-                  out[s] = { profit: r[s].profit, sell: r[s].sell, cum: rollingCum[s], tierMax: r[s].tierMax };
-                  rTotalCum += rollingCum[s];
+                  out[s] = { profit: r[s].profit, sell: r[s].sell, cum: r[s].cum, tierMax: r[s].tierMax };
+                  if (r[s].cum != null) rTotalCum = (rTotalCum || 0) + r[s].cum;
                }
                out.totalCum = rTotalCum;
                return out;
@@ -1734,23 +1733,18 @@
               viewMeta = { tierDisplay: override.tierDisplay };
             } else {
               const monthDaily = yearDaily.filter(r => r.month === m);
-              let rollingCum = Object.fromEntries(symbols.map(s => [s, 0]));
               
               viewData = monthDaily.map(r => {
-                 const out = { dateLabel: r.mmdd, totalDailyProfit: r.totalDailyProfit, maxDate: r.yyyymmdd }; 
-                 let rTotalCum = 0;
+                 const out = { dateLabel: r.mmdd, totalDailyProfit: r.totalDailyProfit, totalCum: r.totalCum, maxDate: r.yyyymmdd }; 
                  for(const s of symbols) {
-                    if (r[s].profit != null) rollingCum[s] += r[s].profit;
                     out[s] = {
                        profit: r[s].profit,
                        sell: r[s].sell,
-                       cum: (r[s].profit != null || rollingCum[s] !== 0) ? rollingCum[s] : null,
+                       cum: r[s].cum,
                        tierNow: r[s].tierNow,
                        tierMax: r[s].tierMax
                     };
-                    if (out[s].cum != null) rTotalCum += out[s].cum;
                  }
-                 out.totalCum = rTotalCum === 0 && r.totalDailyProfit == null ? null : rTotalCum;
                  return out;
               });
             }
