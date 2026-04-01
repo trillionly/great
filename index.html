@@ -562,6 +562,7 @@
   const archiveRowsCache = new Map();
   const archiveBlocksCache = new Map();
   let archiveMonthIndex = [];
+  let dailySummaryOverrides = {};
 
   function getGridApiUrl(path) {
     return `${GRID_API_BASE}${path}`;
@@ -859,6 +860,39 @@
     };
   }
 
+  function sumNumericValues(values) {
+    const nums = values.filter(v => Number.isFinite(Number(v))).map(Number);
+    if (!nums.length) return null;
+    return nums.reduce((a, b) => a + b, 0);
+  }
+
+  function getDailySummaryOverride(year, month, symbols) {
+    const override = dailySummaryOverrides?.[`${year}-${month}`];
+    if (!override || !Array.isArray(override.rows)) return null;
+
+    const rows = override.rows.map(src => {
+      const out = { dateLabel: src.dateLabel, maxDate: `${year}/${month}/${String(src.dateLabel || "").split("/")[1] || ""}` };
+      for (const sym of symbols) {
+        const cell = src[sym] || {};
+        out[sym] = {
+          sell: Number.isFinite(Number(cell.sell)) ? Number(cell.sell) : null,
+          profit: Number.isFinite(Number(cell.profit)) ? Number(cell.profit) : null,
+          cum: Number.isFinite(Number(cell.cum)) ? Number(cell.cum) : null,
+          tierNow: null,
+          tierMax: null
+        };
+      }
+      out.totalDailyProfit = sumNumericValues(symbols.map(sym => out[sym].profit));
+      out.totalCum = sumNumericValues(symbols.map(sym => out[sym].cum));
+      return out;
+    });
+
+    return {
+      rows,
+      tierDisplay: override.tier_display || {}
+    };
+  }
+
   function buildRowMonthDayKey(row) {
     const raw = row?.raw_message || "";
     const dtM = raw.match(/(\d{2})\/(\d{2})\D+(\d{2}:\d{2})/);
@@ -1088,7 +1122,7 @@
     }
   };
 
-  function renderView(viewData, symbols, viewMode, allDaily) {
+  function renderView(viewData, symbols, viewMode, allDaily, viewMeta = {}) {
     const thead = document.getElementById("thead");
     const tbody = document.getElementById("tbody");
     const tfoot = document.getElementById("tfoot");
@@ -1126,6 +1160,11 @@
       const el = document.getElementById(`tier_${sym}`);
       if (el) {
         const fixedMax = MAX_TIERS[sym] || 140;
+        const tierOverride = viewMeta?.tierDisplay?.[sym];
+        if (tierOverride && viewMode === 'DAILY') {
+          el.textContent = tierOverride;
+          continue;
+        }
         
         if (viewMode !== 'DAILY') {
           el.textContent = `${fixedMax}`;
@@ -1447,7 +1486,7 @@
     loadUsdKrwExchangeRate();
 
     try {
-      const [histRows, repRows, fetchedArchiveMonthIndex] = await Promise.all([
+      const [histRows, repRows, fetchedArchiveMonthIndex, fetchedDailyOverrides] = await Promise.all([
         (async () => {
           try {
             const resHist = await fetch("./data/history.json?t=" + Date.now(), { cache: "no-store" });
@@ -1468,11 +1507,22 @@
             return [];
           }
         })(),
-        fetchArchiveIndex()
+        fetchArchiveIndex(),
+        (async () => {
+          try {
+            const res = await fetch("./data/daily-overrides.json?t=" + Date.now(), { cache: "no-store" });
+            if (!res.ok) return {};
+            const json = await res.json();
+            return json.daily_summary_overrides || {};
+          } catch (e) {
+            return {};
+          }
+        })()
       ]);
 
       const baseReportRows = dedupeRows([].concat(histRows, repRows));
       archiveMonthIndex = fetchedArchiveMonthIndex;
+      dailySummaryOverrides = fetchedDailyOverrides;
 
       const baseBlocks = extractBlocksFromRows(baseReportRows);
       const { errorBlocks: baseErrorBlocks, validBlocks: baseValidBlocks } = splitBlocksByValidity(baseBlocks);
@@ -1590,6 +1640,7 @@
         const allDaily = buildAllDaily(validBlocks, symbols);
         let viewData = [];
         let viewMode = 'DAILY'; 
+        let viewMeta = {};
 
         if (y === "ALL_YEARS") {
           viewMode = 'YEARLY';
@@ -1665,26 +1716,32 @@
                return out;
             });
           } else {
-            const monthDaily = yearDaily.filter(r => r.month === m);
-            let rollingCum = Object.fromEntries(symbols.map(s => [s, 0]));
-            
-            viewData = monthDaily.map(r => {
-               const out = { dateLabel: r.mmdd, totalDailyProfit: r.totalDailyProfit, maxDate: r.yyyymmdd }; 
-               let rTotalCum = 0;
-               for(const s of symbols) {
-                  if (r[s].profit != null) rollingCum[s] += r[s].profit;
-                  out[s] = {
-                     profit: r[s].profit,
-                     sell: r[s].sell,
-                     cum: (r[s].profit != null || rollingCum[s] !== 0) ? rollingCum[s] : null,
-                     tierNow: r[s].tierNow,
-                     tierMax: r[s].tierMax
-                  };
-                  if (out[s].cum != null) rTotalCum += out[s].cum;
-               }
-               out.totalCum = rTotalCum === 0 && r.totalDailyProfit == null ? null : rTotalCum;
-               return out;
-            });
+            const override = getDailySummaryOverride(y, m, symbols);
+            if (override) {
+              viewData = override.rows;
+              viewMeta = { tierDisplay: override.tierDisplay };
+            } else {
+              const monthDaily = yearDaily.filter(r => r.month === m);
+              let rollingCum = Object.fromEntries(symbols.map(s => [s, 0]));
+              
+              viewData = monthDaily.map(r => {
+                 const out = { dateLabel: r.mmdd, totalDailyProfit: r.totalDailyProfit, maxDate: r.yyyymmdd }; 
+                 let rTotalCum = 0;
+                 for(const s of symbols) {
+                    if (r[s].profit != null) rollingCum[s] += r[s].profit;
+                    out[s] = {
+                       profit: r[s].profit,
+                       sell: r[s].sell,
+                       cum: (r[s].profit != null || rollingCum[s] !== 0) ? rollingCum[s] : null,
+                       tierNow: r[s].tierNow,
+                       tierMax: r[s].tierMax
+                    };
+                    if (out[s].cum != null) rTotalCum += out[s].cum;
+                 }
+                 out.totalCum = rTotalCum === 0 && r.totalDailyProfit == null ? null : rTotalCum;
+                 return out;
+              });
+            }
           }
         }
 
@@ -1696,7 +1753,7 @@
           setArchiveNotice("");
         }
 
-        renderView(viewData, symbols, viewMode, allDaily);
+        renderView(viewData, symbols, viewMode, allDaily, viewMeta);
       }
 
       buildYearOptions();

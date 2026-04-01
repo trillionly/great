@@ -1,0 +1,34 @@
+{
+  "daily_summary_overrides": {
+    "2026-03": {
+      "tier_display": {
+        "TQQQ": "64/140 +4",
+        "ETHU": "82/100 -3",
+        "TSLL": "87/90 +1"
+      },
+      "rows": [
+        { "dateLabel": "03/02", "TQQQ": { "sell": 7, "profit": 8898, "cum": 8898 }, "ETHU": { "sell": 11, "profit": 5305, "cum": 5305 }, "TSLL": { "sell": 5, "profit": 100362, "cum": 100362 } },
+        { "dateLabel": "03/03", "TQQQ": { "sell": 3, "profit": 7090, "cum": 15988 }, "ETHU": { "sell": 7, "profit": 1255, "cum": 6559 }, "TSLL": { "sell": 1, "profit": 5217, "cum": 105579 } },
+        { "dateLabel": "03/04", "TQQQ": { "sell": 6, "profit": 5508, "cum": 21495 }, "ETHU": { "sell": 17, "profit": 5561, "cum": 12121 }, "TSLL": { "sell": 5, "profit": 100671, "cum": 206250 } },
+        { "dateLabel": "03/05", "TQQQ": { "sell": 1, "profit": 10610, "cum": 32105 }, "ETHU": { "sell": 1, "profit": 0, "cum": 12121 }, "TSLL": { "sell": 0, "profit": 2596, "cum": 208847 } },
+        { "dateLabel": "03/06", "TQQQ": { "sell": 2, "profit": 7031, "cum": 39136 }, "ETHU": { "sell": 0, "profit": 5062, "cum": 17183 }, "TSLL": { "sell": 0, "profit": -108, "cum": 208739 } },
+        { "dateLabel": "03/09", "TQQQ": { "sell": 9, "profit": 2064, "cum": 41200 }, "ETHU": { "sell": 5, "profit": 61, "cum": 17244 }, "TSLL": { "sell": 5, "profit": 2136, "cum": 210875 } },
+        { "dateLabel": "03/10", "TQQQ": { "sell": 3, "profit": 67, "cum": 41267 }, "ETHU": { "sell": 5, "profit": 272, "cum": 17516 }, "TSLL": { "sell": 2, "profit": 6, "cum": 210881 } },
+        { "dateLabel": "03/11", "TQQQ": { "sell": 0, "profit": 843, "cum": 42111 }, "ETHU": { "sell": 4, "profit": 528, "cum": 18044 }, "TSLL": { "sell": 3, "profit": 100308, "cum": 311189 } },
+        { "dateLabel": "03/12", "TQQQ": { "sell": 0, "profit": 45, "cum": 42156 }, "ETHU": { "sell": 3, "profit": 5174, "cum": 23218 }, "TSLL": { "sell": 0, "profit": 98320, "cum": 409509 } },
+        { "dateLabel": "03/13", "TQQQ": { "sell": 1, "profit": 1348, "cum": 43504 }, "ETHU": { "sell": 9, "profit": -490, "cum": 22728 }, "TSLL": { "sell": 1, "profit": 2111, "cum": 411620 } },
+        { "dateLabel": "03/16", "TQQQ": { "sell": 2, "profit": 6806, "cum": 50311 }, "ETHU": { "sell": 17, "profit": 266, "cum": 22994 }, "TSLL": { "sell": 2, "profit": 2043, "cum": 413663 } },
+        { "dateLabel": "03/17", "TQQQ": { "sell": 2, "profit": 17440, "cum": 67751 }, "ETHU": { "sell": 1, "profit": 0, "cum": 22994 }, "TSLL": { "sell": 0, "profit": 98512, "cum": 512175 } },
+        { "dateLabel": "03/18", "TQQQ": { "sell": 1, "profit": 13880, "cum": 81631 }, "ETHU": { "sell": 3, "profit": 8, "cum": 23003 }, "TSLL": { "sell": 1, "profit": 96568, "cum": 608743 } },
+        { "dateLabel": "03/19", "TQQQ": { "sell": 1, "profit": 12319, "cum": 93949 }, "ETHU": { "sell": 2, "profit": 3726, "cum": 26728 }, "TSLL": { "sell": 0, "profit": 92617, "cum": 701361 } },
+        { "dateLabel": "03/20", "TQQQ": { "sell": 1, "profit": 26, "cum": 93976 }, "ETHU": { "sell": 2, "profit": 2728, "cum": 29457 }, "TSLL": { "sell": 1, "profit": 3486, "cum": 704847 } },
+        { "dateLabel": "03/23", "TQQQ": { "sell": 9, "profit": 828, "cum": 94803 }, "ETHU": { "sell": 13, "profit": 853, "cum": 30310 }, "TSLL": { "sell": 8, "profit": 95167, "cum": 800014 } },
+        { "dateLabel": "03/24", "TQQQ": { "sell": 2, "profit": -368, "cum": 94435 }, "ETHU": { "sell": 2, "profit": 263, "cum": 30573 }, "TSLL": { "sell": 1, "profit": 6, "cum": 800020 } },
+        { "dateLabel": "03/25", "TQQQ": { "sell": 0, "profit": 839, "cum": 95275 }, "ETHU": { "sell": 3, "profit": 523, "cum": 31096 }, "TSLL": { "sell": 3, "profit": 89187, "cum": 889207 } },
+        { "dateLabel": "03/26", "TQQQ": { "sell": 0, "profit": 10069, "cum": 105344 }, "ETHU": { "sell": 0, "profit": 3124, "cum": 34220 }, "TSLL": { "sell": 0, "profit": 82183, "cum": 971389 } },
+        { "dateLabel": "03/27", "TQQQ": { "sell": 0, "profit": 8101, "cum": 113445 }, "ETHU": { "sell": 1, "profit": 1142, "cum": 35362 }, "TSLL": { "sell": 0, "profit": 21474, "cum": 992863 } },
+        { "dateLabel": "03/30", "TQQQ": { "sell": 0, "profit": 1302, "cum": 114747 }, "ETHU": { "sell": 5, "profit": 0, "cum": 35362 }, "TSLL": { "sell": 1, "profit": 20851, "cum": 1013714 } }
+      ]
+    }
+  }
+}
