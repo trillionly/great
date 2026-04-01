@@ -861,7 +861,9 @@
   }
 
   function sumNumericValues(values) {
-    const nums = values.filter(v => Number.isFinite(Number(v))).map(Number);
+    const nums = values
+      .filter(v => v !== null && v !== undefined && Number.isFinite(Number(v)))
+      .map(Number);
     if (!nums.length) return null;
     return nums.reduce((a, b) => a + b, 0);
   }
@@ -875,9 +877,9 @@
       for (const sym of symbols) {
         const cell = src[sym] || {};
         out[sym] = {
-          sell: Number.isFinite(Number(cell.sell)) ? Number(cell.sell) : null,
-          profit: Number.isFinite(Number(cell.profit)) ? Number(cell.profit) : null,
-          cum: Number.isFinite(Number(cell.cum)) ? Number(cell.cum) : null,
+          sell: cell.sell === null || cell.sell === undefined ? null : (Number.isFinite(Number(cell.sell)) ? Number(cell.sell) : null),
+          profit: cell.profit === null || cell.profit === undefined ? null : (Number.isFinite(Number(cell.profit)) ? Number(cell.profit) : null),
+          cum: cell.cum === null || cell.cum === undefined ? null : (Number.isFinite(Number(cell.cum)) ? Number(cell.cum) : null),
           tierNow: null,
           tierMax: null
         };
@@ -1161,8 +1163,8 @@
       if (el) {
         const fixedMax = MAX_TIERS[sym] || 140;
         const tierOverride = viewMeta?.tierDisplay?.[sym];
-        if (tierOverride && viewMode === 'DAILY') {
-          el.textContent = tierOverride;
+        if (viewMode === 'DAILY' && viewMeta?.tierDisplay && Object.prototype.hasOwnProperty.call(viewMeta.tierDisplay, sym)) {
+          el.textContent = tierOverride || "";
           continue;
         }
         
@@ -1207,7 +1209,7 @@
           <td class="center br" style="font-weight:600;">${esc(r.dateLabel)}</td>
           ${symbols.map(sym => {
               return `
-                <td class="center">${r[sym].sell || r[sym].sell === 0 ? r[sym].sell : ""}</td>
+                <td class="center">${r[sym].sell == null ? "" : r[sym].sell}</td>
                 <td class="right ${clsPN(r[sym].profit)}">${buildUsdDisplayHtml(r[sym].profit)}</td>
                 <td class="right br">${buildUsdDisplayHtml(r[sym].cum)}</td>
               `;
