@@ -828,8 +828,9 @@
                     meta.data.forEach((point, index) => {
                         const raw = dataset.data[index];
                         if (!raw || !raw.tradeLabel) return;
+                        const offsetX = raw.labelOffsetX || 0;
                         const offsetY = raw.labelOffsetY || 0;
-                        ctx.fillText(raw.tradeLabel, point.x, point.y + offsetY);
+                        ctx.fillText(raw.tradeLabel, point.x + offsetX, point.y + offsetY);
                     });
 
                     ctx.restore();
@@ -908,6 +909,12 @@
             const sellPoints = [];
             const stackCounters = new Map();
 
+            function getSpreadOffset(stackIndex, step = 18) {
+                if (stackIndex === 0) return 0;
+                const distance = Math.ceil(stackIndex / 2) * step;
+                return stackIndex % 2 === 1 ? -distance : distance;
+            }
+
             grouped.forEach(group => {
                 const stackKey = `${group.date}:${group.tradeType}`;
                 const stackIndex = stackCounters.get(stackKey) || 0;
@@ -923,7 +930,10 @@
                         ? group.price - (offsetBase * (stackIndex + 1))
                         : group.price + (offsetBase * (stackIndex + 1)),
                     tradeLabel: `${labelPrefix}${group.tradeType}`,
-                    labelOffsetY: group.tradeType === '매수' ? 12 : -12,
+                    labelOffsetX: getSpreadOffset(stackIndex),
+                    labelOffsetY: group.tradeType === '매수'
+                        ? 12 + (Math.floor(stackIndex / 2) * 10)
+                        : -12 - (Math.floor(stackIndex / 2) * 10),
                     quantity: group.quantity,
                     amount: tradeAmount,
                     profit: group.profit,
