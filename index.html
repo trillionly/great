@@ -1772,6 +1772,11 @@
         const year = yearSel.value;
         const month = monthSel.value;
         if (!/^\d{4}$/.test(year) || !/^\d{2}$/.test(month)) return;
+        const archivedMonthKey = getMonthKey(year, month);
+        if (archiveMonthIndex.includes(archivedMonthKey)) {
+          const overwriteConfirmed = confirm("이미 저장되어 있습니다.\n덮어씌울까요?");
+          if (!overwriteConfirmed) return;
+        }
         try {
           const res = await fetch(getGridApiUrl("/archive-month"), {
             method: "POST",
@@ -1783,7 +1788,6 @@
             throw new Error(result?.error || "archive request failed");
           }
 
-          const archivedMonthKey = getMonthKey(year, month);
           if (!archiveMonthIndex.includes(archivedMonthKey)) {
             archiveMonthIndex = [...archiveMonthIndex, archivedMonthKey].sort();
           }
