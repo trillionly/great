@@ -1497,7 +1497,7 @@
 
     const datasets = symbols.map(sym => ({
       type: "bar",
-      label: `${sym} ???쒓낮??($)`,
+            label: `${sym} 일수익($)`,
       data: viewData.map(r => r[sym].profit),
       backgroundColor: bgColors[sym],
       borderColor: borderColors[sym],
@@ -1508,7 +1508,7 @@
     }));
 
     datasets.push({
-      type: "line", label: "????ш끽維?????쒓낮??($)", data: viewData.map(r => r.totalCum),
+      type: "line", label: "총 누적수익($)", data: viewData.map(r => r.totalCum),
       borderColor: '#ef4444', tension: 0.2, borderWidth: 2, pointRadius: 3, fill: false, spanGaps: true, yAxisID: "y1"
     });
 
@@ -1820,7 +1820,7 @@
           let rollingCum = Object.fromEntries(symbols.map(s => [s, 0]));
           
           viewData = aggData.map(r => {
-             const out = { dateLabel: r.groupKey + "??, totalDailyProfit: r.totalDailyProfit };
+             const out = { dateLabel: r.groupKey + "년", totalDailyProfit: r.totalDailyProfit };
              let rTotalCum = 0;
              for(const s of symbols) {
                 rollingCum[s] += (r[s].profit || 0);
@@ -1861,7 +1861,7 @@
             let rollingCum = Object.fromEntries(symbols.map(s => [s, 0]));
             
             viewData = aggData.map(r => {
-               const out = { dateLabel: r.groupKey + "??, totalDailyProfit: r.totalDailyProfit };
+              const out = { dateLabel: r.groupKey + "월", totalDailyProfit: r.totalDailyProfit };
                let rTotalCum = 0;
                for(const s of symbols) {
                   rollingCum[s] += (r[s].profit || 0);
