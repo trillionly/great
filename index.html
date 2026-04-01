@@ -1579,7 +1579,11 @@
         if (months.length > 1) {
           optionsHtml += `<option value="ALL_PREV">직전월까지 누적 보기</option>`;
         }
-        optionsHtml += months.map(m => `<option value="${m}">${Number(m)}월</option>`).join("");
+        optionsHtml += months.map(m => {
+          const monthKey = getMonthKey(y, m);
+          const archivedLabel = archiveMonthIndex.includes(monthKey) ? " (저장완료)" : "";
+          return `<option value="${m}">${Number(m)}월${archivedLabel}</option>`;
+        }).join("");
         monthSel.innerHTML = optionsHtml;
         if (preferredMonth && Array.from(monthSel.options).some(option => option.value === preferredMonth)) monthSel.value = preferredMonth;
         else if (months.length > 0) monthSel.value = months[months.length - 1];
