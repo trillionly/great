@@ -1585,15 +1585,6 @@
       async function getSelectionData() {
         const y = yearSel.value;
         const m = monthSel.value;
-
-        if (y === "2026" && m === "03") {
-          return {
-            rows: [],
-            blocks: [],
-            stateMessage: "아직 해당 월의 매매 기록이 없습니다."
-          };
-        }
-
         if (y === "ALL_YEARS") {
           const archives = await Promise.all(archiveMonthIndex.map(async (monthKey) => {
             const [rows, blocks] = await Promise.all([loadArchiveRows(monthKey), loadArchiveBlocks(monthKey)]);
