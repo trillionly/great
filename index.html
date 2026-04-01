@@ -1,14 +1,14 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>?잙갭梨???類싰섶嶺???戮?츩??/title>
+  <title>??숆강筌???筌먯떚?띰┼???筌?痢??/title>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
-    /* ????ル??????????源녿꺄 ?熬곣뱭??⑤챷逾???롫맩????븐뼚???*/
+    /* ?????ヂ???????????繹먮끏爰???ш끽諭???ㅼ굣????濡ル㎥????釉먮폏???*/
     :root {
       --primary: #1e3a8a;
       --primary-hover: #172a6b;
@@ -28,7 +28,7 @@
       color: var(--text-main);
     }
 
-    /* ?????⑤８堉????녹맠 ??⑤챶??*/
+    /* ??????ㅿ폍??????밸쭬 ???ㅼ굡??*/
     .header-container {
       padding-bottom: 16px;
       margin-bottom: 20px;
@@ -52,7 +52,7 @@
       white-space: nowrap; 
     }
 
-    /* 2?띠룇裕??嶺뚮씧?긷칰??뺢퀗?????????????????쳜??????*/
+    /* 2??좊즵獒??癲ル슢??湲룹물??類??????????????????爾??????*/
     .nav-buttons {
       display: flex;
       gap: 12px;
@@ -68,7 +68,7 @@
       line-height: 1.4;
     }
 
-    /* 亦껋꼶梨??먯춺? ???⑸츩??嶺뚮씧?긷칰?*/
+    /* 雅?퍔瑗띰㎖??癒?떵? ????몄릇??癲ル슢??湲룹물?*/
     .nav-link { 
         font-weight: 600; 
         font-size: 14px; 
@@ -82,7 +82,7 @@
         color: var(--primary); 
     }
 
-    /* ????????逾??꾩룄?←몭?*/
+    /* ???????????袁⑸즲??먮き?*/
     #errorBanner {
       background-color: #fef2f2;
       border: 1px solid #f87171;
@@ -100,7 +100,7 @@
     .pill { display:inline-block; padding:3px 12px; border-radius:4px; background:#e0e7ff; color: #3730a3; font-size:12px; font-weight: 600;}
     .err-pill { background:#fee2e2 !important; color:#991b1b !important; }
 
-    /* ?곸궠?獄?????깅턄?熬곣뫗?????逾?(position: relative ?怨뺣뼺???琉우뿰 ???? ??븐슜爰?????熬곣뫚??嶺뚯솘????띠럾??繞③뇡?移??? */
+    /* ?怨멸텭???????源낇꼧??ш끽維???????(position: relative ??⑤베堉???筌뚯슦肉????? ??釉먯뒠???????ш끽維??癲ル슣??????좊읈??濚왿몾??燁??? */
     .card { 
       background: var(--surface); 
       border: 1px solid var(--border); 
@@ -108,7 +108,7 @@
       padding: 14px 16px; 
       box-shadow: 0 1px 3px rgba(0,0,0,0.04); 
       display: flex; flex-direction: column; height: 100%; box-sizing: border-box; min-width: 0;
-      position: relative; /* 繞벿살탳?? ??⑥? ??⑤８堉?亦껋꼶梨??嶺뚢뼰維????μ쪠????熬곥굥由??リ옇????*/
+      position: relative; /* 濚욌꼬?댄꺍?? ???Β? ???ㅿ폍??雅?퍔瑗띰㎖??癲ル슓堉곁땟????關履?????ш낄援η뵳???れ삀????*/
     }
     
     .summary-grid {
@@ -124,7 +124,7 @@
     .summary-profit-card .v { margin-top: 0; padding-top: 0; }
     .summary-profit-card .small { display: block; margin-top: 6px; margin-bottom: 6px !important; }
     
-    /* ???쳜?猿낆뿉??댁몠 (??類싲뙓???깅뮧) ??⑤챶??*/
+    /* ???爾??용굞肉???곷첓 (??筌먯떜????源낅?) ???ㅼ굡??*/
     .controls { display: flex; gap: 12px; justify-content: flex-end; margin-bottom: 16px; flex-wrap: wrap; }
     .controls .small { font-size: 12px; color: var(--text-muted); font-weight: 600; margin-bottom: 4px; }
     select { 
@@ -208,7 +208,7 @@
     .krw-trend.same {
       color: #94a3b8;
     }
-    /* ???逾????븐슦???*/
+    /* ????????釉먯뒭???*/
     .wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
     table { border-collapse: collapse; width: 100%; min-width: 800px; white-space: nowrap; }
 
@@ -249,7 +249,7 @@
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
     .wide { min-width: 100%; margin-top: 15px; }
 
-    /* ??????덉냱????????쳜??????(PC, ???獄???源?????- ??⑥? ??⑤８堉???μ쪠?? */
+    /* ???????됰꺊????????爾??????(PC, ???????繹?????- ???Β? ???ㅿ폍????關履?? */
     .sparkline-container {
       position: absolute;
       top: 10px;
@@ -274,7 +274,7 @@
       white-space: nowrap;
     }
 
-    /* ??????獄???얜??????嶺뚮ㅄ維??? 嶺뚢뼰維????濡ル펺 ?띠럾???嶺뚮ㅄ維獄????吏??熬곥굦??*/
+    /* ?????????????????癲ル슢?꾤땟???? 癲ル슓堉곁땟????嚥▲꺂????좊읈???癲ル슢?꾤땟??????筌???ш낄援??*/
     @media (max-width: 768px) {
       .sparkline-container {
         position: relative; 
@@ -291,7 +291,7 @@
       }
     }
 
-    /* ??????????? ?β돦裕녽????덈룛????ル봾鍮띸춯濡ル뾼???*/
+    /* ??????????? ?棺??짆?승?????덈짏?????ル늅??씤異?에?ル씔???*/
     .spinner {
       width: 16px;
       height: 16px;
@@ -305,7 +305,7 @@
       100% { transform: rotate(360deg); } 
     }
     
-    /* ?브퀗??????덉넮 ???⑸츩??*/
+    /* ?釉뚰???????됰꽡 ????몄릇??*/
     .fetch-error-text {
       font-size: 11px;
       color: #ef4444;
@@ -317,35 +317,35 @@
   
   <div class="header-container">
     <div class="title-row">
-      <h1>?잙갭梨???類싰섶嶺???戮?츩??/h1>
+      <h1>??숆강筌???筌먯떚?띰┼???筌?痢??/h1>
       <div class="nav-buttons">
-        <a href="https://trillionly.github.io/great/trade.html?v=1" class="nav-link">??觀????덉냻 ???좎댉</a>
-        <a href="https://trillionly.github.io/great/trillion.html" class="nav-link">?繞??묐뎨?揶??⑥ル폆 ??戮?츩??/a>
+        <a href="https://trillionly.github.io/great/trade.html?v=1" class="nav-link">??鰲?????됰꺕 ???醫롫뙃</a>
+        <a href="https://trillionly.github.io/great/trillion.html" class="nav-link">?濚??臾먮렓?????Β?ロ룇 ??筌?痢??/a>
       </div>
     </div>
-    <div class="sub">??븐뼚?욕윜諛몄굡??????⑤베吏????吏??????類ｊ텠??(TQQQ/ETHU/TSLL)</div>
+    <div class="sub">??釉먮폏??뺤쐺獄쏅챷援???????ㅻ쿋筌????筌??????筌먲퐡???(TQQQ/ETHU/TSLL)</div>
   </div>
 
   <div id="errorBanner"></div>
 
   <div class="summary-grid">
     <div class="card">
-      <div class="k">??⑤베吏???⑤객臾?/div>
-      <div class="v"><span id="status" class="pill">?β돦裕녽?繞벿살탟??/span></div>
+      <div class="k">???ㅻ쿋筌????ㅺ컼??/div>
+      <div class="v"><span id="status" class="pill">?棺??짆?승?濚욌꼬?댄깱??/span></div>
     </div>
     <div class="card">
-      <div class="k">??⑥щ턄?????堉???源놁겱</div>
-      <div class="v" style="font-size: 16px; margin-top: auto; padding-top: 6px;"><span id="count">-</span>濾?/ <span class="muted" id="latest">-</span></div>
+      <div class="k">???Β???????????繹먮냱寃?/div>
+      <div class="v" style="font-size: 16px; margin-top: auto; padding-top: 6px;"><span id="count">-</span>癲?/ <span class="muted" id="latest">-</span></div>
     </div>
     <div class="card summary-profit-card">
-      <div class="k">???熬곣뫗????瑜곷덧 (??猷뼘?</div>
+      <div class="k">????ш끽維?????쒓낮??(???룸폍??</div>
       <div class="v" id="monthProfitAll">-</div>
       <div class="small muted" id="monthRoiAll" style="margin-bottom: 6px;">-</div>
       <div id="progAll" style="width:100%; margin-top:auto;"></div>
     </div>
 
     <div class="card summary-profit-card">
-      <div class="k">TQQQ ?熬곣뫗????瑜곷덧</div>
+      <div class="k">TQQQ ??ш끽維?????쒓낮??/div>
       <div class="v" id="monthProfitTQQQ">-</div>
       <div class="small muted" id="monthRoiTQQQ" style="margin-bottom: 6px;">-</div>
       <div id="progTQQQ" style="width:100%; margin-top:auto;"></div>
@@ -353,15 +353,15 @@
       <div class="sparkline-container">
         <div class="sparkline-canvas-wrap">
           <div id="loader_TQQQ" class="spinner"></div>
-          <div id="error_TQQQ" class="fetch-error-text" style="display:none;">?브퀗??????덉넮</div>
+          <div id="error_TQQQ" class="fetch-error-text" style="display:none;">?釉뚰???????됰꽡</div>
           <canvas id="sparkTQQQ" style="display:none;"></canvas>
         </div>
-        <div class="sparkline-title">嶺뚣끉裕??6?띠룇裕???낅슣???怨뺣뾼??/div>
+        <div class="sparkline-title">癲ル슔?됭짆??6??좊즵獒????낆뒩????⑤베毓??/div>
       </div>
     </div>
 
     <div class="card summary-profit-card">
-      <div class="k">ETHU ?熬곣뫗????瑜곷덧</div>
+      <div class="k">ETHU ??ш끽維?????쒓낮??/div>
       <div class="v" id="monthProfitETHU">-</div>
       <div class="small muted" id="monthRoiETHU" style="margin-bottom: 6px;">-</div>
       <div id="progETHU" style="width:100%; margin-top:auto;"></div>
@@ -369,15 +369,15 @@
       <div class="sparkline-container">
         <div class="sparkline-canvas-wrap">
           <div id="loader_ETHU" class="spinner"></div>
-          <div id="error_ETHU" class="fetch-error-text" style="display:none;">?브퀗??????덉넮</div>
+          <div id="error_ETHU" class="fetch-error-text" style="display:none;">?釉뚰???????됰꽡</div>
           <canvas id="sparkETHU" style="display:none;"></canvas>
         </div>
-        <div class="sparkline-title">嶺뚣끉裕??6?띠룇裕???낅슣???怨뺣뾼??/div>
+        <div class="sparkline-title">癲ル슔?됭짆??6??좊즵獒????낆뒩????⑤베毓??/div>
       </div>
     </div>
 
     <div class="card summary-profit-card">
-      <div class="k">TSLL ?熬곣뫗????瑜곷덧</div>
+      <div class="k">TSLL ??ш끽維?????쒓낮??/div>
       <div class="v" id="monthProfitTSLL">-</div>
       <div class="small muted" id="monthRoiTSLL" style="margin-bottom: 6px;">-</div>
       <div id="progTSLL" style="width:100%; margin-top:auto;"></div>
@@ -385,35 +385,35 @@
       <div class="sparkline-container">
         <div class="sparkline-canvas-wrap">
           <div id="loader_TSLL" class="spinner"></div>
-          <div id="error_TSLL" class="fetch-error-text" style="display:none;">?브퀗??????덉넮</div>
+          <div id="error_TSLL" class="fetch-error-text" style="display:none;">?釉뚰???????됰꽡</div>
           <canvas id="sparkTSLL" style="display:none;"></canvas>
         </div>
-        <div class="sparkline-title">嶺뚣끉裕??6?띠룇裕???낅슣???怨뺣뾼??/div>
+        <div class="sparkline-title">癲ル슔?됭짆??6??좊즵獒????낆뒩????⑤베毓??/div>
       </div>
     </div>
   </div>
 
   <div class="controls">
     <div>
-      <div class="small">?브퀗?????⑤베利?/div>
+      <div class="small">?釉뚰??????ㅻ쿋筌?/div>
       <select id="yearSel"></select>
     </div>
     <div>
-      <div class="small">?브퀗????リ옇?쀨?/div>
+      <div class="small">?釉뚰?????れ삀??㉱?/div>
       <select id="monthSel"></select>
     </div>
     <div>
-      <div class="small">??戮?뻣 ??リ턁??/div>
+      <div class="small">??筌?六????ろ꼤??/div>
       <select id="symbolsSel">
-        <option value="TQQQ,ETHU,TSLL" selected>3??リ턁???熬곣뫕??/option>
-        <option value="TQQQ">TQQQ嶺?/option>
-        <option value="ETHU">ETHU嶺?/option>
-        <option value="TSLL">TSLL嶺?/option>
+        <option value="TQQQ,ETHU,TSLL" selected>3???ろ꼤????ш끽維??/option>
+        <option value="TQQQ">TQQQ癲?/option>
+        <option value="ETHU">ETHU癲?/option>
+        <option value="TSLL">TSLL癲?/option>
       </select>
     </div>
     <div>
-      <div class="small">???곌랜??</div>
-      <button id="archiveMonthBtn" type="button" class="control-button">??嶺뚮씭?껇?/button>
+      <div class="small">???怨뚮옖??</div>
+      <button id="archiveMonthBtn" type="button" class="control-button">??癲ル슢??猿눫?/button>
     </div>
   </div>
 
@@ -428,14 +428,14 @@
   </div>
 
   <div class="card wide">
-    <div class="k" style="margin-bottom: 12px;">?獄???瑜곷덧 ?袁좊걞??嶺뚢뼰維??(嶺뚮씭留?=??瑜곷덧 ??諛댄뀰 / ???熬곣뫗??/ ??????熬곣뫗??嶺뚮ㅄ維싷쭗?</div>
+    <div class="k" style="margin-bottom: 12px;">??????쒓낮???熬곸쥓嫄??癲ル슓堉곁땟??(癲ル슢??쭕?=???쒓낮????獄쏅똾??/ ????ш끽維??/ ???????ш끽維??癲ル슢?꾤땟?룹춻?</div>
     <div style="position: relative; height: 300px; width: 100%;">
       <canvas id="comboChart"></canvas>
     </div>
   </div>
 
   <details style="margin-top:20px">
-    <summary class="small" style="color: #64748b; cursor: pointer;">??븐뼚?붷윜??곌랜??뵳?嶺뚣끉裕????곕?餓????堉?</summary>
+    <summary class="small" style="color: #64748b; cursor: pointer;">??釉먮폏?遺룹쐺??怨뚮옖??逾?癲ル슔?됭짆????怨?繞??????</summary>
     <pre class="mono" id="debug" style="white-space:pre-wrap; font-size:11px; background:#f8fafc; padding:10px; border:1px solid #e2e8f0; border-radius:6px; margin-top:8px;"></pre>
   </details>
 
@@ -712,7 +712,7 @@
 
   function renderKrwTooltipContent(usdValue) {
     if (exchangeRateStatus !== "ready" || !Number.isFinite(usdToKrwRate)) {
-      return `<div class="krw-tooltip-row">??瑜곷첎 ?釉띾쐞????노츎 繞?..</div>`;
+      return `<div class="krw-tooltip-row">???쒓낮泥???됰씭??????몄툗 濚?..</div>`;
     }
     const krwValue = convertUsdToKrw(usdValue, usdToKrwRate);
     const roundedDelta = Number.isFinite(usdToKrwDelta) ? Math.round(usdToKrwDelta) : 0;
@@ -723,8 +723,8 @@
         ? `-${fmtKrw(Math.abs(roundedDelta))}`
         : "0";
     return `
-      <div class="krw-tooltip-row">?熬곣뫗????瑜곷첎: 1 USD = ${fmtKrw(usdToKrwRate)} KRW <span class="krw-trend ${usdToKrwTrend}">(${trendArrow} ${trendDeltaText})</span></div>
-      <div class="krw-tooltip-row">??믨퀣????琉얩뀰: ??${fmtKrw(Math.round(krwValue || 0))}</div>
+      <div class="krw-tooltip-row">??ш끽維?????쒓낮泥? 1 USD = ${fmtKrw(usdToKrwRate)} KRW <span class="krw-trend ${usdToKrwTrend}">(${trendArrow} ${trendDeltaText})</span></div>
+      <div class="krw-tooltip-row">??誘⑦????筌뚯뼦?? ??${fmtKrw(Math.round(krwValue || 0))}</div>
     `;
   }
 
@@ -766,7 +766,7 @@
       });
     });
   }
-  /* ???亦껋꼶梨?????덉냱??????잙갭梨?????貫??*/
+  /* ???雅?퍔瑗띰㎖??????됰꺊???????숆강筌?????縕??*/
   function drawSparkline(canvasId, dataPoints, colorCode) {
     const ctx = document.getElementById(canvasId).getContext('2d');
     if (window["chart_" + canvasId]) {
@@ -836,7 +836,7 @@
       const linesInfo = [];
       for (const r of chronos) {
           const y = r.date ? r.date.split("-")[0] : String(new Date().getFullYear());
-          const msg = (r.raw_message || "").replace(/?낅슣?뽪룇?띠럾???嶺뚣끉裕??熬곣뫗??\s*2066/g, "?낅슣?뽪룇?띠럾???嶺뚣끉裕??熬곣뫗?? 66");
+          const msg = (r.raw_message || "").replace(/??낆뒩?戮る즵??좊읈???癲ル슔?됭짆???ш끽維??\s*2066/g, "??낆뒩?戮る즵??좊읈???癲ル슔?됭짆???ш끽維?? 66");
           const lines = msg.split('\n');
           for (const l of lines) {
               linesInfo.push({ text: l.trim(), year: y });
@@ -866,7 +866,7 @@
 
   function buildRowSymbolKey(row) {
       const raw = row?.raw_message || "";
-      const symM = raw.match(/([A-Z]{2,6})\s*嶺뚣끉裕??熬곣뫗??s*:/) || raw.match(/([A-Z]{2,6})\s*????ル?녽뇡?s*:/);
+      const symM = raw.match(/([A-Z]{2,6})\s*癲ル슔?됭짆???ш끽維??s*:/) || raw.match(/([A-Z]{2,6})\s*?????ヂ???쎈눀?s*:/);
       return symM ? symM[1] : null;
   }
 
@@ -904,7 +904,11 @@
       let currentKey = null;
       let globalDate = null;
       let globalTime = null;
-          const dtM = line.match(/(\d{2})\/(\d{2})??s+(\d{2}:\d{2})/);
+      let globalYear = null;
+
+      for (const item of linesInfo) {
+          const line = item.text || "";
+          const dtM = line.match(/(\d{2})\/(\d{2})\D+(\d{2}:\d{2})/);
           if (dtM) {
               const baseYear = Number(item.year || new Date().getFullYear());
               const d = new Date(baseYear, Number(dtM[1]) - 1, Number(dtM[2]));
@@ -916,17 +920,13 @@
               globalTime = dtM[3];
               globalYear = adjustedYear;
           }
-          if (dtM) {
-              globalDate = `${dtM[1]}/${dtM[2]}`;
-              globalTime = dtM[3];
-              globalYear = item.year;
-          }
 
-          let symM = line.match(/([A-Z]{2,6})\s*嶺뚣끉裕??熬곣뫗??s*:/);
-          if (!symM) symM = line.match(/([A-Z]{2,6})\s*????ル?녽뇡?s*:/);
-          
-          if (symM && globalDate) {
-              const symbol = symM[1];
+          let symM = line.match(/\bGrid\d+\s+([A-Z]{2,6})\b/i);
+          if (!symM) symM = line.match(/\b(TQQQ|ETHU|TSLL)\b(?=[^\n:]{0,40}:)/i);
+          if (!symM) symM = line.match(/\b([A-Z]{2,6})(?=[^\n:]{0,40}:)/);
+
+          if (symM && globalDate && globalYear) {
+              const symbol = String(symM[1]).toUpperCase();
               currentKey = `${globalYear}/${globalDate}|${symbol}`;
               if (!recordsMap.has(currentKey)) {
                   recordsMap.set(currentKey, {
@@ -935,11 +935,11 @@
                       mmdd: globalDate,
                       yyyymmdd: `${globalYear}/${globalDate}`,
                       time: globalTime,
-                      symbol: symbol,
+                      symbol,
                       raw: line + "\n"
                   });
               }
-              continue; 
+              continue;
           }
 
           if (currentKey && recordsMap.has(currentKey)) {
@@ -948,20 +948,20 @@
       }
 
       return Array.from(recordsMap.values()).map(r => {
-          const cumM = r.raw.match(/?낅슣?뽪룇?띠럾???嶺뚣끉裕??熬곣뫗??s*:\s*([-\d,]+(?:\.\d+)?)/);
+          const cumM = r.raw.match(/????용츧?嶺뚮?援ο쭩???ル봿?????轅붽틓????彛??????밸븶??s*:\s*([-\d,]+(?:\.\d+)?)/);
           r.cum = cumM ? num(cumM[1]) : null;
 
-          const sCnt = r.raw.match(/(?:S|嶺뚮씞?뉒뙴?\s*[:\-]?\s*([-\d.,]+)\s*??i);
+          const sCnt = r.raw.match(/\bS\s*([\-\d.,]+)/i);
           r.sellCount = sCnt ? num(sCnt[1]) : null;
 
           const { tierNow, tierMax } = parseGridTier(r.raw);
           r.tierNow = tierNow;
           r.tierMax = tierMax;
 
-          const holdM = r.raw.match(/?곌랜?????濡?럸:\s*([-\d.,]+)??);
+          const holdM = r.raw.match(/???ㅼ뒧??????????\s*([-\d.,]+)??);
           const holdQty = holdM ? num(holdM[1]) : null;
 
-          const invM = r.raw.match(/???逾??s*?關鍮?湲맞?s*:\s*([-\d.,]+)/);
+          const invM = r.raw.match(/??????s*???誘⑹몡???ヂ?壤??s*:\s*([-\d.,]+)/);
           const invQty = invM ? num(invM[1]) : null;
 
           r.isValid = true;
@@ -970,7 +970,7 @@
           if (holdQty !== null && invQty !== null) {
               if (holdQty !== invQty) {
                   r.isValid = false;
-                  r.errorMsg = `[${r.mmdd} ${r.time}] <b>${r.symbol}</b> ??濡?럸 ?釉띾쐠??뉎럦?(???놁졑: ${holdQty}??vs ?? ${invQty})`;
+                  r.errorMsg = `[${r.mmdd} ${r.time}] <b>${r.symbol}</b> ?????????怨쀫뎐????嚥▲꺃??(?????⑤챷竊? ${holdQty}??vs ?? ${invQty})`;
               }
           }
 
@@ -1063,20 +1063,20 @@
     }
 
     return Array.from(recordsMap.values()).map(r => {
-      const cumM = r.raw.match(/???녿뮝?筌믡굥利??醫딆쓧????꿔꺂????쭍?????썹땟??s*:\s*([-\d,]+(?:\.\d+)?)/);
+      const cumM = r.raw.match(/????용츧?嶺뚮?援ο쭩???ル봿?????轅붽틓????彛??????밸븶??s*:\s*([-\d,]+(?:\.\d+)?)/);
       r.cum = cumM ? num(cumM[1]) : null;
 
-      const sCnt = r.raw.match(/(?:S|?꿔꺂????誘⑹??\s*[:\-]?\s*([-\d.,]+)\s*??i);
+      const sCnt = r.raw.match(/\bS\s*([\-\d.,]+)/i);
       r.sellCount = sCnt ? num(sCnt[1]) : null;
 
       const { tierNow, tierMax } = parseGridTier(r.raw);
       r.tierNow = tierNow;
       r.tierMax = tierMax;
 
-      const holdM = r.raw.match(/??⑤슢??????????\s*([-\d.,]+)??);
+      const holdM = r.raw.match(/???ㅼ뒧??????????\s*([-\d.,]+)??);
       const holdQty = holdM ? num(holdM[1]) : null;
 
-      const invM = r.raw.match(/??????s*???믩쑏??ル彛??s*:\s*([-\d.,]+)/);
+      const invM = r.raw.match(/??????s*???誘⑹몡???ヂ?壤??s*:\s*([-\d.,]+)/);
       const invQty = invM ? num(invM[1]) : null;
 
       r.isValid = true;
@@ -1085,7 +1085,7 @@
       if (holdQty !== null && invQty !== null) {
         if (holdQty !== invQty) {
           r.isValid = false;
-          r.errorMsg = `[${r.mmdd} ${r.time}] <b>${r.symbol}</b> ?????????곗뵯????濡レ쑆?(????怨몄７: ${holdQty}??vs ?? ${invQty})`;
+          r.errorMsg = `[${r.mmdd} ${r.time}] <b>${r.symbol}</b> ?????????怨쀫뎐????嚥▲꺃??(?????⑤챷竊? ${holdQty}??vs ?? ${invQty})`;
         }
       }
 
@@ -1179,20 +1179,20 @@
     }
 
     return Array.from(recordsMap.values()).map(r => {
-      const cumM = r.raw.match(/??낆뒩?戮る즵??좊읈???癲ル슔?됭짆???ш끽維??s*:\s*([-\d,]+(?:\.\d+)?)/);
+      const cumM = r.raw.match(/???녿뮝?筌믡굥利??醫딆쓧????꿔꺂????쭍?????썹땟??s*:\s*([-\d,]+(?:\.\d+)?)/);
       r.cum = cumM ? num(cumM[1]) : null;
 
-      const sCnt = r.raw.match(/(?:S|癲ル슢???믩쇀?\s*[:\-]?\s*([-\d.,]+)\s*??i);
+          const sCnt = r.raw.match(/\bS\s*([\-\d.,]+)/i);
       r.sellCount = sCnt ? num(sCnt[1]) : null;
 
       const { tierNow, tierMax } = parseGridTier(r.raw);
       r.tierNow = tierNow;
       r.tierMax = tierMax;
 
-      const holdM = r.raw.match(/?怨뚮옖?????嚥???\s*([-\d.,]+)??);
+      const holdM = r.raw.match(/??⑤슢??????????\s*([-\d.,]+)??);
       const holdQty = holdM ? num(holdM[1]) : null;
 
-      const invM = r.raw.match(/??????s*??쒒뜮?疫뀀쭪??s*:\s*([-\d.,]+)/);
+      const invM = r.raw.match(/??????s*???믩쑏??ル彛??s*:\s*([-\d.,]+)/);
       const invQty = invM ? num(invM[1]) : null;
 
       r.isValid = true;
@@ -1201,7 +1201,7 @@
       if (holdQty !== null && invQty !== null) {
         if (holdQty !== invQty) {
           r.isValid = false;
-          r.errorMsg = `[${r.mmdd} ${r.time}] <b>${r.symbol}</b> ??嚥?????됰씭????롫윦?(????곸죷: ${holdQty}??vs ?? ${invQty})`;
+          r.errorMsg = `[${r.mmdd} ${r.time}] <b>${r.symbol}</b> ?????????곗뵯????濡レ쑆?(????怨몄７: ${holdQty}??vs ?? ${invQty})`;
         }
       }
 
@@ -1300,29 +1300,29 @@
     const symLabel = (sym) => `${sym} (${fmtInt(SEEDS[sym])})`;
     const currentSeedTotal = symbols.reduce((a,s) => a + (SEEDS[s] || 0), 0);
     
-    let dateColName = "??ル‘?";
-    let avgLabel = "???몄┯??;
-    if (viewMode === 'YEARLY') { dateColName = "??⑤베利?; avgLabel = "??⑥쥓利멨윜?; }
-    else if (viewMode === 'MONTHLY') { dateColName = "??(Month)"; avgLabel = "??됀?룸???; }
+    let dateColName = "???モ?";
+    let avgLabel = "???紐꾟뵱??;
+    if (viewMode === 'YEARLY') { dateColName = "???ㅻ쿋筌?; avgLabel = "???μ쪚筌앸ŀ??; }
+    else if (viewMode === 'MONTHLY') { dateColName = "??(Month)"; avgLabel = "?????猷???; }
 
     thead.innerHTML = `
       <tr class="head2">
         <th rowspan="2" class="center br" style="width:70px">${dateColName}</th>
         ${symbols.map(sym => `<th class="center br" colspan="3">${esc(symLabel(sym))}<div class="small muted" id="tier_${sym}"></div></th>`).join("")}
-        <th rowspan="2" class="center br" style="width:80px">??嶺뚮씞?뉒뙴?/th>
+        <th rowspan="2" class="center br" style="width:80px">??癲ル슢???믩쇀?/th>
         <th colspan="2" class="center" style="width:160px">
-          ?關鍮쒒뜮? ??瑜곷덧
+          ??쒒뜮?믩쑏? ???쒓낮??
           <div class="small muted" style="font-weight:normal;">(${fmtInt(currentSeedTotal)})</div>
         </th>
       </tr>
       <tr>
         ${symbols.map(_ => `
-          <th class="center" style="width:50px">嶺뚮씞?뉒뙴?/th>
-          <th class="right" style="width:70px">??瑜곷덧</th>
-          <th class="right br" style="width:80px">?熬곣뫗???瑜곷덧</th>
+          <th class="center" style="width:50px">癲ル슢???믩쇀?/th>
+          <th class="right" style="width:70px">???쒓낮??/th>
+          <th class="right br" style="width:80px">??ш끽維????쒓낮??/th>
         `).join("")}
-        <th class="center" style="width:80px">${viewMode !== 'DAILY' ? "??猷뼘? : "??}</th>
-        <th class="center" style="width:80px">?熬곥룊??/th>
+        <th class="center" style="width:80px">${viewMode !== 'DAILY' ? "???룸폍?? : "??}</th>
+        <th class="center" style="width:80px">??ш낄猷??/th>
       </tr>
     `;
 
@@ -1382,7 +1382,7 @@
             <td class="right">${buildUsdDisplayHtml(rowCum)}</td>
           </tr>
         `;
-      }).join("") || `<tr><td colspan="${4 + symbols.length*3}" class="muted">??⑥щ턄????怨몃쾳</td></tr>`;
+      }).join("") || `<tr><td colspan="${4 + symbols.length*3}" class="muted">???Β???????⑤챶苡?/td></tr>`;
 
     const sumSellBySym = Object.fromEntries(symbols.map(s => [s, sumOrNull(viewData.map(r => r[s].sell))]));
     const sumProfitBySym = Object.fromEntries(symbols.map(s => [s, sumOrNull(viewData.map(r => r[s].profit))]));
@@ -1414,7 +1414,7 @@
         <td class="right">-</td>
       </tr>
       <tr class="tot">
-        <td class="center br">??猷뼘?/td>
+        <td class="center br">???룸폍??/td>
         ${symbols.map(sym => {
           const seed = SEEDS[sym] || null;
           const roiCum = (seed && lastCumBySym[sym] != null) ? (lastCumBySym[sym] / seed) : null;
@@ -1443,7 +1443,7 @@
       
       v.innerHTML = buildUsdDisplayHtml(profit);
       v.className = "v " + clsPN(profit);
-      r.textContent = (roi == null) ? "" : `??瑜곷덧??${fmtPct1(roi)}`;
+      r.textContent = (roi == null) ? "" : `???쒓낮???${fmtPct1(roi)}`;
       
       if (p && targetAmt > 0) {
         const pct = Math.max(0, (profit / targetAmt) * 100);
@@ -1452,7 +1452,7 @@
         
         p.innerHTML = `
           <div style="display:flex; justify-content:space-between; font-size:11px; color:#64748b; margin-bottom:5px;">
-            <span>嶺뚮ㅄ維싷쭗?$${fmtInt(targetAmt)}</span>
+            <span>癲ル슢?꾤땟?룹춻?$${fmtInt(targetAmt)}</span>
             <span style="font-weight:700; color:${color}">${fmtFloat1(pct)}%</span>
           </div>
           <div style="background:#e2e8f0; border-radius:999px; height:6px; width:100%; overflow:hidden;">
@@ -1494,7 +1494,7 @@
 
     const datasets = symbols.map(sym => ({
       type: "bar",
-      label: `${sym} ??瑜곷덧 ($)`,
+      label: `${sym} ???쒓낮??($)`,
       data: viewData.map(r => r[sym].profit),
       backgroundColor: bgColors[sym],
       borderColor: borderColors[sym],
@@ -1505,7 +1505,7 @@
     }));
 
     datasets.push({
-      type: "line", label: "???熬곣뫗????瑜곷덧 ($)", data: viewData.map(r => r.totalCum),
+      type: "line", label: "????ш끽維?????쒓낮??($)", data: viewData.map(r => r.totalCum),
       borderColor: '#ef4444', tension: 0.2, borderWidth: 2, pointRadius: 3, fill: false, spanGaps: true, yAxisID: "y1"
     });
 
@@ -1517,7 +1517,7 @@
     }
 
     datasets.push({
-      type: "line", label: viewMode !== 'DAILY' ? "?熬곣뫗??嶺뚮ㅄ維싷쭗?? : "??嶺뚮ㅄ維싷쭗?(1.5%)", data: targetLineData,
+      type: "line", label: viewMode !== 'DAILY' ? "??ш끽維??癲ル슢?꾤땟?룹춻?? : "??癲ル슢?꾤땟?룹춻?(1.5%)", data: targetLineData,
       borderColor: '#10b981', borderDash: [5, 5], borderWidth: 2, pointRadius: 0, fill: false, yAxisID: "y1"
     });
 
@@ -1550,12 +1550,12 @@
                   const footerLines = [];
                   if (isBarHovered) {
                     footerLines.push('');
-                    footerLines.push('????瑜곷덧 ??猷뼘? $' + new Intl.NumberFormat('en-US').format(sum));
+                    footerLines.push('?????쒓낮?????룸폍?? $' + new Intl.NumberFormat('en-US').format(sum));
                     if (exchangeRateStatus !== "ready" || !Number.isFinite(usdToKrwRate)) {
-                      footerLines.push('??瑜곷첎 ?釉띾쐞????노츎 繞?..');
+                      footerLines.push('???쒓낮泥???됰씭??????몄툗 濚?..');
                     } else {
                       const krwValue = Math.round(sum * usdToKrwRate);
-                      footerLines.push('????믨퀣????琉얩뀰: ?? + new Intl.NumberFormat('ko-KR').format(krwValue));
+                      footerLines.push('????誘⑦????筌뚯뼦?? ?? + new Intl.NumberFormat('ko-KR').format(krwValue));
                     }
                   }
                   return footerLines.length ? footerLines : null;
@@ -1573,31 +1573,31 @@
     }
   }
 
-  // ???3繞?嶺뚳퐣伊???꾩렮維쀥젆源띿춹? ?낅슣?? ?띠럾??筌뤾쑴沅롧뼨????堉???貫??
+  // ???3濚?癲ル슪?ｄ펺???袁⑸젻泳?μ젂繹먮씮異? ??낆뒩?? ??좊읈??嶺뚮ㅎ?닸쾮濡㏓섀????????縕??
   async function fetchHistoricalPrices(symbol) {
     const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=6mo`;
     
-    // 1??戮곕쭊: ?띠럾?????伊??뗏????깆젧??⑤챷逾?corsproxy ???六?
+    // 1??筌믨퀡彛? ??좊읈?????鴉???뤒????源놁젳???ㅼ굣??corsproxy ???筌?
     try {
       const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(targetUrl)}`);
       const data = await res.json();
       const prices = data.chart.result[0].indicators.quote[0].close.filter(p => p !== null);
       if (prices && prices.length > 0) return prices;
     } catch (e) {
-      console.warn(`[1??戮곕쭊 ???덉넮] ${symbol}: corsproxy.io ??⑤슡??嶺뚯솘???);
+      console.warn(`[1??筌믨퀡彛?????됰꽡] ${symbol}: corsproxy.io ???ㅼ뒦??癲ル슣????);
     }
 
-    // 2??戮곕쭊: ?リ옇???allorigins ??⑥쥙?????六?(1??戮곕쭊 ???덉넮 ??嶺뚯빖留??????
+    // 2??筌믨퀡彛? ??れ삀???allorigins ???μ쪠?????筌?(1??筌믨퀡彛?????됰꽡 ??癲ル슣鍮뽳쭕???????
     try {
       const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`);
       const data = await res.json();
       const prices = data.chart.result[0].indicators.quote[0].close.filter(p => p !== null);
       if (prices && prices.length > 0) return prices;
     } catch (e) {
-      console.warn(`[2??戮곕쭊 ???덉넮] ${symbol}: allorigins.win ??⑤슡??嶺뚯솘???);
+      console.warn(`[2??筌믨퀡彛?????됰꽡] ${symbol}: allorigins.win ???ㅼ뒦??癲ル슣????);
     }
 
-    // 3??戮곕쭊: ???????熬곣뫗??Finnhub API 嶺뚮―??쾮??酉???띠럾??筌뤾쑴沅롧뼨?(嶺뚣끉裕????곌랜?塋?
+    // 3??筌믨퀡彛? ????????ш끽維??Finnhub API 癲ル슢???苡???됀????좊읈??嶺뚮ㅎ?닸쾮濡㏓섀?(癲ル슔?됭짆????怨뚮옖?櫻?
     try {
       const API_KEY = 'd6om8dpr01qi5kh3g1cgd6om8dpr01qi5kh3g1d0';
       const endTs = Math.floor(Date.now() / 1000);
@@ -1608,13 +1608,13 @@
       const data = await res.json();
       if (data.s === 'ok' && data.c && data.c.length > 0) return data.c;
     } catch (e) {
-      console.warn(`[3??戮곕쭊 ???덉넮] ${symbol}: Finnhub API嶺뚮씭?? 嶺뚮씭留??);
+      console.warn(`[3??筌믨퀡彛?????됰꽡] ${symbol}: Finnhub API癲ル슢??? 癲ル슢??쭕??);
     }
 
-    throw new Error('嶺뚮ㅄ維獄??브퀗????롪퍔?δ빳?嶺뚢뼰維???);
+    throw new Error('癲ル슢?꾤땟????釉뚰????濡ろ뜑?灌鍮?癲ル슓堉곁땟????);
   }
 
-  // ???3繞??꾩렮維쀥젆源띿춹?諭諭???????띠럾??筌뤾쑴沅???⑥щ턄??? 嶺뚢뼰維????잙갭梨??????덈뺄?遊붋
+  // ???3濚??袁⑸젻泳?μ젂繹먮씮異?獄?獄????????좊읈??嶺뚮ㅎ?닸쾮????Β????? 癲ル슓堉곁땟?????숆강筌???????덈틖??딅텑?
   async function fetchAndDrawRealSparklines() {
     const chartConfigs = [
       { symbol: 'TQQQ', canvasId: 'sparkTQQQ', loaderId: 'loader_TQQQ', errorId: 'error_TQQQ', color: '#1e3a8a' },
@@ -1629,7 +1629,7 @@
         document.getElementById(config.canvasId).style.display = 'block';
         drawSparkline(config.canvasId, prices, config.color);
       } catch (error) {
-        console.error(`[嶺뚣끉裕뉏펺?????? ${config.symbol}:`, error);
+        console.error(`[癲ル슔?됭짆?륂렭?????? ${config.symbol}:`, error);
         document.getElementById(config.loaderId).style.display = 'none';
         document.getElementById(config.errorId).style.display = 'block';
       }
@@ -1684,7 +1684,7 @@
       debug.textContent = JSON.stringify(baseBlocks.slice(0, 3), null, 2);
 
       if (!baseBlocks.length) {
-        status.textContent = "??⑥щ턄??????繞?;
+        status.textContent = "데이터가 없습니다.";
         return;
       }
 
@@ -1692,7 +1692,7 @@
         const yearSet = new Set(baseValidBlocks.map(b => b.year));
         archiveMonthIndex.forEach(key => yearSet.add(key.slice(0, 4)));
         const allYears = Array.from(yearSet).sort();
-        let yearHtml = `<option value="ALL_YEARS">?熬곣뫕???リ옇?쀨?(嶺뚮ㅄ維獄???⑤베利?</option>`;
+        let yearHtml = `<option value="ALL_YEARS">??ш끽維????れ삀??㉱?(癲ル슢?꾤땟??????ㅻ쿋筌?</option>`;
         yearHtml += allYears.map(y => `<option value="${y}">${y}??/option>`).join("");
         yearSel.innerHTML = yearHtml;
         if (preferredYear && allYears.includes(preferredYear)) yearSel.value = preferredYear;
@@ -1702,7 +1702,7 @@
       function updateMonthDropdown(preferredMonth = null) {
         const y = yearSel.value;
         if (y === "ALL_YEARS") {
-            monthSel.innerHTML = `<option value="YEARLY_AGG">??⑤베利꿰솻???븐슜???곌랜??뵳?/option>`;
+            monthSel.innerHTML = `<option value="YEARLY_AGG">???ㅻ쿋筌앷염????釉먯뒠???怨뚮옖??逾?/option>`;
             monthSel.disabled = true;
             return;
         }
@@ -1714,9 +1714,9 @@
           .forEach(key => monthSet.add(key.slice(5, 7)));
         const months = Array.from(monthSet).sort();
 
-        let optionsHtml = `<option value="ALL">??⑤슣????븐슜??(??ルㅎ臾???⑤베利??熬곣뫕??</option>`;
+        let optionsHtml = `<option value="ALL">???ㅼ뒩????釉먯뒠??(???ャ뀕?????ㅻ쿋筌???ш끽維??</option>`;
         if (months.length > 1) {
-          optionsHtml += `<option value="ALL_PREV">??⑤슣????븐슜??(嶺뚯쉳????嶺뚮씭?껇??熬곥룊??</option>`;
+          optionsHtml += `<option value="ALL_PREV">???ㅼ뒩????釉먯뒠??(癲ル슣?????癲ル슢??猿눫???ш낄猷??</option>`;
         }
         optionsHtml += months.map(m => `<option value="${m}">${Number(m)}??/option>`).join("");
         monthSel.innerHTML = optionsHtml;
@@ -1756,7 +1756,7 @@
 
         let stateMessage = "";
         if (/^\d{2}$/.test(m)) {
-          if (!hasBaseMonth && !archiveRows.length) stateMessage = "???????븐슦踰??곌랜?? ??⑥щ턄??? ??怨룸????덈펲.";
+          if (!hasBaseMonth && !archiveRows.length) stateMessage = "???????釉먯뒭甕??怨뚮옖?? ???Β????? ???⑤８?????덊렡.";
         }
 
         return {
@@ -1780,13 +1780,13 @@
         const { errorBlocks, validBlocks } = splitBlocksByValidity(activeBlocks);
 
         if (errorBlocks.length > 0) {
-            status.textContent = "??瑜곸젧 ??븐슙?????リ옇?ｅㅇ?;
+            status.textContent = "데이터 수정 요청";
             status.className = "pill err-pill";
             errorBanner.style.display = "block";
-            errorBanner.innerHTML = "<strong>?????⑥щ턄????瑜곸젧 ??븐슙??(??濡?럸 ?釉띾쐠??뉎럦??띠룆흮? - ???????源놁겱 ?熬곣뫕?????낆몥??袁⑤콦 嶺뚢뼰維???</strong>" + 
+            errorBanner.innerHTML = "<strong>??????Β???????쒓낯????釉먯뒜??(??嚥?????됰씭????롫윦???좊즴?? - ???????繹먮냱寃???ш끽維??????녿ぅ??熬곣뫀肄?癲ル슓堉곁땟????</strong>" + 
                                     errorBlocks.map(b => b.errorMsg).join("<br>");
         } else {
-            status.textContent = "?筌먦끆留???얜Ŧ吏?繞?;
+            status.textContent = "정상";
             status.className = "pill";
             errorBanner.style.display = "none";
         }
@@ -1893,7 +1893,7 @@
         }
 
         if (!viewData.length) {
-          const emptyMessage = stateOverride || stateMessage || (/^\d{2}$/.test(m) ? "?熬곣뫗異????????븐슦踰?嶺뚮씞????リ옇?▽빳????怨룸????덈펲." : "");
+          const emptyMessage = stateOverride || stateMessage || (/^\d{2}$/.test(m) ? "??ш끽維쀧빊????????釉먯뒭甕?癲ル슢??????れ삀??쎈뭄?????⑤８?????덊렡." : "");
           if (emptyMessage) setArchiveNotice(emptyMessage);
           else setArchiveNotice("");
         } else {
@@ -1907,7 +1907,7 @@
       updateMonthDropdown();
 
       archiveMonthBtn.addEventListener("click", async () => {
-        const confirmed = confirm("?筌먲퐣異???嶺뚮씭?껇??嶺뚯쉳?듸쭛??琉용뻣?롪퍔伊????숇뤀?\n?熬곣뫗????븐슦踰???⑥щ턄??? archive?????繞③뜮????덈펲.");
+        const confirmed = confirm("?嶺뚮㉡?ｇ빊???癲ル슢??猿눫??癲ル슣???몄춿??筌뚯슜六?濡ろ뜑鴉?????뉖??\n??ш끽維????釉먯뒭甕????Β????? archive?????濚왿몾??????덊렡.");
         if (!confirmed) return;
 
         const year = yearSel.value;
@@ -1950,13 +1950,13 @@
           if (nextSelection) {
             buildYearOptions(nextSelection.year);
             updateMonthDropdown(nextSelection.month);
-            await rerender("?熬곣뫗異????????븐슦踰?嶺뚮씞????リ옇?▽빳????怨룸????덈펲.");
+            await rerender("??ш끽維쀧빊????????釉먯뒭甕?癲ル슢??????れ삀??쎈뭄?????⑤８?????덊렡.");
           } else {
             await rerender();
           }
           alert("\uC6D4 \uB9C8\uAC10\uC774 \uC131\uACF5\uC801\uC73C\uB85C \uC644\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4.");
         } catch (error) {
-          alert("??嶺뚮씭?껇?????덉넮???곕????덈펲.");
+          alert("??癲ル슢??猿눫??????됰꽡???怨?????덊렡.");
           console.error(error);
         }
       });
@@ -1966,7 +1966,7 @@
       symbolsSel.addEventListener("change", async () => { await rerender(); });
       await rerender();
     } catch (e) {
-      status.textContent = "??⑤슡???????;
+      status.textContent = "로딩 실패";
       status.classList.add("err-pill");
       console.error(e);
     }
