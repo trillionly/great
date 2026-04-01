@@ -1550,6 +1550,7 @@
       function buildYearOptions(preferredYear = null) {
         const yearSet = new Set(baseValidBlocks.map(b => b.year));
         archiveMonthIndex.forEach(key => yearSet.add(key.slice(0, 4)));
+        if (preferredYear && /^\d{4}$/.test(preferredYear)) yearSet.add(preferredYear);
         const allYears = Array.from(yearSet).sort();
         let yearHtml = `<option value="ALL_YEARS">전체 기간 보기</option>`;
         yearHtml += allYears.map(y => `<option value="${y}">${y}년</option>`).join("");
@@ -1571,6 +1572,7 @@
         archiveMonthIndex
           .filter(key => key.startsWith(`${y}-`))
           .forEach(key => monthSet.add(key.slice(5, 7)));
+        if (preferredMonth && /^\d{2}$/.test(preferredMonth)) monthSet.add(preferredMonth);
         const months = Array.from(monthSet).sort();
 
         let optionsHtml = `<option value="ALL">전체 월 보기</option>`;
