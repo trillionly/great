@@ -1198,7 +1198,7 @@
     }
 
     tbody.innerHTML = viewData.map(r => {
-      const totalSell = (sumOrNull(symbols.map(s => r[s].sell)) ?? 0);
+      const totalSell = sumOrNull(symbols.map(s => r[s].sell));
       const rowDaily = r.totalDailyProfit;
       const rowCum = r.totalCum;
 
@@ -1227,14 +1227,15 @@
       return [s, v];
     }));
 
-    const totalSellAll = (sumOrNull(Object.values(sumSellBySym)) ?? 0);
+    const totalSellAll = sumOrNull(Object.values(sumSellBySym));
     const lastCumAll = sumOrNull(Object.values(lastCumBySym));
     
     const countDivisor = viewData.length || 1;
-    const avgSellBySym = Object.fromEntries(symbols.map(s => [s, (sumSellBySym[s] || 0) / countDivisor]));
-    const avgProfitBySym = Object.fromEntries(symbols.map(s => [s, (sumProfitBySym[s] || 0) / countDivisor]));
-    const avgTotalSellAll = totalSellAll / countDivisor;
-    const avgTotalProfitAll = sumOrNull(Object.values(sumProfitBySym)) / countDivisor;
+    const avgSellBySym = Object.fromEntries(symbols.map(s => [s, sumSellBySym[s] == null ? null : (sumSellBySym[s] / countDivisor)]));
+    const avgProfitBySym = Object.fromEntries(symbols.map(s => [s, sumProfitBySym[s] == null ? null : (sumProfitBySym[s] / countDivisor)]));
+    const avgTotalSellAll = totalSellAll == null ? null : (totalSellAll / countDivisor);
+    const totalProfitAll = sumOrNull(Object.values(sumProfitBySym));
+    const avgTotalProfitAll = totalProfitAll == null ? null : (totalProfitAll / countDivisor);
 
     tfoot.innerHTML = `
       <tr class="avg">
