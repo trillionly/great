@@ -12,14 +12,15 @@ app.use((req, res, next) => {
   next();
 });
 
-// 紐⑤뱺 ?붿껌 濡쒓렇 李띻린 (以묒슂)
+// 모든 요청 로그를 출력해 디버깅에 활용
 app.use((req, res, next) => {
   console.log(`[REQ] ${req.method} ${req.url}`);
   next();
 });
 
 // ===============================
-// ?섍꼍蹂??// ===============================
+// 환경 변수
+// ===============================
 const {
   SUPABASE_URL,
   SUPABASE_KEY,
@@ -31,12 +32,12 @@ const {
 const REPORT_ROW_LIMIT = 500;
 
 // ===============================
-// Supabase ?곌껐
+// Supabase 클라이언트
 // ===============================
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ===============================
-// GitHub ?낆꽌???⑥닔
+// GitHub 파일 업로드 함수
 // ===============================
 async function upsertToGitHub(path, contentText, message) {
   if (!GH_TOKEN || !GH_OWNER || !GH_REPO) {
@@ -55,7 +56,7 @@ async function upsertToGitHub(path, contentText, message) {
   };
 
   try {
-    // 湲곗〈 ?뚯씪 SHA ?뺤씤
+    // 기존 파일의 SHA를 먼저 확인
     let sha = null;
     const getRes = await fetch(api, { headers });
 
@@ -80,7 +81,7 @@ async function upsertToGitHub(path, contentText, message) {
       body: JSON.stringify(body)
     });
 
-    // ?뚯뒪?몄슜
+    // 업로드 실패 응답은 바로 예외 처리
     if (![200, 201].includes(putRes.status)) {
       const t = await putRes.text();
       console.error("[GH] PUT failed:", putRes.status, t);
@@ -88,7 +89,6 @@ async function upsertToGitHub(path, contentText, message) {
     } else {
       console.log("[GH] file updated:", path);
     }
-
   } catch (err) {
     console.error("[GH] error:", err);
     throw err;
@@ -218,13 +218,14 @@ async function rebuildReportJson(reason = "manual") {
 }
 
 // ===============================
-// 湲곕낯 ?뚯뒪??// ===============================
+// 기본 헬스 체크
+// ===============================
 app.get("/", (req, res) => {
-  res.send("?쒕쾭 ?댁븘?덉쓬");
+  res.send("정상 동작 중입니다.");
 });
 
 // ===============================
-// 由ы룷??議고쉶 API (理쒓렐 50媛?湲곕줉??JSON?쇰줈 蹂댁뿬以?
+// 리포트 조회 API (최근 50개 기록을 JSON으로 반환)
 // ===============================
 app.get("/report", async (req, res) => {
   try {
@@ -307,7 +308,7 @@ app.post("/archive-month", async (req, res) => {
 });
 
 // ===============================
-// ?붾젅洹몃옩 Webhook
+// 텔레그램 Webhook
 // ===============================
 app.post("/telegram", async (req, res) => {
   try {
@@ -317,7 +318,7 @@ app.post("/telegram", async (req, res) => {
     console.log("[TG] update body:", JSON.stringify(req.body).slice(0, 500));
     console.log("[TG] text:", text);
 
-    // ?띿뒪?멸? ?놁쑝硫?洹몃깷 200
+    // 텍스트 메시지가 아니면 텔레그램에 200 응답만 반환
     if (!text) return res.sendStatus(200);
 
     const today = new Date().toISOString().slice(0, 10);
@@ -333,23 +334,19 @@ app.post("/telegram", async (req, res) => {
       console.log("[SUPABASE] insert OK");
     }
 
-    // 理쒖떊 ?곗씠??議고쉶?섏뿬 GitHub???낅뜲?댄듃
+    // 최신 데이터를 다시 조회해 GitHub 리포트도 갱신
     await rebuildReportJson(`telegram:${today}`);
 
-    // ?붾젅洹몃옩?먮뒗 鍮⑤━ 200??二쇰뒗 寃?以묒슂
+    // 텔레그램에는 항상 빠르게 200 응답을 반환
     res.sendStatus(200);
-
   } catch (e) {
     console.error("[ERROR] /telegram:", e);
     res.sendStatus(200);
   }
 });
 
-// Render ?ы듃 ?ㅽ뻾
+// 서버 실행
 const port = PORT || 3000;
 app.listen(port, () => {
   console.log("Server started on port", port);
 });
-
-
-

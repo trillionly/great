@@ -8,7 +8,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
-    /* ?????ヂ???????????繹먮끏爰???ш끽諭???ㅼ굣????濡ル㎥????釉먮폏???*/
+    /* 기본 색상과 공통 스타일 변수 */
     :root {
       --primary: #1e3a8a;
       --primary-hover: #172a6b;
@@ -28,7 +28,7 @@
       color: var(--text-main);
     }
 
-    /* ??????ㅿ폍??????밸쭬 ???ㅼ굡??*/
+    /* 상단 헤더 영역 */
     .header-container {
       padding-bottom: 16px;
       margin-bottom: 20px;
@@ -52,7 +52,7 @@
       white-space: nowrap; 
     }
 
-    /* 2??좊즵獒??癲ル슢??湲룹물??類??????????????????爾??????*/
+    /* 오른쪽 상단 이동 링크 */
     .nav-buttons {
       display: flex;
       gap: 12px;
@@ -68,7 +68,7 @@
       line-height: 1.4;
     }
 
-    /* 雅?퍔瑗띰㎖??癒?떵? ????몄릇??癲ル슢??湲룹물?*/
+    /* 상단 네비게이션 링크 */
     .nav-link { 
         font-weight: 600; 
         font-size: 14px; 
@@ -82,7 +82,7 @@
         color: var(--primary); 
     }
 
-    /* ???????????袁⑸즲??먮き?*/
+    /* 오류 안내 배너 */
     #errorBanner {
       background-color: #fef2f2;
       border: 1px solid #f87171;
@@ -100,7 +100,7 @@
     .pill { display:inline-block; padding:3px 12px; border-radius:4px; background:#e0e7ff; color: #3730a3; font-size:12px; font-weight: 600;}
     .err-pill { background:#fee2e2 !important; color:#991b1b !important; }
 
-    /* ?怨멸텭???????源낇꼧??ш끽維???????(position: relative ??⑤베堉???筌뚯슦肉????? ??釉먯뒠???????ш끽維??癲ル슣??????좊읈??濚왿몾??燁??? */
+    /* 공통 카드 스타일 */
     .card { 
       background: var(--surface); 
       border: 1px solid var(--border); 
@@ -108,7 +108,7 @@
       padding: 14px 16px; 
       box-shadow: 0 1px 3px rgba(0,0,0,0.04); 
       display: flex; flex-direction: column; height: 100%; box-sizing: border-box; min-width: 0;
-      position: relative; /* 濚욌꼬?댄꺍?? ???Β? ???ㅿ폍??雅?퍔瑗띰㎖??癲ル슓堉곁땟????關履?????ш낄援η뵳???れ삀????*/
+      position: relative; /* 우상단 스파크라인 배치를 위해 기준점을 둔다 */
     }
     
     .summary-grid {
@@ -124,7 +124,7 @@
     .summary-profit-card .v { margin-top: 0; padding-top: 0; }
     .summary-profit-card .small { display: block; margin-top: 6px; margin-bottom: 6px !important; }
     
-    /* ???爾??용굞肉???곷첓 (??筌먯떜????源낅?) ???ㅼ굡??*/
+    /* 필터와 월 마감 컨트롤 */
     .controls { display: flex; gap: 12px; justify-content: flex-end; margin-bottom: 16px; flex-wrap: wrap; }
     .controls .small { font-size: 12px; color: var(--text-muted); font-weight: 600; margin-bottom: 4px; }
     select { 
@@ -208,7 +208,7 @@
     .krw-trend.same {
       color: #94a3b8;
     }
-    /* ????????釉먯뒭???*/
+    /* 테이블 래퍼 */
     .wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
     table { border-collapse: collapse; width: 100%; min-width: 800px; white-space: nowrap; }
 
@@ -249,7 +249,7 @@
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace; }
     .wide { min-width: 100%; margin-top: 15px; }
 
-    /* ???????됰꺊????????爾??????(PC, ???????繹?????- ???Β? ???ㅿ폍????關履?? */
+    /* 카드 우상단 스파크라인 영역 */
     .sparkline-container {
       position: absolute;
       top: 10px;
@@ -274,7 +274,7 @@
       white-space: nowrap;
     }
 
-    /* ?????????????????癲ル슢?꾤땟???? 癲ル슓堉곁땟????嚥▲꺂????좊읈???癲ル슢?꾤땟??????筌???ш낄援??*/
+    /* 모바일에서는 스파크라인을 카드 하단으로 이동 */
     @media (max-width: 768px) {
       .sparkline-container {
         position: relative; 
@@ -291,7 +291,7 @@
       }
     }
 
-    /* ??????????? ?棺??짆?승?????덈짏?????ル늅??씤異?에?ル씔???*/
+    /* 차트 로딩 스피너 */
     .spinner {
       width: 16px;
       height: 16px;
@@ -305,7 +305,7 @@
       100% { transform: rotate(360deg); } 
     }
     
-    /* ?釉뚰???????됰꽡 ????몄릇??*/
+    /* 차트 로딩 실패 문구 */
     .fetch-error-text {
       font-size: 11px;
       color: #ef4444;
@@ -448,7 +448,7 @@
   const esc = (s) => (s ?? "").toString().replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
   const num = (s) => {
     if (s == null) return null;
-    const x = (s+"").replace(/[,????s]/g, "");
+    const x = (s+"").replace(/[,\s$]/g, "");
     const n = Number(x);
     return Number.isFinite(n) ? n : null;
   };
@@ -766,7 +766,7 @@
       });
     });
   }
-  /* ???雅?퍔瑗띰㎖??????됰꺊???????숆강筌?????縕??*/
+  /* 스파크라인 차트를 생성하고 기존 인스턴스는 정리 */
   function drawSparkline(canvasId, dataPoints, colorCode) {
     const ctx = document.getElementById(canvasId).getContext('2d');
     if (window["chart_" + canvasId]) {
@@ -1178,7 +1178,7 @@
             <td class="right">${buildUsdDisplayHtml(rowCum)}</td>
           </tr>
         `;
-      }).join("") || `<tr><td colspan="${4 + symbols.length*3}" class="muted">???Β???????⑤챶苡?/td></tr>`;
+      }).join("") || `<tr><td colspan="${4 + symbols.length*3}" class="muted">아직 해당 월의 매매 기록이 없습니다.</td></tr>`;
 
     const sumSellBySym = Object.fromEntries(symbols.map(s => [s, sumOrNull(viewData.map(r => r[s].sell))]));
     const sumProfitBySym = Object.fromEntries(symbols.map(s => [s, sumOrNull(viewData.map(r => r[s].profit))]));
@@ -1210,7 +1210,7 @@
         <td class="right">-</td>
       </tr>
       <tr class="tot">
-        <td class="center br">???룸폍??/td>
+        <td class="center br">합계/누적</td>
         ${symbols.map(sym => {
           const seed = SEEDS[sym] || null;
           const roiCum = (seed && lastCumBySym[sym] != null) ? (lastCumBySym[sym] / seed) : null;
@@ -1239,7 +1239,7 @@
       
       v.innerHTML = buildUsdDisplayHtml(profit);
       v.className = "v " + clsPN(profit);
-      r.textContent = (roi == null) ? "" : `???쒓낮???${fmtPct1(roi)}`;
+      r.textContent = (roi == null) ? "" : `수익률 ${fmtPct1(roi)}`;
       
       if (p && targetAmt > 0) {
         const pct = Math.max(0, (profit / targetAmt) * 100);
@@ -1248,7 +1248,7 @@
         
         p.innerHTML = `
           <div style="display:flex; justify-content:space-between; font-size:11px; color:#64748b; margin-bottom:5px;">
-            <span>癲ル슢?꾤땟?룹춻?$${fmtInt(targetAmt)}</span>
+            <span>목표 수익금 $${fmtInt(targetAmt)}</span>
             <span style="font-weight:700; color:${color}">${fmtFloat1(pct)}%</span>
           </div>
           <div style="background:#e2e8f0; border-radius:999px; height:6px; width:100%; overflow:hidden;">
@@ -1369,11 +1369,11 @@
     }
   }
 
-  // ???3濚?癲ル슪?ｄ펺???袁⑸젻泳?μ젂繹먮씮異? ??낆뒩?? ??좊읈??嶺뚮ㅎ?닸쾮濡㏓섀????????縕??
+  // 스파크라인용 최근 6개월 종가 데이터를 여러 소스에서 순차 조회
   async function fetchHistoricalPrices(symbol) {
     const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1d&range=6mo`;
     
-    // 1??筌믨퀡彛? ??좊읈?????鴉???뤒????源놁젳???ㅼ굣??corsproxy ???筌?
+    // 1차 시도: Yahoo Finance를 corsproxy.io 경유로 조회
     try {
       const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(targetUrl)}`);
       const data = await res.json();
@@ -1383,7 +1383,7 @@
       console.warn(`[1차 시도 실패] ${symbol}: corsproxy.io`, e);
     }
 
-    // 2??筌믨퀡彛? ??れ삀???allorigins ???μ쪠?????筌?(1??筌믨퀡彛?????됰꽡 ??癲ル슣鍮뽳쭕???????
+    // 2차 시도: allorigins를 사용한 우회 조회
     try {
       const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`);
       const data = await res.json();
@@ -1393,7 +1393,7 @@
       console.warn(`[2차 시도 실패] ${symbol}: allorigins.win`, e);
     }
 
-    // 3??筌믨퀡彛? ????????ш끽維??Finnhub API 癲ル슢???苡???됀????좊읈??嶺뚮ㅎ?닸쾮濡㏓섀?(癲ル슔?됭짆????怨뚮옖?櫻?
+    // 3차 시도: Finnhub API를 직접 조회
     try {
       const API_KEY = 'd6om8dpr01qi5kh3g1cgd6om8dpr01qi5kh3g1d0';
       const endTs = Math.floor(Date.now() / 1000);
@@ -1410,7 +1410,7 @@
     throw new Error("가격 데이터를 불러오지 못했습니다.");
   }
 
-  // ???3濚??袁⑸젻泳?μ젂繹먮씮異?獄?獄????????좊읈??嶺뚮ㅎ?닸쾮????Β????? 癲ル슓堉곁땟?????숆강筌???????덈틖??딅텑?
+  // 세 종목의 스파크라인을 비동기로 불러와 카드에 렌더링
   async function fetchAndDrawRealSparklines() {
     const chartConfigs = [
       { symbol: 'TQQQ', canvasId: 'sparkTQQQ', loaderId: 'loader_TQQQ', errorId: 'error_TQQQ', color: '#1e3a8a' },
@@ -1425,7 +1425,7 @@
         document.getElementById(config.canvasId).style.display = 'block';
         drawSparkline(config.canvasId, prices, config.color);
       } catch (error) {
-        console.error(`[癲ル슔?됭짆?륂렭?????? ${config.symbol}:`, error);
+        console.error(`[스파크라인 로딩 실패] ${config.symbol}:`, error);
         document.getElementById(config.loaderId).style.display = 'none';
         document.getElementById(config.errorId).style.display = 'block';
       }
@@ -1712,7 +1712,7 @@
         const archiveMonthKey = getMonthKey(year, month);
         let overwrite = false;
         if (archiveMonthIndex.includes(archiveMonthKey)) {
-          overwrite = confirm("\uC774\uBBF8 \uC800\uC7A5\uC774 \uB418\uC5B4\uC788\uC2B5\uB2C8\uB2E4. \uB36E\uC5B4\uC4F8\uAE4C\uC694?");
+          overwrite = confirm("이미 저장되어 있습니다. 덮어쓸까요?");
           if (!overwrite) return;
         }
 
@@ -1724,7 +1724,7 @@
           });
           const result = await res.json();
           if (res.status === 409 && result?.exists) {
-            const retryOverwrite = confirm("\uC774\uBBF8 \uC800\uC7A5\uC774 \uB418\uC5B4\uC788\uC2B5\uB2C8\uB2E4. \uB36E\uC5B4\uC4F8\uAE4C\uC694?");
+            const retryOverwrite = confirm("이미 저장되어 있습니다. 덮어쓸까요?");
             if (!retryOverwrite) return;
             const retryRes = await fetch(getGridApiUrl("/archive-month"), {
               method: "POST",
