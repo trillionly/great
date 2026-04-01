@@ -1563,6 +1563,15 @@
         archiveMonthIndex
           .filter(key => key.startsWith(`${y}-`))
           .forEach(key => monthSet.add(key.slice(5, 7)));
+        const existingMonths = Array.from(monthSet)
+          .filter(m => /^\d{2}$/.test(m))
+          .sort();
+        if (existingMonths.length) {
+          const lastMonthNum = Number(existingMonths[existingMonths.length - 1]);
+          if (Number.isFinite(lastMonthNum) && lastMonthNum >= 1 && lastMonthNum < 12) {
+            monthSet.add(String(lastMonthNum + 1).padStart(2, "0"));
+          }
+        }
         if (preferredMonth && /^\d{2}$/.test(preferredMonth)) monthSet.add(preferredMonth);
         const months = Array.from(monthSet).sort();
 
