@@ -967,51 +967,91 @@
   }
 
   function extractBlocksFromRows(reportRows) {
-    const latestRows = keepLatestRowsByDateSymbol(reportRows);
-    const linesInfo = getLinesWithYear(latestRows);
-    const recordsMap = new Map();
-    let currentKey = null;
-    let globalDate = null;
-    let globalTime = null;
-    let globalYear = null;
+    function extractBlocksFromSingleRow(row) {
+      const lines = String(row?.raw_message || "").split(/\r?\n/);
+      const fallbackYear = Number(String(row?.date || "").slice(0, 4)) || new Date().getFullYear();
+      const blocks = [];
+      let globalDate = null;
+      let globalTime = null;
+      let globalYear = null;
+      let currentBlock = null;
+      let pendingSymbol = null;
+      let pendingLines = [];
 
-    for (const item of linesInfo) {
-      const line = item.text || "";
-      const dtM = line.match(/(\d{2})\/(\d{2})\D+(\d{2}:\d{2})/);
-      if (dtM) {
-        const adjusted = getAdjustedTelegramMarketDate(item.year || new Date().getFullYear(), dtM[1], dtM[2]);
-        globalDate = adjusted.mmdd;
-        globalTime = dtM[3];
-        globalYear = adjusted.year;
+      function startBlock(symbol, seedLines = []) {
+        if (!globalDate || !globalYear) return null;
+        return {
+          year: globalYear,
+          month: globalDate.split("/")[0],
+          mmdd: globalDate,
+          yyyymmdd: `${globalYear}/${globalDate}`,
+          time: globalTime,
+          symbol,
+          raw: seedLines.length ? seedLines.join("\n") + "\n" : "",
+          created_at: String(row?.created_at || "")
+        };
       }
 
-      let symM = line.match(/\bGrid\d+\s+([A-Z]{2,6})\b/i);
-      if (!symM) symM = line.match(/\b(TQQQ|ETHU|TSLL)\b(?=[^\n:]{0,40}:)/i);
-      if (!symM) symM = line.match(/\b([A-Z]{2,6})(?=[^\n:]{0,40}:)/);
+      function flushCurrentBlock() {
+        if (currentBlock) blocks.push(currentBlock);
+        currentBlock = null;
+      }
 
-      if (symM && globalDate && globalYear) {
-        const symbol = String(symM[1]).toUpperCase();
-        currentKey = `${globalYear}/${globalDate}|${symbol}`;
-        if (!recordsMap.has(currentKey)) {
-          recordsMap.set(currentKey, {
-            year: globalYear,
-            month: globalDate.split("/")[0],
-            mmdd: globalDate,
-            yyyymmdd: `${globalYear}/${globalDate}`,
-            time: globalTime,
-            symbol,
-            raw: line + "\n"
-          });
+      for (const rawLine of lines) {
+        const line = rawLine || "";
+        const dtM = line.match(/(\d{2})\/(\d{2})\D+(\d{2}:\d{2})/);
+        if (dtM) {
+          const adjusted = getAdjustedTelegramMarketDate(fallbackYear, dtM[1], dtM[2]);
+          globalDate = adjusted.mmdd;
+          globalTime = dtM[3];
+          globalYear = adjusted.year;
+
+          if (!currentBlock && pendingSymbol) {
+            currentBlock = startBlock(pendingSymbol, [...pendingLines, line]);
+            pendingSymbol = null;
+            pendingLines = [];
+            continue;
+          }
         }
-        continue;
+
+        let symM = line.match(/\bGrid\d+\s+([A-Z]{2,6})\b/i);
+        if (!symM) symM = line.match(/\b(TQQQ|ETHU|TSLL)\b(?=[^\n:]{0,40}:)/i);
+        if (!symM) symM = line.match(/\b([A-Z]{2,6})(?=[^\n:]{0,40}:)/);
+
+        if (symM) {
+          flushCurrentBlock();
+          const symbol = String(symM[1]).toUpperCase();
+          if (globalDate && globalYear) {
+            currentBlock = startBlock(symbol, [line]);
+          } else {
+            pendingSymbol = symbol;
+            pendingLines = [line];
+          }
+          continue;
+        }
+
+        if (currentBlock) {
+          currentBlock.raw += line + "\n";
+        } else if (pendingSymbol) {
+          pendingLines.push(line);
+        }
       }
 
-      if (currentKey && recordsMap.has(currentKey)) {
-        recordsMap.get(currentKey).raw += line + "\n";
-      }
+      flushCurrentBlock();
+      return blocks;
     }
 
-    return Array.from(recordsMap.values()).map(r => {
+    const allBlocks = (reportRows || []).flatMap(row => extractBlocksFromSingleRow(row));
+    const latestBlocks = new Map();
+    for (const block of allBlocks) {
+      const key = `${block.yyyymmdd}|${block.symbol}`;
+      const prev = latestBlocks.get(key);
+      const currentCreatedAt = String(block?.created_at || "");
+      const prevCreatedAt = String(prev?.created_at || "");
+      if (!prev || currentCreatedAt > prevCreatedAt) latestBlocks.set(key, block);
+    }
+
+    return Array.from(latestBlocks.values()).map(r => {
       r.cum = extractOrderableGap(r.raw);
 
       const sCnt = r.raw.match(/\bS\s*([\-\d.,]+)/i);
@@ -1033,6 +1073,10 @@
       }
 
       return r;
+    }).sort((a, b) => {
+      const keyA = `${a.yyyymmdd}|${a.symbol}`;
+      const keyB = `${b.yyyymmdd}|${b.symbol}`;
+      return keyA.localeCompare(keyB);
     });
   }
 
