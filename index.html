@@ -1015,6 +1015,13 @@
     return Number.isFinite(ms) ? ms : null;
   }
 
+  function getRowYear(row) {
+    const dateYear = String(row?.date || "").match(/^(\d{4})-/)?.[1];
+    if (dateYear) return dateYear;
+    const createdYear = String(row?.created_at || "").match(/^(\d{4})-/)?.[1];
+    return createdYear || "";
+  }
+
   function isCorrectionRaw(raw) {
     return /^\s*수정(?:\s|[:：-]|$)/.test(String(raw || ""));
   }
@@ -1039,13 +1046,16 @@
     return bestDelta <= 5 * 60 * 1000 ? best : null;
   }
 
-  function findLatestPriorDateInfo(dateHints, symbol, createdAt) {
+  function findLatestPriorDateInfo(dateHints, symbol, row) {
+    const createdAt = row?.created_at;
     const currentMs = getCreatedAtMs(createdAt);
+    const rowYear = getRowYear(row);
     if (currentMs == null) return null;
     let best = null;
     let bestMs = Number.NEGATIVE_INFINITY;
     for (const hint of dateHints) {
       if (hint.symbol !== symbol || hint.createdAtMs == null) continue;
+      if (rowYear && String(hint.dateInfo?.year || "") !== rowYear) continue;
       if (hint.createdAtMs <= currentMs && hint.createdAtMs > bestMs) {
         best = hint.dateInfo;
         bestMs = hint.createdAtMs;
@@ -1113,7 +1123,7 @@
 
         const dateInfo =
           buildRowMonthDayKey({ ...row, raw_message: symbolRaw }) ||
-          (isCorrection ? findLatestPriorDateInfo(dateHints, symbol, row?.created_at) : null) ||
+          (isCorrection ? findLatestPriorDateInfo(dateHints, symbol, row) : null) ||
           findNearestDateInfo(dateHints, symbol, row?.created_at) ||
           buildRowMonthDayKey(row);
         if (!dateInfo) continue;
