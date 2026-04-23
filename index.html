@@ -831,7 +831,8 @@
     while ((m = re.exec(fullText)) !== null) {
       rows.push({
         idx: Number(m[1]),
-        sellQty: Number(m[5].replace(/,/g, ''))
+        leftQty: Number(m[3].replace(/,/g, '')),
+        rightQty: Number(m[5].replace(/,/g, ''))
       });
     }
     if (!rows.length) return { tierNow: null, tierMax: null };
@@ -841,12 +842,20 @@
     
     let tierNow = null;
     for (let i = rows.length - 1; i >= 0; i--) {
-      if (rows[i].sellQty > 0) {
+      if (rows[i].leftQty === 0 && rows[i].rightQty > 0) {
         tierNow = rows[i].idx;
         break;
       }
     }
-    if (tierNow == null) tierNow = rows[0].idx; 
+    if (tierNow == null) {
+      for (let i = rows.length - 1; i >= 0; i--) {
+        if (rows[i].rightQty > 0) {
+          tierNow = rows[i].idx;
+          break;
+        }
+      }
+    }
+    if (tierNow == null) tierNow = rows[0].idx;
     return { tierNow, tierMax };
   }
 
