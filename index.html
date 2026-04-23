@@ -613,10 +613,31 @@
     return Boolean(block?.archived || archiveMonthIndex.includes(monthKey));
   }
 
+  function isLatestInputBlock(block, latestCreatedAtMs) {
+    const createdAtMs = getCreatedAtMs(block?.created_at);
+    return Number.isFinite(createdAtMs) && createdAtMs === latestCreatedAtMs;
+  }
+
   function splitBlocksByValidity(blocks) {
-    const errorBlocks = (blocks || []).filter(block => !isArchivedMonthBlock(block) && block?.isValid === false);
+    const activeBlocks = (blocks || []).filter(block => !isArchivedMonthBlock(block));
+    const latestCreatedAtMs = Math.max(
+      ...activeBlocks
+        .map(block => getCreatedAtMs(block?.created_at))
+        .filter(Number.isFinite)
+    );
+    const hasLatestCreatedAt = Number.isFinite(latestCreatedAtMs);
+    const errorBlocks = activeBlocks.filter(block =>
+      hasLatestCreatedAt &&
+      isLatestInputBlock(block, latestCreatedAtMs) &&
+      block?.isValid === false
+    );
     const errorDates = new Set(errorBlocks.map(block => block.yyyymmdd));
-    const validBlocks = (blocks || []).filter(block => isArchivedMonthBlock(block) || block?.isValid !== false);
+    const validBlocks = (blocks || []).filter(block =>
+      isArchivedMonthBlock(block) ||
+      block?.isValid !== false ||
+      !hasLatestCreatedAt ||
+      !isLatestInputBlock(block, latestCreatedAtMs)
+    );
     return { errorBlocks, errorDates, validBlocks };
   }
 
@@ -1010,8 +1031,13 @@
       }
     };
     ["cum", "sellCount", "tierNow", "tierMax", "holdQty", "invQty"].forEach(mergeField);
-    merged.isValid = Boolean(prev.isValid && current.isValid);
-    merged.errorMsg = [prev.errorMsg, current.errorMsg].filter(Boolean).join("<br>");
+    if (String(current?.created_at || "") >= String(prev?.created_at || "")) {
+      merged.isValid = current.isValid;
+      merged.errorMsg = current.errorMsg;
+    } else {
+      merged.isValid = prev.isValid;
+      merged.errorMsg = prev.errorMsg;
+    }
     return merged;
   }
 
