@@ -1022,6 +1022,16 @@
     ].filter(Boolean).join("\n\n");
   }
 
+  function refreshMergedTierFields(block) {
+    if (!block) return block;
+    const { tierNow, tierMax } = parseGridTier(block.raw);
+    return {
+      ...block,
+      tierNow,
+      tierMax
+    };
+  }
+
   function chooseBetterBlock(prev, current) {
     if (!prev) return current;
     const merged = {
@@ -1047,7 +1057,7 @@
       merged.isValid = prev.isValid;
       merged.errorMsg = prev.errorMsg;
     }
-    return merged;
+    return refreshMergedTierFields(merged);
   }
 
   function getCreatedAtMs(value) {
