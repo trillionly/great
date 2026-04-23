@@ -1054,36 +1054,67 @@
       }
     }
 
-    const latestBlocks = new Map();
-    for (const block of mergedBlocks.values()) {
-      const key = `${block.yyyymmdd}|${block.symbol}`;
-      const prev = latestBlocks.get(key);
-      const currentCreatedAt = String(block?.created_at || "");
-      const prevCreatedAt = String(prev?.created_at || "");
-      if (!prev || currentCreatedAt > prevCreatedAt) latestBlocks.set(key, block);
-    }
-
-    return Array.from(latestBlocks.values()).map(r => {
-      r.cum = extractOrderableGap(r.raw);
-
+    const parsedBlocks = Array.from(mergedBlocks.values()).map(r => {
+      const cum = extractOrderableGap(r.raw);
       const sCnt = r.raw.match(/\bS\s*([\-\d.,]+)/i);
-      r.sellCount = sCnt ? num(sCnt[1]) : null;
-
+      const sellCount = sCnt ? num(sCnt[1]) : null;
       const { tierNow, tierMax } = parseGridTier(r.raw);
-      r.tierNow = tierNow;
-      r.tierMax = tierMax;
-
       const holdQty = extractHoldQty(r.raw, r.symbol);
       const invQty = extractInventoryQty(r.raw);
-
-      r.isValid = true;
-      r.errorMsg = "";
+      let isValid = true;
+      let errorMsg = "";
 
       if (holdQty !== null && invQty !== null && holdQty !== invQty) {
-        r.isValid = false;
-        r.errorMsg = `[${r.mmdd} ${r.time}] <b>${r.symbol}</b> 수량 불일치가 감지되었습니다. (보유수량: ${holdQty} vs 총재고: ${invQty})`;
+        isValid = false;
+        errorMsg = `[${r.mmdd} ${r.time}] <b>${r.symbol}</b> 수량 불일치가 감지되었습니다. (보유수량: ${holdQty} vs 총재고: ${invQty})`;
       }
 
+      return {
+        ...r,
+        cum,
+        sellCount,
+        tierNow,
+        tierMax,
+        holdQty,
+        invQty,
+        isValid,
+        errorMsg
+      };
+    });
+
+    const mergedByField = new Map();
+    for (const block of parsedBlocks) {
+      const key = `${block.yyyymmdd}|${block.symbol}`;
+      const prev = mergedByField.get(key);
+      if (!prev) {
+        mergedByField.set(key, { ...block });
+        continue;
+      }
+
+      const currentCreatedAt = String(block?.created_at || "");
+      const prevCreatedAt = String(prev?.created_at || "");
+      const isNewer = currentCreatedAt > prevCreatedAt;
+
+      if (isNewer) {
+        prev.time = block.time || prev.time;
+        prev.created_at = block.created_at || prev.created_at;
+        prev.raw = block.raw || prev.raw;
+      }
+      if (block.cum !== null) prev.cum = block.cum;
+      if (block.sellCount !== null) prev.sellCount = block.sellCount;
+      if (block.tierNow !== null) prev.tierNow = block.tierNow;
+      if (block.tierMax !== null) prev.tierMax = block.tierMax;
+      if (block.holdQty !== null) prev.holdQty = block.holdQty;
+      if (block.invQty !== null) prev.invQty = block.invQty;
+      if (!block.isValid) {
+        prev.isValid = false;
+        prev.errorMsg = block.errorMsg;
+      }
+    }
+
+    return Array.from(mergedByField.values()).map(r => {
+      r.isValid = r.isValid !== false;
+      r.errorMsg = r.errorMsg || "";
       return r;
     }).sort((a, b) => {
       const keyA = `${a.yyyymmdd}|${a.symbol}`;
