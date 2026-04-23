@@ -967,110 +967,38 @@
   }
 
   function extractBlocksFromRows(reportRows) {
-    function extractBlocksFromSingleRow(row) {
-      const lines = String(row?.raw_message || "").split(/\r?\n/);
-      const fallbackYear = Number(String(row?.date || "").slice(0, 4)) || new Date().getFullYear();
-      const blocks = [];
-      let globalDate = null;
-      let globalTime = null;
-      let globalYear = null;
-      let currentBlock = null;
-      let pendingSymbol = null;
-      let pendingLines = [];
+    const latestRows = keepLatestRowsByDateSymbol(reportRows || []);
+    const blocks = [];
 
-      function startBlock(symbol, seedLines = []) {
-        if (!globalDate || !globalYear) return null;
-        return {
-          year: globalYear,
-          month: globalDate.split("/")[0],
-          mmdd: globalDate,
-          yyyymmdd: `${globalYear}/${globalDate}`,
-          time: globalTime,
-          symbol,
-          raw: seedLines.length ? seedLines.join("\n") + "\n" : "",
-          created_at: String(row?.created_at || "")
-        };
-      }
+    for (const row of latestRows) {
+      const dateInfo = buildRowMonthDayKey(row);
+      const symbol = buildRowSymbolKey(row);
+      if (!dateInfo || !symbol) continue;
 
-      function flushCurrentBlock() {
-        if (currentBlock) blocks.push(currentBlock);
-        currentBlock = null;
-      }
-
-      for (const rawLine of lines) {
-        const line = rawLine || "";
-        const dtM = line.match(/(\d{2})\/(\d{2})\D+(\d{2}:\d{2})/);
-        if (dtM) {
-          const adjusted = getAdjustedTelegramMarketDate(fallbackYear, dtM[1], dtM[2]);
-          globalDate = adjusted.mmdd;
-          globalTime = dtM[3];
-          globalYear = adjusted.year;
-
-          if (!currentBlock && pendingSymbol) {
-            currentBlock = startBlock(pendingSymbol, [...pendingLines, line]);
-            pendingSymbol = null;
-            pendingLines = [];
-            continue;
-          }
-        }
-
-        let symM = line.match(/\bGrid\d+\s+([A-Z]{2,6})\b/i);
-        if (!symM) symM = line.match(/\b(TQQQ|ETHU|TSLL)\b(?=[^\n:]{0,40}:)/i);
-        if (!symM) symM = line.match(/\b([A-Z]{2,6})(?=[^\n:]{0,40}:)/);
-
-        if (symM) {
-          flushCurrentBlock();
-          const symbol = String(symM[1]).toUpperCase();
-          if (globalDate && globalYear) {
-            currentBlock = startBlock(symbol, [line]);
-          } else {
-            pendingSymbol = symbol;
-            pendingLines = [line];
-          }
-          continue;
-        }
-
-        if (currentBlock) {
-          currentBlock.raw += line + "\n";
-        } else if (pendingSymbol) {
-          pendingLines.push(line);
-        }
-      }
-
-      flushCurrentBlock();
-      return blocks;
-    }
-
-    const allBlocks = (reportRows || []).flatMap(row => extractBlocksFromSingleRow(row));
-    const mergedBlocks = new Map();
-    for (const block of allBlocks) {
-      const key = `${block.yyyymmdd}|${block.symbol}|${block.created_at}`;
-      const prev = mergedBlocks.get(key);
-      if (prev) {
-        prev.raw += block.raw;
-        if (!prev.time && block.time) prev.time = block.time;
-      } else {
-        mergedBlocks.set(key, { ...block });
-      }
-    }
-
-    const parsedBlocks = Array.from(mergedBlocks.values()).map(r => {
-      const cum = extractOrderableGap(r.raw);
-      const sCnt = r.raw.match(/\bS\s*([\-\d.,]+)/i);
+      const raw = String(row?.raw_message || "");
+      const cum = extractOrderableGap(raw);
+      const sCnt = raw.match(/\bS\s*([\-\d.,]+)/i);
       const sellCount = sCnt ? num(sCnt[1]) : null;
-      const { tierNow, tierMax } = parseGridTier(r.raw);
-      const holdQty = extractHoldQty(r.raw, r.symbol);
-      const invQty = extractInventoryQty(r.raw);
+      const { tierNow, tierMax } = parseGridTier(raw);
+      const holdQty = extractHoldQty(raw, symbol);
+      const invQty = extractInventoryQty(raw);
       let isValid = true;
       let errorMsg = "";
 
       if (holdQty !== null && invQty !== null && holdQty !== invQty) {
         isValid = false;
-        errorMsg = `[${r.mmdd} ${r.time}] <b>${r.symbol}</b> 수량 불일치가 감지되었습니다. (보유수량: ${holdQty} vs 총재고: ${invQty})`;
+        errorMsg = `[${dateInfo.month}/${dateInfo.day} ${dateInfo.time}] <b>${symbol}</b> 수량 불일치가 감지되었습니다. (보유수량: ${holdQty} vs 총재고: ${invQty})`;
       }
 
-      return {
-        ...r,
+      blocks.push({
+        year: dateInfo.year,
+        month: dateInfo.month,
+        mmdd: `${dateInfo.month}/${dateInfo.day}`,
+        yyyymmdd: dateInfo.yyyymmdd,
+        time: dateInfo.time,
+        symbol,
+        raw,
+        created_at: String(row?.created_at || ""),
         cum,
         sellCount,
         tierNow,
@@ -1079,44 +1007,10 @@
         invQty,
         isValid,
         errorMsg
-      };
-    });
-
-    const mergedByField = new Map();
-    for (const block of parsedBlocks) {
-      const key = `${block.yyyymmdd}|${block.symbol}`;
-      const prev = mergedByField.get(key);
-      if (!prev) {
-        mergedByField.set(key, { ...block });
-        continue;
-      }
-
-      const currentCreatedAt = String(block?.created_at || "");
-      const prevCreatedAt = String(prev?.created_at || "");
-      const isNewer = currentCreatedAt > prevCreatedAt;
-
-      if (isNewer) {
-        prev.time = block.time || prev.time;
-        prev.created_at = block.created_at || prev.created_at;
-        prev.raw = block.raw || prev.raw;
-      }
-      if (block.cum !== null) prev.cum = block.cum;
-      if (block.sellCount !== null) prev.sellCount = block.sellCount;
-      if (block.tierNow !== null) prev.tierNow = block.tierNow;
-      if (block.tierMax !== null) prev.tierMax = block.tierMax;
-      if (block.holdQty !== null) prev.holdQty = block.holdQty;
-      if (block.invQty !== null) prev.invQty = block.invQty;
-      if (!block.isValid) {
-        prev.isValid = false;
-        prev.errorMsg = block.errorMsg;
-      }
+      });
     }
 
-    return Array.from(mergedByField.values()).map(r => {
-      r.isValid = r.isValid !== false;
-      r.errorMsg = r.errorMsg || "";
-      return r;
-    }).sort((a, b) => {
+    return blocks.sort((a, b) => {
       const keyA = `${a.yyyymmdd}|${a.symbol}`;
       const keyB = `${b.yyyymmdd}|${b.symbol}`;
       return keyA.localeCompare(keyB);
