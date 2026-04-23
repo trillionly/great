@@ -1042,8 +1042,20 @@
     }
 
     const allBlocks = (reportRows || []).flatMap(row => extractBlocksFromSingleRow(row));
-    const latestBlocks = new Map();
+    const mergedBlocks = new Map();
     for (const block of allBlocks) {
+      const key = `${block.yyyymmdd}|${block.symbol}|${block.created_at}`;
+      const prev = mergedBlocks.get(key);
+      if (prev) {
+        prev.raw += block.raw;
+        if (!prev.time && block.time) prev.time = block.time;
+      } else {
+        mergedBlocks.set(key, { ...block });
+      }
+    }
+
+    const latestBlocks = new Map();
+    for (const block of mergedBlocks.values()) {
       const key = `${block.yyyymmdd}|${block.symbol}`;
       const prev = latestBlocks.get(key);
       const currentCreatedAt = String(block?.created_at || "");
