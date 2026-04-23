@@ -609,9 +609,9 @@
   }
 
   function splitBlocksByValidity(blocks) {
-    const errorBlocks = [];
-    const errorDates = new Set();
-    const validBlocks = blocks || [];
+    const errorBlocks = (blocks || []).filter(block => !block?.archived && block?.isValid === false);
+    const errorDates = new Set(errorBlocks.map(block => block.yyyymmdd));
+    const validBlocks = (blocks || []).filter(block => block?.archived || block?.isValid !== false);
     return { errorBlocks, errorDates, validBlocks };
   }
 
@@ -668,7 +668,7 @@
     const promise = (async () => {
       const rows = await loadArchiveRows(monthKey);
       if (!Array.isArray(rows)) return null;
-      return extractBlocksFromRows(rows);
+      return extractBlocksFromRows(rows).map(block => ({ ...block, archived: true }));
     })();
 
     archiveBlocksCache.set(monthKey, promise);
@@ -1015,6 +1015,14 @@
     return Number.isFinite(ms) ? ms : null;
   }
 
+  function isCorrectionRaw(raw) {
+    return /^\s*수정(?:\s|[:：-]|$)/.test(String(raw || ""));
+  }
+
+  function normalizeRawMessage(raw) {
+    return String(raw || "").replace(/^\s*수정[^\n]*(?:\n|$)/, "");
+  }
+
   function findNearestDateInfo(dateHints, symbol, createdAt) {
     const currentMs = getCreatedAtMs(createdAt);
     if (currentMs == null) return null;
@@ -1029,6 +1037,21 @@
       }
     }
     return bestDelta <= 5 * 60 * 1000 ? best : null;
+  }
+
+  function findLatestPriorDateInfo(dateHints, symbol, createdAt) {
+    const currentMs = getCreatedAtMs(createdAt);
+    if (currentMs == null) return null;
+    let best = null;
+    let bestMs = Number.NEGATIVE_INFINITY;
+    for (const hint of dateHints) {
+      if (hint.symbol !== symbol || hint.createdAtMs == null) continue;
+      if (hint.createdAtMs <= currentMs && hint.createdAtMs > bestMs) {
+        best = hint.dateInfo;
+        bestMs = hint.createdAtMs;
+      }
+    }
+    return best;
   }
 
   function extractOrderableGap(raw) {
@@ -1068,7 +1091,7 @@
     const dateHints = [];
 
     for (const row of reportRows || []) {
-      const raw = String(row?.raw_message || "");
+      const raw = normalizeRawMessage(row?.raw_message || "");
       const createdAtMs = getCreatedAtMs(row?.created_at);
       for (const symbol of DEFAULT_SYMBOLS) {
         const symbolRaw = buildSymbolBlockText(raw, symbol);
@@ -1081,13 +1104,16 @@
     }
 
     for (const row of reportRows || []) {
-      const raw = String(row?.raw_message || "");
+      const originalRaw = String(row?.raw_message || "");
+      const raw = normalizeRawMessage(originalRaw);
+      const isCorrection = isCorrectionRaw(originalRaw);
       for (const symbol of DEFAULT_SYMBOLS) {
         const symbolRaw = buildSymbolBlockText(raw, symbol);
         if (!symbolRaw) continue;
 
         const dateInfo =
           buildRowMonthDayKey({ ...row, raw_message: symbolRaw }) ||
+          (isCorrection ? findLatestPriorDateInfo(dateHints, symbol, row?.created_at) : null) ||
           findNearestDateInfo(dateHints, symbol, row?.created_at) ||
           buildRowMonthDayKey(row);
         if (!dateInfo) continue;
@@ -1123,6 +1149,7 @@
           invQty,
           isValid,
           errorMsg,
+          isCorrection,
           _fieldCreatedAt: {
             cum: cum == null ? "" : String(row?.created_at || ""),
             sellCount: sellCount == null ? "" : String(row?.created_at || ""),
