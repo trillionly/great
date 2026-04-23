@@ -934,6 +934,82 @@
     return preservedRows.sort((a, b) => String(b?.created_at || "").localeCompare(String(a?.created_at || "")));
   }
 
+  function escapeRegExp(value) {
+    return String(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+
+  function getSymbolAccountPrefix(symbol) {
+    return { TQQQ: "2", ETHU: "3", TSLL: "5" }[symbol] || "";
+  }
+
+  function sliceAroundIndex(text, index, endPattern) {
+    if (index < 0) return "";
+    const before = text.slice(0, index);
+    const dateMatches = [...before.matchAll(/\d{2}\/\d{2}\D+\d{2}:\d{2}/g)];
+    const start = dateMatches.length ? dateMatches[dateMatches.length - 1].index : index;
+    const after = text.slice(index);
+    const endMatch = after.match(endPattern);
+    const end = endMatch && endMatch.index > 0 ? index + endMatch.index : text.length;
+    return text.slice(start, end).trim();
+  }
+
+  function extractSymbolSummarySection(raw, symbol) {
+    const text = String(raw || "");
+    const needIndex = text.search(new RegExp(`${escapeRegExp(symbol)}최대필요`, "i"));
+    if (needIndex < 0) return "";
+    return sliceAroundIndex(text, needIndex, /\n\s*\d{2}\/\d{2}\D+\d{2}:\d{2}|\n\s*Grid\d+\s+[A-Z]{2,6}/);
+  }
+
+  function extractSymbolGridSection(raw, symbol) {
+    const text = String(raw || "");
+    const gridMatch = new RegExp(`\\bGrid\\d+\\s+${escapeRegExp(symbol)}\\b`, "i").exec(text);
+    if (!gridMatch) return "";
+    const start = gridMatch.index;
+    const after = text.slice(start + gridMatch[0].length);
+    const nextMatch = after.match(/\n\s*(?:Grid\d+\s+[A-Z]{2,6}|\d{2}\/\d{2}\D+\d{2}:\d{2})/);
+    const end = nextMatch ? start + gridMatch[0].length + nextMatch.index : text.length;
+    return text.slice(start, end).trim();
+  }
+
+  function extractSymbolCounterSection(raw, symbol) {
+    const text = String(raw || "");
+    const prefix = getSymbolAccountPrefix(symbol);
+    const counterMatch = new RegExp(`\\bB\\s*[-\\d.,]+회[\\s\\S]{0,80}?\\bS\\s*[-\\d.,]+회[\\s\\S]{0,80}?${prefix}${escapeRegExp(symbol)}\\b`, "i").exec(text);
+    if (!counterMatch) return "";
+    return counterMatch[0].trim();
+  }
+
+  function buildSymbolBlockText(raw, symbol) {
+    return [
+      extractSymbolSummarySection(raw, symbol),
+      extractSymbolGridSection(raw, symbol),
+      extractSymbolCounterSection(raw, symbol)
+    ].filter(Boolean).join("\n\n");
+  }
+
+  function chooseBetterBlock(prev, current) {
+    if (!prev) return current;
+    const merged = {
+      ...prev,
+      created_at: String(current?.created_at || "") > String(prev?.created_at || "") ? current.created_at : prev.created_at,
+      raw: [prev.raw, current.raw].filter(Boolean).join("\n\n"),
+      _fieldCreatedAt: { ...(prev._fieldCreatedAt || {}) }
+    };
+    const currentCreatedAt = String(current?.created_at || "");
+    const mergeField = (field) => {
+      if (current?.[field] == null) return;
+      const prevCreatedAt = String(merged._fieldCreatedAt[field] || "");
+      if (!prevCreatedAt || currentCreatedAt >= prevCreatedAt) {
+        merged[field] = current[field];
+        merged._fieldCreatedAt[field] = currentCreatedAt;
+      }
+    };
+    ["cum", "sellCount", "tierNow", "tierMax", "holdQty", "invQty"].forEach(mergeField);
+    merged.isValid = Boolean(prev.isValid && current.isValid);
+    merged.errorMsg = [prev.errorMsg, current.errorMsg].filter(Boolean).join("<br>");
+    return merged;
+  }
+
   function extractOrderableGap(raw) {
     const text = String(raw || "");
     const match = text.match(/주문가능-최대필요\s*:?\s*\$?\s*([-\d.,]+)/);
@@ -967,50 +1043,63 @@
   }
 
   function extractBlocksFromRows(reportRows) {
-    const latestRows = keepLatestRowsByDateSymbol(reportRows || []);
-    const blocks = [];
+    const latestBlocks = new Map();
 
-    for (const row of latestRows) {
-      const dateInfo = buildRowMonthDayKey(row);
-      const symbol = buildRowSymbolKey(row);
-      if (!dateInfo || !symbol) continue;
-
+    for (const row of reportRows || []) {
       const raw = String(row?.raw_message || "");
-      const cum = extractOrderableGap(raw);
-      const sCnt = raw.match(/\bS\s*([\-\d.,]+)/i);
-      const sellCount = sCnt ? num(sCnt[1]) : null;
-      const { tierNow, tierMax } = parseGridTier(raw);
-      const holdQty = extractHoldQty(raw, symbol);
-      const invQty = extractInventoryQty(raw);
-      let isValid = true;
-      let errorMsg = "";
+      for (const symbol of DEFAULT_SYMBOLS) {
+        const symbolRaw = buildSymbolBlockText(raw, symbol);
+        if (!symbolRaw) continue;
 
-      if (holdQty !== null && invQty !== null && holdQty !== invQty) {
-        isValid = false;
-        errorMsg = `[${dateInfo.month}/${dateInfo.day} ${dateInfo.time}] <b>${symbol}</b> 수량 불일치가 감지되었습니다. (보유수량: ${holdQty} vs 총재고: ${invQty})`;
+        const dateInfo = buildRowMonthDayKey({ ...row, raw_message: symbolRaw }) || buildRowMonthDayKey(row);
+        if (!dateInfo) continue;
+
+        const cum = extractOrderableGap(symbolRaw);
+        const sCnt = symbolRaw.match(/\bS\s*([\-\d.,]+)/i);
+        const sellCount = sCnt ? num(sCnt[1]) : null;
+        const { tierNow, tierMax } = parseGridTier(symbolRaw);
+        const holdQty = extractHoldQty(symbolRaw, symbol);
+        const invQty = extractInventoryQty(symbolRaw);
+        let isValid = true;
+        let errorMsg = "";
+
+        if (holdQty !== null && invQty !== null && holdQty !== invQty) {
+          isValid = false;
+          errorMsg = `[${dateInfo.month}/${dateInfo.day} ${dateInfo.time}] <b>${symbol}</b> 수량 불일치가 감지되었습니다. (보유수량: ${holdQty} vs 총재고: ${invQty})`;
+        }
+
+        const block = {
+          year: dateInfo.year,
+          month: dateInfo.month,
+          mmdd: `${dateInfo.month}/${dateInfo.day}`,
+          yyyymmdd: dateInfo.yyyymmdd,
+          time: dateInfo.time,
+          symbol,
+          raw: symbolRaw,
+          created_at: String(row?.created_at || ""),
+          cum,
+          sellCount,
+          tierNow,
+          tierMax,
+          holdQty,
+          invQty,
+          isValid,
+          errorMsg,
+          _fieldCreatedAt: {
+            cum: cum == null ? "" : String(row?.created_at || ""),
+            sellCount: sellCount == null ? "" : String(row?.created_at || ""),
+            tierNow: tierNow == null ? "" : String(row?.created_at || ""),
+            tierMax: tierMax == null ? "" : String(row?.created_at || ""),
+            holdQty: holdQty == null ? "" : String(row?.created_at || ""),
+            invQty: invQty == null ? "" : String(row?.created_at || "")
+          }
+        };
+        const key = `${block.yyyymmdd}|${block.symbol}`;
+        latestBlocks.set(key, chooseBetterBlock(latestBlocks.get(key), block));
       }
-
-      blocks.push({
-        year: dateInfo.year,
-        month: dateInfo.month,
-        mmdd: `${dateInfo.month}/${dateInfo.day}`,
-        yyyymmdd: dateInfo.yyyymmdd,
-        time: dateInfo.time,
-        symbol,
-        raw,
-        created_at: String(row?.created_at || ""),
-        cum,
-        sellCount,
-        tierNow,
-        tierMax,
-        holdQty,
-        invQty,
-        isValid,
-        errorMsg
-      });
     }
 
-    return blocks.sort((a, b) => {
+    return Array.from(latestBlocks.values()).sort((a, b) => {
       const keyA = `${a.yyyymmdd}|${a.symbol}`;
       const keyB = `${b.yyyymmdd}|${b.symbol}`;
       return keyA.localeCompare(keyB);
