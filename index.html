@@ -608,10 +608,15 @@
     });
   }
 
+  function isArchivedMonthBlock(block) {
+    const monthKey = `${block?.year || ""}-${block?.month || ""}`;
+    return Boolean(block?.archived || archiveMonthIndex.includes(monthKey));
+  }
+
   function splitBlocksByValidity(blocks) {
-    const errorBlocks = (blocks || []).filter(block => !block?.archived && block?.isValid === false);
+    const errorBlocks = (blocks || []).filter(block => !isArchivedMonthBlock(block) && block?.isValid === false);
     const errorDates = new Set(errorBlocks.map(block => block.yyyymmdd));
-    const validBlocks = (blocks || []).filter(block => block?.archived || block?.isValid !== false);
+    const validBlocks = (blocks || []).filter(block => isArchivedMonthBlock(block) || block?.isValid !== false);
     return { errorBlocks, errorDates, validBlocks };
   }
 
