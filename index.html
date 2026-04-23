@@ -609,9 +609,9 @@
   }
 
   function splitBlocksByValidity(blocks) {
-    const errorBlocks = (blocks || []).filter(b => b.isValid === false);
-    const errorDates = new Set(errorBlocks.map(b => b.yyyymmdd));
-    const validBlocks = (blocks || []).filter(b => !errorDates.has(b.yyyymmdd));
+    const errorBlocks = [];
+    const errorDates = new Set();
+    const validBlocks = blocks || [];
     return { errorBlocks, errorDates, validBlocks };
   }
 
