@@ -1010,6 +1010,27 @@
     return merged;
   }
 
+  function getCreatedAtMs(value) {
+    const ms = Date.parse(String(value || ""));
+    return Number.isFinite(ms) ? ms : null;
+  }
+
+  function findNearestDateInfo(dateHints, symbol, createdAt) {
+    const currentMs = getCreatedAtMs(createdAt);
+    if (currentMs == null) return null;
+    let best = null;
+    let bestDelta = Number.POSITIVE_INFINITY;
+    for (const hint of dateHints) {
+      if (hint.symbol !== symbol || hint.createdAtMs == null) continue;
+      const delta = Math.abs(hint.createdAtMs - currentMs);
+      if (delta < bestDelta) {
+        best = hint.dateInfo;
+        bestDelta = delta;
+      }
+    }
+    return bestDelta <= 5 * 60 * 1000 ? best : null;
+  }
+
   function extractOrderableGap(raw) {
     const text = String(raw || "");
     const match = text.match(/주문가능-최대필요\s*:?\s*\$?\s*([-\d.,]+)/);
@@ -1044,6 +1065,20 @@
 
   function extractBlocksFromRows(reportRows) {
     const latestBlocks = new Map();
+    const dateHints = [];
+
+    for (const row of reportRows || []) {
+      const raw = String(row?.raw_message || "");
+      const createdAtMs = getCreatedAtMs(row?.created_at);
+      for (const symbol of DEFAULT_SYMBOLS) {
+        const symbolRaw = buildSymbolBlockText(raw, symbol);
+        if (!symbolRaw) continue;
+        const dateInfo = buildRowMonthDayKey({ ...row, raw_message: symbolRaw });
+        if (dateInfo) {
+          dateHints.push({ symbol, createdAtMs, dateInfo });
+        }
+      }
+    }
 
     for (const row of reportRows || []) {
       const raw = String(row?.raw_message || "");
@@ -1051,7 +1086,10 @@
         const symbolRaw = buildSymbolBlockText(raw, symbol);
         if (!symbolRaw) continue;
 
-        const dateInfo = buildRowMonthDayKey({ ...row, raw_message: symbolRaw }) || buildRowMonthDayKey(row);
+        const dateInfo =
+          buildRowMonthDayKey({ ...row, raw_message: symbolRaw }) ||
+          findNearestDateInfo(dateHints, symbol, row?.created_at) ||
+          buildRowMonthDayKey(row);
         if (!dateInfo) continue;
 
         const cum = extractOrderableGap(symbolRaw);
