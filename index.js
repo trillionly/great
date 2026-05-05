@@ -27,7 +27,9 @@ const {
   GH_TOKEN,
   GH_OWNER,
   GH_REPO,
-  PORT
+  PORT,
+  FINNHUB_API_KEY,
+  SNAPSHOT_TOKEN
 } = process.env;
 const REPORT_ROW_LIMIT = 500;
 
@@ -304,6 +306,105 @@ app.post("/archive-month", async (req, res) => {
   } catch (error) {
     console.error("ARCHIVE_MONTH_UPLOAD_FAIL", year, month, error);
     res.status(500).json({ ok: false, error: String(error?.message || error) });
+  }
+});
+
+// ===============================
+// 장투리밸런싱 일일 스냅샷
+// ===============================
+function getKoreanDateKey() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric"
+  }).formatToParts(new Date());
+  const map = {};
+  parts.forEach(part => {
+    if (part.type !== "literal") map[part.type] = part.value;
+  });
+  return `${map.year}. ${parseInt(map.month, 10)}. ${parseInt(map.day, 10)}`;
+}
+
+async function fetchFinnhubQuote(symbol) {
+  const url = `https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_API_KEY}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Finnhub quote failed for ${symbol}: ${res.status}`);
+  const data = await res.json();
+  if (typeof data?.c !== "number" || data.c <= 0) {
+    throw new Error(`Invalid quote for ${symbol}: ${JSON.stringify(data)}`);
+  }
+  return data.c;
+}
+
+app.post("/snapshot/long-term", async (req, res) => {
+  try {
+    const auth = req.headers.authorization || "";
+    const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
+    if (!SNAPSHOT_TOKEN || token !== SNAPSHOT_TOKEN) {
+      return res.status(401).json({ ok: false, error: "unauthorized" });
+    }
+
+    const recordDate = getKoreanDateKey();
+
+    const { data: existing, error: existErr } = await supabase
+      .from("daily_snapshot")
+      .select("id")
+      .eq("record_date", recordDate)
+      .limit(1);
+    if (existErr) throw existErr;
+    if (existing && existing.length > 0) {
+      console.log("[SNAPSHOT] skip — already exists for", recordDate);
+      return res.json({ ok: true, skipped: true, reason: "already_exists", recordDate });
+    }
+
+    const { data: trades, error: tradeErr } = await supabase
+      .from("long_term_trade")
+      .select("*");
+    if (tradeErr) throw tradeErr;
+
+    const assets = { SCHD: { qty: 0, cost: 0 }, QLD: { qty: 0, cost: 0 } };
+    (trades || []).forEach(t => {
+      const target = assets[t.ticker];
+      if (!target) return;
+      if (t.trade_type === "매수") {
+        target.qty += t.quantity;
+        target.cost += t.total_amount;
+      } else {
+        const avg = target.qty > 0 ? target.cost / target.qty : 0;
+        target.qty -= t.quantity;
+        target.cost -= avg * t.quantity;
+      }
+    });
+
+    const totalInvested = assets.SCHD.cost + assets.QLD.cost;
+
+    const [schdPrice, qldPrice] = await Promise.all([
+      fetchFinnhubQuote("SCHD"),
+      fetchFinnhubQuote("QLD")
+    ]);
+
+    const totalAsset = assets.SCHD.qty * schdPrice + assets.QLD.qty * qldPrice;
+
+    const { error: insertErr } = await supabase.from("daily_snapshot").insert({
+      record_date: recordDate,
+      total_asset: totalAsset,
+      principal: totalInvested
+    });
+    if (insertErr) throw insertErr;
+
+    console.log("[SNAPSHOT] inserted", recordDate, "totalAsset:", totalAsset);
+    return res.json({
+      ok: true,
+      recordDate,
+      totalAsset,
+      principal: totalInvested,
+      schd: { qty: assets.SCHD.qty, price: schdPrice },
+      qld: { qty: assets.QLD.qty, price: qldPrice }
+    });
+  } catch (error) {
+    console.error("[SNAPSHOT] error:", error);
+    return res.status(500).json({ ok: false, error: String(error?.message || error) });
   }
 });
 
