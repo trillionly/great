@@ -253,8 +253,6 @@
         const totalInvested = assets.SCHD.cost + assets.QLD.cost;
         const totalPl = totalUsd - totalInvested;
         const totalRt = totalInvested > 0 ? (totalPl / totalInvested) * 100 : 0;
-        const totalDailyChange = totalUsd > 0 ? ((schdVal * dailyChange.SCHD + qldVal * dailyChange.QLD) / totalUsd) : 0;
-
         const dNow = new Date();
         const { data: snapData } = await db.from('daily_snapshot').select('*');
         let chartData = snapData || [];
@@ -265,25 +263,20 @@
         }
         chartData.sort((a, b) => new Date(a.record_date.replace(/\.\s/g, '-')) - new Date(b.record_date.replace(/\.\s/g, '-')));
 
+        const yesterdayDate = new Date(dNow.getFullYear(), dNow.getMonth(), dNow.getDate() - 1);
         const oneMonthAgo = new Date(dNow.getFullYear(), dNow.getMonth() - 1, dNow.getDate());
         const oneYearAgo = new Date(dNow.getFullYear() - 1, dNow.getMonth(), dNow.getDate());
 
-        function getPastAsset(targetDate) {
-            let closest = null;
-            let minDiff = Infinity;
-            for (const row of chartData) {
-                const rowDate = new Date(row.record_date.replace(/\.\s/g, '-'));
-                const diff = Math.abs(targetDate - rowDate);
-                if (diff < 15 * 24 * 60 * 60 * 1000 && diff < minDiff) {
-                    minDiff = diff;
-                    closest = row.total_asset;
-                }
-            }
-            return closest;
+        function getSnapshotAsset(targetDate) {
+            const key = `${targetDate.getFullYear()}. ${targetDate.getMonth() + 1}. ${targetDate.getDate()}`;
+            const row = chartData.find(r => r.record_date === key);
+            return row ? row.total_asset : null;
         }
 
-        const asset1Mo = getPastAsset(oneMonthAgo);
-        const asset1Yr = getPastAsset(oneYearAgo);
+        const assetYesterday = getSnapshotAsset(yesterdayDate);
+        const asset1Mo = getSnapshotAsset(oneMonthAgo);
+        const asset1Yr = getSnapshotAsset(oneYearAgo);
+        const totalDailyChange = assetYesterday ? ((totalUsd - assetYesterday) / assetYesterday) * 100 : null;
         const momRt = asset1Mo ? ((totalUsd - asset1Mo) / asset1Mo) * 100 : null;
         const yoyRt = asset1Yr ? ((totalUsd - asset1Yr) / asset1Yr) * 100 : null;
 
@@ -341,7 +334,7 @@
                 <td class="${totalPl >= 0 ? 'text-up' : 'text-down'}">${totalPl >= 0 ? '+' : ''}${fmt(totalPl)}</td>
                 <td class="${totalRt >= 0 ? 'text-up' : 'text-down'}">${totalRt >= 0 ? '+' : ''}${totalRt.toFixed(2)}%</td>
                 <td>100.0%</td>
-                <td class="${totalDailyChange >= 0 ? 'text-up' : 'text-down'}">${totalDailyChange >= 0 ? '+' : ''}${totalDailyChange.toFixed(2)}%</td>
+                <td class="${totalDailyChange !== null ? (totalDailyChange >= 0 ? 'text-up' : 'text-down') : 'text-slate-400'}">${totalDailyChange !== null ? (totalDailyChange >= 0 ? '+' : '') + totalDailyChange.toFixed(2) + '%' : '데이터없음'}</td>
                 <td class="${momRt !== null ? (momRt >= 0 ? 'text-up' : 'text-down') : 'text-slate-400'}">${momRt !== null ? (momRt >= 0 ? '+' : '') + momRt.toFixed(2) + '%' : '데이터없음'}</td>
                 <td class="${yoyRt !== null ? (yoyRt >= 0 ? 'text-up' : 'text-down') : 'text-slate-400'}">${yoyRt !== null ? (yoyRt >= 0 ? '+' : '') + yoyRt.toFixed(2) + '%' : '데이터없음'}</td>
                 <td class="text-slate-400">-</td>
