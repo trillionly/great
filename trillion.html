@@ -145,27 +145,51 @@
         return dateStr;
     };
 
-    async function fetchAllHistoryPrice(symbol) {
-        try {
-            const nowSec = Math.floor(Date.now() / 1000);
-            const from = nowSec - (364 * 86400);
-            const to = nowSec;
-            const res = await fetch(`https://finnhub.io/api/v1/stock/candle?symbol=${symbol}&resolution=D&from=${from}&to=${to}&token=${FINNHUB_API_KEY}`);
-            const data = await res.json();
-            if (data.s === 'ok' && data.c && data.c.length > 0) {
-                const price1Yr = data.c[0];
-                const target1Mo = nowSec - (30 * 86400);
-                let closestIdx = 0;
-                let minDiff = Infinity;
-                for (let i = 0; i < data.t.length; i++) {
-                    const diff = Math.abs(data.t[i] - target1Mo);
-                    if (diff < minDiff) { minDiff = diff; closestIdx = i; }
-                }
-                return { mo: data.c[closestIdx], yr: price1Yr };
-            }
-        } catch (e) {
-            console.error(`${symbol} 차트 히스토리 불러오기 실패`, e);
+    async function fetchYahooCloseSeries(symbol, proxyBaseUrl) {
+        const to = Math.floor(Date.now() / 1000);
+        const from = to - (365 * 86400);
+        const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?period1=${from}&period2=${to}&interval=1d&includePrePost=false&events=div%2Csplits`;
+        const res = await fetch(`${proxyBaseUrl}${encodeURIComponent(yahooUrl)}`);
+        if (!res.ok) throw new Error(`Yahoo request failed: ${res.status}`);
+        const data = await res.json();
+        const result = data?.chart?.result?.[0];
+        const timestamps = result?.timestamp;
+        const closes = result?.indicators?.quote?.[0]?.close;
+        if (!Array.isArray(timestamps) || !Array.isArray(closes)) {
+            throw new Error('Yahoo chart data is empty');
         }
+        return { timestamps, closes };
+    }
+
+    async function fetchAllHistoryPrice(symbol) {
+        const proxies = ['https://corsproxy.io/?', 'https://api.allorigins.win/raw?url='];
+        for (const proxy of proxies) {
+            try {
+                const { timestamps, closes } = await fetchYahooCloseSeries(symbol, proxy);
+                const nowSec = Math.floor(Date.now() / 1000);
+
+                let yrPrice = null;
+                for (let i = 0; i < closes.length; i++) {
+                    if (Number.isFinite(closes[i])) { yrPrice = closes[i]; break; }
+                }
+
+                const target1Mo = nowSec - (30 * 86400);
+                let moPrice = null;
+                let minDiff = Infinity;
+                for (let i = 0; i < timestamps.length; i++) {
+                    if (!Number.isFinite(closes[i])) continue;
+                    const diff = Math.abs(timestamps[i] - target1Mo);
+                    if (diff < minDiff) { minDiff = diff; moPrice = closes[i]; }
+                }
+
+                if (yrPrice !== null || moPrice !== null) {
+                    return { mo: moPrice, yr: yrPrice };
+                }
+            } catch (e) {
+                console.warn(`${symbol} Yahoo (${proxy}) 실패:`, e);
+            }
+        }
+        console.error(`${symbol} 차트 히스토리 불러오기 실패 — 모든 프록시 실패`);
         return { mo: null, yr: null };
     }
 
