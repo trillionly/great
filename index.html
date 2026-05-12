@@ -840,22 +840,13 @@
     rows.sort((a,b)=>a.idx-b.idx);
     const tierMax = rows[rows.length - 1].idx;
     
-    let tierNow = null;
+    let tierNow = 0;
     for (let i = rows.length - 1; i >= 0; i--) {
-      if (rows[i].leftQty === 0 && rows[i].rightQty > 0) {
-        tierNow = rows[i].idx;
+      if (rows[i].rightQty > 0) {
+        tierNow = rows[i].idx + 1;
         break;
       }
     }
-    if (tierNow == null) {
-      for (let i = rows.length - 1; i >= 0; i--) {
-        if (rows[i].rightQty > 0) {
-          tierNow = rows[i].idx;
-          break;
-        }
-      }
-    }
-    if (tierNow == null) tierNow = rows[0].idx;
     return { tierNow, tierMax };
   }
 
@@ -1119,6 +1110,10 @@
     } else {
       merged.isValid = prev.isValid;
       merged.errorMsg = prev.errorMsg;
+    }
+    if (merged.holdQty != null && merged.invQty != null && merged.holdQty !== merged.invQty) {
+      merged.isValid = false;
+      merged.errorMsg = `[${merged.mmdd || ""} ${merged.time || ""}] <b>${merged.symbol}</b> 수량 불일치가 감지되었습니다. (보유수량: ${merged.holdQty} vs 총재고: ${merged.invQty})`;
     }
     return refreshMergedTierFields(merged);
   }
