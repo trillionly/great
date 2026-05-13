@@ -1000,7 +1000,7 @@
   function extractSymbolCounterSection(raw, symbol) {
     const text = String(raw || "");
     const prefix = getSymbolAccountPrefix(symbol);
-    const counterMatch = new RegExp(`\\bB\\s*[-\\d.,]+회[\\s\\S]{0,80}?\\bS\\s*[-\\d.,]+회[\\s\\S]{0,80}?${prefix}${escapeRegExp(symbol)}\\b`, "i").exec(text);
+    const counterMatch = new RegExp(`\\bB\\s*[-\\d.,]+회[^\\n]{0,80}?\\bS\\s*[-\\d.,]+회[^\\n]{0,80}?${prefix}${escapeRegExp(symbol)}\\b`, "i").exec(text);
     if (!counterMatch) return "";
     return counterMatch[0].trim();
   }
