@@ -1028,8 +1028,34 @@
     return text.slice(0, end).trim();
   }
 
+  function mergeBurstRows(reportRows) {
+    const sorted = [...(reportRows || [])]
+      .filter(r => r && r.raw_message)
+      .sort((a, b) => String(a?.created_at || "").localeCompare(String(b?.created_at || "")));
+    const merged = [];
+    for (const row of sorted) {
+      const last = merged[merged.length - 1];
+      if (last) {
+        const lastMs = getCreatedAtMs(last.created_at);
+        const curMs = getCreatedAtMs(row.created_at);
+        const gap = (Number.isFinite(lastMs) && Number.isFinite(curMs)) ? (curMs - lastMs) : Infinity;
+        const sameDate = String(last.date || "") === String(row.date || "");
+        const head = String(row.raw_message || "").slice(0, 60);
+        const hasFreshDate = /\d{2}\/\d{2}\D+\d{2}:\d{2}/.test(head);
+        const startsWithCorrection = /^\s*수정(?:\s|[:：-]|$)/.test(head);
+        if (gap >= 0 && gap < 60 * 1000 && sameDate && !hasFreshDate && !startsWithCorrection) {
+          last.raw_message = (last.raw_message || "") + "\n" + (row.raw_message || "");
+          last.created_at = row.created_at;
+          continue;
+        }
+      }
+      merged.push({ ...row });
+    }
+    return merged;
+  }
+
   function buildReportPieces(reportRows) {
-    const sortedRows = [...(reportRows || [])].sort((a, b) => String(a?.created_at || "").localeCompare(String(b?.created_at || "")));
+    const sortedRows = mergeBurstRows(reportRows);
     const pieces = [];
     let lastContext = null;
 
