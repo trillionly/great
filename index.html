@@ -843,11 +843,20 @@
     let tierNow = 0;
     for (let i = rows.length - 1; i >= 0; i--) {
       if (rows[i].rightQty > 0) {
-        tierNow = rows[i].idx + 1;
+        tierNow = rows[i].idx;
         break;
       }
     }
     return { tierNow, tierMax };
+  }
+
+  function parseCompleteGridTier(raw, symbol) {
+    const parsed = parseGridTier(raw);
+    const expectedMax = MAX_TIERS[symbol] || null;
+    if (expectedMax && parsed.tierMax != null && parsed.tierMax < expectedMax) {
+      return { tierNow: null, tierMax: null };
+    }
+    return parsed;
   }
 
   function getLinesWithYear(reportRows) {
@@ -1076,6 +1085,10 @@
             raw: continuationRaw,
             forcedDateInfo: lastContext.dateInfo
           });
+          lastContext = {
+            ...lastContext,
+            createdAtMs
+          };
         }
       }
 
@@ -1104,7 +1117,7 @@
 
   function refreshMergedTierFields(block) {
     if (!block) return block;
-    const { tierNow, tierMax } = parseGridTier(block.raw);
+    const { tierNow, tierMax } = parseCompleteGridTier(block.raw, block.symbol);
     return {
       ...block,
       tierNow,
@@ -1273,7 +1286,7 @@
 
       const cum = extractOrderableGap(symbolRaw);
       const sellCount = extractSellCount(symbolRaw);
-      const { tierNow, tierMax } = parseGridTier(symbolRaw);
+      const { tierNow, tierMax } = parseCompleteGridTier(symbolRaw, symbol);
       const holdQty = extractHoldQty(symbolRaw, symbol);
       const invQty = extractInventoryQty(symbolRaw);
       let isValid = true;
