@@ -1230,6 +1230,17 @@
     return null;
   }
 
+  function extractSellCount(raw) {
+    const text = String(raw || "");
+    const counterMatch = text.match(/\bS\s*([\-\d.,]+)/i);
+    if (counterMatch) return num(counterMatch[1]);
+
+    const profitMatch = text.match(/매도이익\s*:?\s*\$?\s*([-\d.,]+)/);
+    if (profitMatch && num(profitMatch[1]) === 0) return 0;
+
+    return null;
+  }
+
   function extractBlocksFromRows(reportRows) {
     const latestBlocks = new Map();
     const dateHints = [];
@@ -1261,8 +1272,7 @@
       if (!dateInfo) continue;
 
       const cum = extractOrderableGap(symbolRaw);
-      const sCnt = symbolRaw.match(/\bS\s*([\-\d.,]+)/i);
-      const sellCount = sCnt ? num(sCnt[1]) : null;
+      const sellCount = extractSellCount(symbolRaw);
       const { tierNow, tierMax } = parseGridTier(symbolRaw);
       const holdQty = extractHoldQty(symbolRaw, symbol);
       const invQty = extractInventoryQty(symbolRaw);
