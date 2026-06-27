@@ -1534,6 +1534,11 @@
     const avgTotalSellAll = totalSellAll == null ? null : (totalSellAll / countDivisor);
     const totalProfitAll = sumOrNull(Object.values(sumProfitBySym));
     const avgTotalProfitAll = totalProfitAll == null ? null : (totalProfitAll / countDivisor);
+    const summaryCumBySym = Object.fromEntries(symbols.map(s => [
+      s,
+      viewMode === 'DAILY' ? lastCumBySym[s] : sumProfitBySym[s]
+    ]));
+    const summaryCumAll = viewMode === 'DAILY' ? lastCumAll : totalProfitAll;
 
     tfoot.innerHTML = `
       <tr class="avg">
@@ -1551,12 +1556,13 @@
         <td class="center br">합계/누적</td>
         ${symbols.map(sym => {
           const seed = SEEDS[sym] || null;
-          const roiCum = (seed && lastCumBySym[sym] != null) ? (lastCumBySym[sym] / seed) : null;
+          const summaryCum = summaryCumBySym[sym];
+          const roiCum = (seed && summaryCum != null) ? (summaryCum / seed) : null;
           return `
             <td class="center">${sumSellBySym[sym] ?? ""}</td>
             <td class="right">-</td>
             <td class="right br">
-              <div>${buildUsdDisplayHtml(lastCumBySym[sym])}</div>
+              <div>${buildUsdDisplayHtml(summaryCum)}</div>
               ${roiCum != null ? `<div style="color:#2563eb; font-size:14px; font-weight:700;">(${fmtPct1(roiCum)})</div>` : ""}
             </td>
           `;
@@ -1564,8 +1570,8 @@
         <td class="center br">${fmtInt(totalSellAll)}</td>
         <td class="right">-</td>
         <td class="right">
-          <div>${buildUsdDisplayHtml(lastCumAll)}</div>
-          ${currentSeedTotal > 0 ? `<div style="color:#2563eb; font-size:14px; font-weight:700;">(${fmtPct1(lastCumAll / currentSeedTotal)})</div>` : ""}
+          <div>${buildUsdDisplayHtml(summaryCumAll)}</div>
+          ${currentSeedTotal > 0 ? `<div style="color:#2563eb; font-size:14px; font-weight:700;">(${fmtPct1(summaryCumAll / currentSeedTotal)})</div>` : ""}
         </td>
       </tr>
     `;
@@ -1606,10 +1612,10 @@
     const finalMultiplier = periodCount * periodMultiplier;
     
     const totalTarget = currentSeedTotal * 0.015 * finalMultiplier;
-    setCard("monthProfitAll", "monthRoiAll", "progAll", lastCumAll, currentSeedTotal ? (lastCumAll / currentSeedTotal) : null, totalTarget);
+    setCard("monthProfitAll", "monthRoiAll", "progAll", summaryCumAll, currentSeedTotal ? (summaryCumAll / currentSeedTotal) : null, totalTarget);
 
     for (const sym of ["TQQQ","ETHU","TSLL"]) {
-      const cumVal = lastCumBySym[sym] ?? 0;
+      const cumVal = summaryCumBySym[sym] ?? 0;
       const roi = SEEDS[sym] ? (cumVal / SEEDS[sym]) : null;
       const targetAmt = SEEDS[sym] ? SEEDS[sym] * 0.015 * finalMultiplier : 0;
       setCard("monthProfit"+sym, "monthRoi"+sym, "prog"+sym, cumVal, roi, targetAmt);
