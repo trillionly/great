@@ -185,6 +185,29 @@ async function fetchArchiveIndexFromGitHub() {
     .sort();
 }
 
+async function fetchJsonFileFromGitHub(path) {
+  if (!GH_TOKEN || !GH_OWNER || !GH_REPO) return null;
+
+  const api = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${path}`;
+  const headers = {
+    Authorization: `Bearer ${GH_TOKEN}`,
+    Accept: "application/vnd.github+json",
+    "User-Agent": "telegram-invest-server"
+  };
+
+  const res = await fetch(api, { headers });
+  if (res.status === 404) return null;
+  if (res.status !== 200) {
+    const text = await res.text();
+    throw new Error(`[GH] file read failed: ${res.status} ${text}`);
+  }
+
+  const json = await res.json();
+  const content = String(json?.content || "").replace(/\s/g, "");
+  if (!content) return null;
+  return JSON.parse(Buffer.from(content, "base64").toString("utf8"));
+}
+
 async function doesGitHubFileExist(path) {
   if (!GH_TOKEN || !GH_OWNER || !GH_REPO) return false;
 
@@ -251,6 +274,40 @@ app.get("/archive-index", async (req, res) => {
   try {
     const months = await fetchArchiveIndexFromGitHub();
     res.json({ ok: true, months });
+  } catch (error) {
+    res.status(500).json({ ok: false, error: String(error?.message || error) });
+  }
+});
+
+app.get("/archive-month", async (req, res) => {
+  try {
+    const requestedMonth = String(req.query?.month || "").trim();
+    const monthKey = /^\d{4}-\d{2}$/.test(requestedMonth)
+      ? requestedMonth
+      : normalizeMonthKey(req.query?.year, req.query?.month);
+    const archivePath = `data/archive/${monthKey}.json`;
+    const archived = await fetchJsonFileFromGitHub(archivePath);
+
+    if (archived && Array.isArray(archived.rows)) {
+      return res.json({
+        ok: true,
+        month: monthKey,
+        rowCount: archived.rows.length,
+        path: archivePath,
+        rows: archived.rows
+      });
+    }
+
+    const allRows = await fetchAllDailyRecordRows();
+    const targetRows = allRows.filter(row => extractRowMonthKey(row) === monthKey);
+    res.json({
+      ok: true,
+      month: monthKey,
+      rowCount: targetRows.length,
+      path: archivePath,
+      rows: targetRows,
+      source: "daily_records"
+    });
   } catch (error) {
     res.status(500).json({ ok: false, error: String(error?.message || error) });
   }

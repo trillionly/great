@@ -657,14 +657,26 @@
   }
 
   async function fetchArchiveIndex() {
+    let staticMonths = [];
     try {
       const res = await fetch("./data/archive-index.json?t=" + Date.now(), { cache: "no-store" });
-      if (!res.ok) return [];
-      const data = await res.json();
-      return Array.isArray(data?.months) ? data.months : [];
+      if (res.ok) {
+        const data = await res.json();
+        staticMonths = Array.isArray(data?.months) ? data.months : [];
+      }
     } catch (error) {
-      console.warn("archive index fetch failed:", error);
-      return [];
+      console.warn("static archive index fetch failed:", error);
+    }
+
+    try {
+      const res = await fetch(getGridApiUrl("/archive-index"), { cache: "no-store" });
+      if (!res.ok) throw new Error(`archive index api failed: ${res.status}`);
+      const data = await res.json();
+      const apiMonths = Array.isArray(data?.months) ? data.months : [];
+      return Array.from(new Set(staticMonths.concat(apiMonths))).sort();
+    } catch (error) {
+      console.warn("archive index api fetch failed:", error);
+      return staticMonths;
     }
   }
 
@@ -674,12 +686,22 @@
     const promise = (async () => {
       try {
         const res = await fetch(`./data/archive/${monthKey}.json?t=${Date.now()}`, { cache: "no-store" });
-        if (res.status === 404) return null;
+        if (res.status === 404) throw new Error("archive file not deployed yet");
         if (!res.ok) throw new Error(`archive fetch failed: ${res.status}`);
         const json = await res.json();
-        return Array.isArray(json?.rows) ? json.rows : [];
+        if (Array.isArray(json?.rows)) return json.rows;
+        throw new Error("archive rows missing");
       } catch (error) {
-        console.warn(`archive load failed for ${monthKey}:`, error);
+        console.warn(`static archive load failed for ${monthKey}:`, error);
+      }
+
+      try {
+        const res = await fetch(getGridApiUrl(`/archive-month?month=${encodeURIComponent(monthKey)}`), { cache: "no-store" });
+        if (!res.ok) throw new Error(`archive api fetch failed: ${res.status}`);
+        const json = await res.json();
+        return Array.isArray(json?.rows) ? json.rows : null;
+      } catch (error) {
+        console.warn(`archive api load failed for ${monthKey}:`, error);
         return null;
       }
     })();
