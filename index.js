@@ -302,7 +302,7 @@ app.post("/archive-month", async (req, res) => {
     );
 
     console.log("ARCHIVE_MONTH_UPLOAD_OK", monthKey, archivePath);
-    res.json({ ok: true, month: monthKey, rowCount: targetRows.length, path: archivePath, overwritten: alreadyExists });
+    res.json({ ok: true, month: monthKey, rowCount: targetRows.length, path: archivePath, overwritten: alreadyExists, rows: targetRows });
   } catch (error) {
     console.error("ARCHIVE_MONTH_UPLOAD_FAIL", year, month, error);
     res.status(500).json({ ok: false, error: String(error?.message || error) });

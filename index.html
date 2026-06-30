@@ -1893,6 +1893,7 @@
         }
         if (preferredMonth && /^\d{2}$/.test(preferredMonth)) monthSet.add(preferredMonth);
         const months = Array.from(monthSet).sort();
+        const defaultMonth = existingMonths.length ? existingMonths[existingMonths.length - 1] : months[months.length - 1];
 
         let optionsHtml = `<option value="ALL">전체 월 보기</option>`;
         if (months.length > 1) {
@@ -1905,7 +1906,7 @@
         }).join("");
         monthSel.innerHTML = optionsHtml;
         if (preferredMonth && Array.from(monthSel.options).some(option => option.value === preferredMonth)) monthSel.value = preferredMonth;
-        else if (months.length > 0) monthSel.value = months[months.length - 1];
+        else if (defaultMonth) monthSel.value = defaultMonth;
       }
 
       async function getSelectionData() {
@@ -2131,16 +2132,17 @@
           if (!archiveMonthIndex.includes(archivedMonthKey)) {
             archiveMonthIndex = [...archiveMonthIndex, archivedMonthKey].sort();
           }
-          archiveRowsCache.delete(archivedMonthKey);
-
-          const nextSelection = getNextMonthSelection(year, month);
-          if (nextSelection) {
-            buildYearOptions(nextSelection.year);
-            updateMonthDropdown(nextSelection.month);
-            await rerender("아직 해당 월의 매매 기록이 없습니다.");
+          if (Array.isArray(result.rows)) {
+            archiveRowsCache.set(archivedMonthKey, Promise.resolve(result.rows));
+            archiveBlocksCache.delete(archivedMonthKey);
           } else {
-            await rerender();
+            archiveRowsCache.delete(archivedMonthKey);
+            archiveBlocksCache.delete(archivedMonthKey);
           }
+
+          buildYearOptions(year);
+          updateMonthDropdown(month);
+          await rerender();
           alert("월 마감이 성공적으로 완료되었습니다.");
         } catch (error) {
           alert("월 마감 저장에 실패했습니다.");
