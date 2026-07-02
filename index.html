@@ -413,7 +413,7 @@
   <div class="wrap">
     <table>
       <thead id="thead"></thead>
-      <tbody id="tbody"></tbody>
+      <tbody id="tbody"><tr><td class="muted">데이터를 불러오는 중입니다...</td></tr></tbody>
       <tfoot id="tfoot"></tfoot>
     </table>
   </div>
@@ -656,27 +656,29 @@
     return { year: String(y), month: String(m + 1).padStart(2, "0") };
   }
 
-  async function fetchArchiveIndex() {
-    let staticMonths = [];
+  async function fetchStaticArchiveIndex() {
     try {
       const res = await fetch("./data/archive-index.json?t=" + Date.now(), { cache: "no-store" });
       if (res.ok) {
         const data = await res.json();
-        staticMonths = Array.isArray(data?.months) ? data.months : [];
+        return Array.isArray(data?.months) ? data.months : [];
       }
     } catch (error) {
       console.warn("static archive index fetch failed:", error);
     }
 
+    return [];
+  }
+
+  async function fetchRemoteArchiveIndex() {
     try {
       const res = await fetch(getGridApiUrl("/archive-index"), { cache: "no-store" });
       if (!res.ok) throw new Error(`archive index api failed: ${res.status}`);
       const data = await res.json();
-      const apiMonths = Array.isArray(data?.months) ? data.months : [];
-      return Array.from(new Set(staticMonths.concat(apiMonths))).sort();
+      return Array.isArray(data?.months) ? data.months : [];
     } catch (error) {
       console.warn("archive index api fetch failed:", error);
-      return staticMonths;
+      return [];
     }
   }
 
@@ -1839,7 +1841,7 @@
             return [];
           }
         })(),
-        fetchArchiveIndex(),
+        fetchStaticArchiveIndex(),
         (async () => {
           try {
             const res = await fetch("./data/daily-overrides.json?t=" + Date.now(), { cache: "no-store" });
@@ -1880,7 +1882,8 @@
         let yearHtml = `<option value="ALL_YEARS">전체 기간 보기</option>`;
         yearHtml += allYears.map(y => `<option value="${y}">${y}년</option>`).join("");
         yearSel.innerHTML = yearHtml;
-        if (preferredYear && allYears.includes(preferredYear)) yearSel.value = preferredYear;
+        if (preferredYear === "ALL_YEARS") yearSel.value = "ALL_YEARS";
+        else if (preferredYear && allYears.includes(preferredYear)) yearSel.value = preferredYear;
         else yearSel.value = allYears.length ? allYears[allYears.length - 1] : "ALL_YEARS";
       }
 
@@ -2122,6 +2125,21 @@
         renderView(viewData, symbols, viewMode, allDaily, viewMeta);
       }
 
+      async function refreshArchiveIndexInBackground() {
+        const remoteMonths = await fetchRemoteArchiveIndex();
+        if (!remoteMonths.length) return;
+
+        const nextArchiveMonthIndex = Array.from(new Set(archiveMonthIndex.concat(remoteMonths))).sort();
+        if (nextArchiveMonthIndex.join("|") === archiveMonthIndex.join("|")) return;
+
+        const selectedYear = yearSel.value;
+        const selectedMonth = monthSel.value;
+        archiveMonthIndex = nextArchiveMonthIndex;
+        buildYearOptions(selectedYear);
+        updateMonthDropdown(selectedMonth);
+        await rerender();
+      }
+
       buildYearOptions();
       updateMonthDropdown();
 
@@ -2181,6 +2199,9 @@
       yearSel.addEventListener("change", async () => { updateMonthDropdown(); await rerender(); });
       monthSel.addEventListener("change", async () => { await rerender(); });
       await rerender();
+      refreshArchiveIndexInBackground().catch(error => {
+        console.warn("background archive index refresh failed:", error);
+      });
     } catch (e) {
       status.textContent = "로딩 실패";
       status.classList.add("err-pill");
