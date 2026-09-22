@@ -564,6 +564,40 @@
 
         document.getElementById('dateInput').value = getDefaultTradeDate();
 
+        async function fetchBoundedMarketJson(url, timeoutMs = 4500) {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), timeoutMs);
+            try {
+                const response = await fetch(url, { signal: controller.signal, credentials: 'omit' });
+                if (!response.ok) throw new Error('Market request failed: ' + response.status);
+                return await response.json();
+            } finally { clearTimeout(timeout); }
+        }
+
+        async function fetchGreatMarket(kind, symbol, range) {
+            const data = await fetchBoundedMarketJson('https://great-api.hatchable.site/api/' + kind +
+                '?symbol=' + encodeURIComponent(symbol) + (range ? '&range=' + range : ''));
+            const age = Date.now() - Date.parse(data.fetchedAt);
+            const maxAge = kind === 'history' ? 8 * 3600000 : (symbol === 'USDKRW' ? 3600000 : 90000);
+            if (data.symbol !== symbol || data.stale !== false || !Number.isFinite(age) ||
+                age < -60000 || age > maxAge) throw new Error('Market data is stale or invalid');
+            if (kind === 'history' && (data.range !== range || data.currency !== 'USD' ||
+                !Array.isArray(data.points) || data.points.length < 100 ||
+                !data.points.every((p,i) => Number.isFinite(p.close) && p.close > 0 &&
+                    Number.isFinite(p.timestamp) && (!i || data.points[i-1].timestamp < p.timestamp)))) {
+                throw new Error('Invalid market history');
+            }
+            if (kind === 'spot' && symbol !== 'USDKRW' &&
+                (data.currency !== 'USD' || !Number.isFinite(data.c) || data.c <= 0 ||
+                 !Number.isFinite(data.pc) || data.pc <= 0 || !Number.isFinite(data.dp))) {
+                throw new Error('Invalid market quote');
+            }
+            if (symbol === 'USDKRW' && (!Number.isFinite(data.rates?.KRW) || data.rates.KRW <= 0)) {
+                throw new Error('Invalid exchange rate');
+            }
+            return data;
+        }
+
         async function fetchTicker() {
             const ticker = document.getElementById('tickerInput').value.toUpperCase();
             if(!ticker) return;
@@ -578,6 +612,15 @@
             sourceBadge.className = 'badge bg-warning text-dark ms-1';
 
             let price = null, prevClose = null;
+            if (['TQQQ','ETHU','TSLL','SOXL','SCHD','QLD'].includes(ticker)) {
+                try {
+                    const data = await fetchGreatMarket('spot', ticker);
+                    price = data.c; prevClose = data.pc;
+                    sourceBadge.innerText = 'Yahoo 종가';
+                    sourceBadge.className = 'badge bg-success ms-1';
+                } catch (e) { console.warn('Server quote failed; using original sources', e); }
+            }
+            if (!price) {
             
             try {
                 const controller = new AbortController();
@@ -600,11 +643,11 @@
                 console.warn("야후 프록시 지연 발생. Finnhub 백업 가동.");
             }
 
+            }
             if (!price) {
                 sourceBadge.innerText = 'Finnhub 가동중';
                 try {
-                    const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${FINNHUB_KEY}`);
-                    const data = await response.json();
+                    const data = await fetchBoundedMarketJson(`https://finnhub.io/api/v1/quote?symbol=${ticker}&token=${FINNHUB_KEY}`);
                     if (data && data.c) {
                         price = data.c;
                         prevClose = data.pc;
@@ -1137,6 +1180,18 @@
         }
 
         async function fetchMainChartPrices(ticker, days) {
+            if (['TQQQ','ETHU','TSLL','SOXL','SCHD','QLD'].includes(ticker) && days <= 365) {
+                try {
+                    const range = ['SOXL','SCHD','QLD'].includes(ticker) ? '1y' : '6mo';
+                    if (range === '6mo' && days > 180) throw new Error('Range not cached');
+                    const data = await fetchGreatMarket('history', ticker, range);
+                    const from = Math.floor(Date.now() / 1000) - days * 86400;
+                    const result = finalizeMainChartPoints(data.points.filter(p => p.date >= new Intl.DateTimeFormat('en-CA', {timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(from * 1000)))
+                        .map(p => ({timestamp:p.timestamp * 1000,price:p.close})));
+                    if (!result) throw new Error('Chart data is empty');
+                    return {...result, source:'great-api',isFallback:false};
+                } catch (e) { console.warn('Server history failed; using original sources', e); }
+            }
             try {
                 const result = await fetchMainChartPricesFromYahoo(ticker, days, 'https://corsproxy.io/?');
                 return { ...result, source: 'yahoo-corsproxy', isFallback: false };
