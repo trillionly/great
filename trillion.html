@@ -158,6 +158,56 @@
         }
     }
 
+        async function fetchBoundedMarketJson(url, timeoutMs = 4500) {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), timeoutMs);
+            try {
+                const response = await fetch(url, { signal: controller.signal, credentials: 'omit' });
+                if (!response.ok) throw new Error('Market request failed: ' + response.status);
+                return await response.json();
+            } finally { clearTimeout(timeout); }
+        }
+
+        async function fetchGreatMarket(kind, symbol, range) {
+            const data = await fetchBoundedMarketJson('https://great-api.hatchable.site/api/' + kind +
+                '?symbol=' + encodeURIComponent(symbol) + (range ? '&range=' + range : ''));
+            const age = Date.now() - Date.parse(data.fetchedAt);
+            const maxAge = kind === 'history' ? 8 * 3600000 : (symbol === 'USDKRW' ? 3600000 : 90000);
+            if (data.symbol !== symbol || data.stale !== false || !Number.isFinite(age) ||
+                age < -60000 || age > maxAge) throw new Error('Market data is stale or invalid');
+            if (kind === 'history' && (data.range !== range || data.currency !== 'USD' ||
+                !Array.isArray(data.points) || data.points.length < 100 ||
+                !data.points.every((p,i) => Number.isFinite(p.close) && p.close > 0 &&
+                    Number.isFinite(p.timestamp) && (!i || data.points[i-1].timestamp < p.timestamp)))) {
+                throw new Error('Invalid market history');
+            }
+            if (kind === 'spot' && symbol !== 'USDKRW' &&
+                (data.currency !== 'USD' || !Number.isFinite(data.c) || data.c <= 0 ||
+                 !Number.isFinite(data.pc) || data.pc <= 0 || !Number.isFinite(data.dp))) {
+                throw new Error('Invalid market quote');
+            }
+            if (symbol === 'USDKRW' && (!Number.isFinite(data.rates?.KRW) || data.rates.KRW <= 0)) {
+                throw new Error('Invalid exchange rate');
+            }
+            return data;
+        }
+
+    async function fetchCurrentPrice(symbol) {
+        try { return await fetchGreatMarket('spot', symbol); }
+        catch (e) { return await fetchMarketJson(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_API_KEY}`); }
+    }
+    async function fetchFxRates() {
+        try { return await fetchGreatMarket('spot', 'USDKRW'); }
+        catch (e) { return await fetchMarketJson('https://open.er-api.com/v6/latest/USD'); }
+    }
+    async function fetchSavedHistory(symbol) {
+        const data = await fetchGreatMarket('history', symbol, '1y');
+        const from = Math.floor(Date.now() / 1000) - 365 * 86400;
+        const points = data.points.filter(p => p.date >= new Intl.DateTimeFormat('en-CA', {timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(from * 1000)));
+        if (points.length < 200) throw new Error('Incomplete one year history');
+        return {timestamps:points.map(p=>p.timestamp),closes:points.map(p=>p.close)};
+    }
+
     async function fetchYahooCloseSeries(symbol, proxyBaseUrl) {
         const to = Math.floor(Date.now() / 1000);
         const from = to - (365 * 86400);
@@ -173,10 +223,10 @@
     }
 
     async function fetchAllHistoryPrice(symbol) {
-        const proxies = ['https://corsproxy.io/?', 'https://api.allorigins.win/raw?url='];
+        const proxies = ['server', 'https://corsproxy.io/?', 'https://api.allorigins.win/raw?url='];
         for (const proxy of proxies) {
             try {
-                const { timestamps, closes } = await fetchYahooCloseSeries(symbol, proxy);
+                const { timestamps, closes } = proxy === 'server' ? await fetchSavedHistory(symbol) : await fetchYahooCloseSeries(symbol, proxy);
                 const nowSec = Math.floor(Date.now() / 1000);
 
                 let yrPrice = null;
@@ -205,7 +255,7 @@
     }
 
     async function init() {
-        const fxReady = fetchMarketJson('https://open.er-api.com/v6/latest/USD').then(fxRes => {
+        const fxReady = fetchFxRates().then(fxRes => {
             usdToKrw = fxRes.rates.KRW;
             document.getElementById('fx-rate').innerText = `환율 ₩${usdToKrw.toFixed(2)}`;
         }).catch(() => {});
@@ -239,8 +289,8 @@
             // History does not depend on quotes; start both without serial waiting.
             const [quotes, sHist, qHist] = await Promise.all([
                 Promise.allSettled([
-                    fetchMarketJson(`https://finnhub.io/api/v1/quote?symbol=SCHD&token=${FINNHUB_API_KEY}`),
-                    fetchMarketJson(`https://finnhub.io/api/v1/quote?symbol=QLD&token=${FINNHUB_API_KEY}`)
+                    fetchCurrentPrice('SCHD'),
+                    fetchCurrentPrice('QLD')
                 ]),
                 fetchAllHistoryPrice('SCHD'),
                 fetchAllHistoryPrice('QLD')
